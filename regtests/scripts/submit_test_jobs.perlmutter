@@ -1,0 +1,31 @@
+#!/bin/bash
+
+rootdir=$PWD
+echo "Current directory is $rootdir."
+test_dir="tests"
+
+sys_type=$NERSC_HOST
+jobscript_prefix="exaepi"
+
+if [ -d "$test_dir" ]; then
+
+    echo "\"tests\" directory exists, submitting jobs ..."
+
+    for i in $test_dir/*.$sys_type; do
+        echo "entering $i ..."
+        cd $i
+        if [ -f ".disabled" ]; then
+            echo "    Skipping (disabled case)"
+        else
+            jobscript=$(ls $jobscript_prefix.*.$sys_type.job)
+            echo "    submitting $jobscript."
+            sbatch $jobscript
+        fi
+        cd $rootdir
+    done
+
+else
+
+    echo "ERROR: no tests directory!"
+
+fi

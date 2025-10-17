@@ -1,0 +1,40 @@
+#!/bin/bash
+
+rootdir=$PWD
+echo "Current directory is $rootdir."
+baseline_dir="baselines"
+test_dir="tests"
+sys_type=$NERSC_HOST
+exaepi_compare=$EXAEPI_DIR/utilities/tests/chkdiff.sh
+
+if [ -d "$test_dir" ]; then
+    if [ -d "$baseline_dir" ]; then
+        for i in $baseline_dir/*.$sys_type; do
+
+            casename=${i#"$baseline_dir/"}
+            if [ -d "$test_dir/$casename" ]; then
+
+                echo "Comparing $test_dir/$casename and $baseline_dir/$casename ..."
+                cd $test_dir/$casename
+                if [ -f ".disabled" ]; then
+                    echo "    Skipping (disabled case)"
+                else
+                    result=$($exaepi_compare -r $rootdir/$baseline_dir/$casename |grep -i "fail")
+                    if [ -z "${result}" ]; then
+                        echo "    passed"
+                    else
+                        echo "    FAILED"
+                    fi
+                fi
+                cd $rootdir
+
+            else
+                echo "ERROR: couldn't find $test_dir/$casename."
+            fi
+        done
+    else
+        echo "ERROR:  no baselines directory"
+    fi
+else
+    echo "ERROR: no tests directory!"
+fi

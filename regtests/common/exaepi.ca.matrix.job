@@ -1,0 +1,20 @@
+#!/bin/sh
+
+#SBATCH -N 1
+#SBATCH -t 1
+#SBATCH --exclusive
+#SBATCH --job-name=exaepi
+
+NGPU=4
+NNODE=1
+
+OUTFILE=out.${LCHOST}.log
+
+EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
+echo "Executable file is ${EXEC}."
+
+INP=$(ls inputs*)
+echo "Input file is ${INP}."
+
+rm -rf Backtrace* plt* cases* $OUTFILE output.dat *.core
+srun --nodes=$NNODE -n $NGPU --gpus-per-task=1 --exclusive $EXEC $INP 2>&1 |tee $OUTFILE

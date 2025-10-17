@@ -1,0 +1,49 @@
+#!/bin/bash
+
+rootdir=$PWD
+echo "Current directory is $rootdir."
+baseline_dir="baselines"
+test_dir="tests"
+sys_type=$LCHOST
+exaepi_compare=$EXAEPI_DIR/utilities/tests/chkdiff.sh
+
+runcmd=""
+if [[ "x$LCHOST" == "xdane" ]]; then
+    runcmd="srun -n 1 -p pdebug"
+elif [[ "x$LCHOST" == "xmatrix" ]]; then
+    runcmd="srun -p pdebug -n 1 -G 1 -N 1"
+elif [[ "x$LCHOST" == "xtuolumne" ]]; then
+    runcmd="flux run --exclusive --nodes=1 --ntasks 1 -q=pdebug"
+fi
+
+if [ -d "$test_dir" ]; then
+    if [ -d "$baseline_dir" ]; then
+        for i in $baseline_dir/*.$sys_type; do
+
+            casename=${i#"$baseline_dir/"}
+            if [ -d "$test_dir/$casename" ]; then
+
+                echo "Comparing $test_dir/$casename and $baseline_dir/$casename ..."
+                cd $test_dir/$casename
+                if [ -f ".disabled" ]; then
+                    echo "    Skipping (disabled case)"
+                else
+                    result=$($runcmd $exaepi_compare -r $rootdir/$baseline_dir/$casename |grep -i "fail")
+                    if [ -z "${result}" ]; then
+                        echo "    passed"
+                    else
+                        echo "    FAILED"
+                    fi
+                fi
+                cd $rootdir
+
+            else
+                echo "ERROR: couldn't find $test_dir/$casename."
+            fi
+        done
+    else
+        echo "ERROR:  no baselines directory"
+    fi
+else
+    echo "ERROR: no tests directory!"
+fi

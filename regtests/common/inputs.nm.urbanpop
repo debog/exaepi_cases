@@ -1,0 +1,12 @@
+##
+agent.ic_type = "urbanpop"
+agent.urbanpop_filename = "urbanpop_nm"
+
+agent.nsteps = 70
+agent.plot_int = 10
+
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+
+disease.initial_case_type = "random"
+disease.num_initial_cases = 1000

@@ -1,0 +1,15 @@
+##
+agent.ic_type = "census"
+agent.census_filename = "NM_TX_2010.dat"
+agent.workerflow_filename = "US-wf.bin"
+
+agent.nsteps = 70
+agent.plot_int = 10
+
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+
+disease.initial_case_type = "file"
+disease.case_filename = "nm-july4.cases"
+
+disease.nstrain = 1

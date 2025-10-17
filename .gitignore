@@ -1,0 +1,10 @@
+*.eps
+*.csv
+baselines
+tests
+plt*
+cases*
+out*
+Backtrace*
+*core
+std*
