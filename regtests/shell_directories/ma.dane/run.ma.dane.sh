@@ -1,0 +1,1 @@
+../../common/run.ma.dane.sh

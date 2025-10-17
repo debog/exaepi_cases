@@ -1,0 +1,1 @@
+../../common/run.nm.perlmutter.sh
