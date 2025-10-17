@@ -8,3 +8,4 @@ out*
 Backtrace*
 *core
 std*
+.run*
