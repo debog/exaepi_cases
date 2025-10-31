@@ -17,24 +17,42 @@ $runcmd $EXEC $INP $ARG 2>&1 |tee $outfile
 EOM
 }
 
-CASE=Bay
+if [[ "x$CASE" == "x" ]]; then
+    echo "CASE not specified; running default..."
+    CASE=CA
+fi
+echo "CASE is $CASE"
+
 runscript="run.${LCHOST}.$CASE.sh"
 
 ntasks=""
 runcmd=""
 if [[ "x$LCHOST" == "xdane" ]]; then
-    export OMP_NUM_THREADS=4
-    ntasks=25
+    if [[ "x$CASE" == "xBay" ]]; then
+        export OMP_NUM_THREADS=4
+        ntasks=25
+    else
+        export OMP_NUM_THREADS=1
+        ntasks=100
+    fi
     nnodes=$(( (ntasks+111)/112 ))
     runcmd="srun -n $ntasks -N $nnodes -p pdebug"
 elif [[ "x$LCHOST" == "xmatrix" ]]; then
     export OMP_NUM_THREADS=1
-    ntasks=1
+    if [[ "x$CASE" == "xBay" ]]; then
+        ntasks=1
+    else
+        ntasks=4
+    fi
     nnodes=$(( (ntasks+3)/4 ))
     runcmd="srun -p pdebug -n $ntasks -G $ntasks -N $nnodes"
 elif [[ "x$LCHOST" == "xtuolumne" ]]; then
     export OMP_NUM_THREADS=1
-    ntasks=1
+    if [[ "x$CASE" == "xBay" ]]; then
+        ntasks=1
+    else
+        ntasks=4
+    fi
     nnodes=$(( (ntasks+3)/4 ))
     runcmd="flux run --exclusive --nodes=$nnodes --ntasks $ntasks -q=pdebug"
 fi
