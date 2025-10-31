@@ -7,13 +7,10 @@ agent.nsteps = 70
 agent.plot_int = 10
 agent.random_travel_int = 24
 
-agent.aggregated_diag_int = 1
-agent.aggregated_diag_prefix = "cases"
+agent.aggregated_diag_int = -1
 
 disease.initial_case_type = "file"
 disease.case_filename = "July4.cases"
 
-disease.nstrain = 2
 disease.p_trans = 0.20 0.30
 disease.p_asymp = 0.40 0.40
-disease.reinfect_prob = 0.0
