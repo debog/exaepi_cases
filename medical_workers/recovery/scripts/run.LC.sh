@@ -23,6 +23,8 @@ if [[ "x$CASE" == "x" ]]; then
 fi
 echo "CASE is $CASE"
 
+declare -a mwprop_vals=("0.03" "0.05" "0.07" "0.09")
+
 runscript="run.${LCHOST}.$CASE.sh"
 
 ntasks=""
@@ -63,24 +65,27 @@ outfile=out.${LCHOST}.log
 EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
 echo "Executable file is ${EXEC}."
 
-dirname=".run_${CASE}.${LCHOST}"
-if [ -d "$dirname" ]; then
-    echo "  deleting existing directory $dirname"
-    rm -rf $dirname
-fi
-echo "  creating directory $dirname"
-mkdir $dirname
+for mwprop in ${mwprop_vals[@]}; do
+    echo "Medical workers proportion: $mwprop"
+    dirname=".run_${CASE}.${LCHOST}.mwprop$(printf "%1.2f" $mwprop)"
+    if [ -d "$dirname" ]; then
+        echo "  deleting existing directory $dirname"
+        rm -rf $dirname
+    fi
+    echo "  creating directory $dirname"
+    mkdir $dirname
 
-cd $dirname
-echo "  creating shortcut for input file"
-ln -sf $INP_FILE .
-INP=$(ls inputs.${CASE})
-echo "  creating shortcut for data files"
-ln -sf $rootdir/common/$CASE* .
-ln -sf $rootdir/common/July4.cases .
-echo "  writing run script"
-write_run $# $runscript
+    cd $dirname
+    echo "  creating shortcut for input file"
+    ln -sf $INP_FILE .
+    INP=$(ls inputs.${CASE})
+    echo "  creating shortcut for data files"
+    ln -sf $rootdir/common/$CASE* .
+    ln -sf $rootdir/common/July4.cases .
+    echo "  writing run script"
+    write_run $# $runscript
 
-echo "  running case ..."
-bash $runscript
-cd $rootdir
+    echo "  running case ..."
+    bash $runscript
+    cd $rootdir
+done

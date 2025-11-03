@@ -69,6 +69,7 @@ outfile=out.${LCHOST}.log
 EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
 echo "Executable file is ${EXEC}."
 
+numjobs=0
 for mwprop in ${mwprop_vals[@]}; do
 for xmitd2d in ${xmit_hosp_d2d_vals[@]}; do
 for xmitd2p in ${xmit_hosp_d2p_vals[@]}; do
@@ -100,14 +101,27 @@ for xmitp2p in ${xmit_hosp_p2p_vals[@]}; do
     ln -sf $INP_FILE .
     INP=$(ls inputs.${CASE})
     echo "  creating shortcut for data files"
-    ln -sf $rootdir/common/$CASE* .
+    if [[ "x$CASE" == "xCA"* ]]; then
+        ln -sf $rootdir/common/CA* .
+    elif [[ "x$CASE" == "xBay"* ]]; then
+        ln -sf $rootdir/common/BayArea* .
+    fi
     ln -sf $rootdir/common/July4.cases .
     echo "  writing run script"
     write_run $# $runscript
 
     echo "  running case ..."
     bash $runscript > run.log &
+    ((numjobs++))
+    echo "Number of jobs submitted: $numjobs"
     cd $rootdir
+
+    if [[ $numjobs -ge 4 ]]; then
+        echo "Waiting for submitted jobs to finish..."
+        jobs -l
+        wait
+        numjobs=0
+    fi
 done
 done
 done
