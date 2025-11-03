@@ -1,4 +1,4 @@
-# usage: CASE=<name> gnuplot plot.p
+# usage: CASE=<name> gnuplot plot_01Disease.p
 
 set terminal postscript enhanced eps color "Times" 12
 
