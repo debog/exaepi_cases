@@ -23,7 +23,11 @@ if [[ "x$CASE" == "x" ]]; then
 fi
 echo "CASE is $CASE"
 
-declare -a mwprop_vals=("0.00" "0.02" "0.04" "0.06" "0.08")
+declare -a mwprop_vals=("0.00" "0.03" "0.06" "0.09")
+declare -a xmit_hosp_d2d_vals=("0.000" "0.006" "0.012")
+declare -a xmit_hosp_d2p_vals=("0.000" "0.005" "0.010")
+declare -a xmit_hosp_p2d_vals=("0.000" "0.006" "0.012")
+declare -a xmit_hosp_p2p_vals=("0.000" "0.003" "0.006")
 
 runscript="run.${LCHOST}.$CASE.sh"
 
@@ -66,8 +70,16 @@ EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
 echo "Executable file is ${EXEC}."
 
 for mwprop in ${mwprop_vals[@]}; do
+for xmitd2d in ${xmit_hosp_d2d_vals[@]}; do
+for xmitd2p in ${xmit_hosp_d2p_vals[@]}; do
+for xmitp2d in ${xmit_hosp_p2d_vals[@]}; do
+for xmitp2p in ${xmit_hosp_p2p_vals[@]}; do
     echo "Medical workers proportion: $mwprop"
-    dirname=".run_${CASE}.${LCHOST}.mwprop$(printf "%1.2f" $mwprop)"
+    echo "Hospital transmissivity (doctor-to-doctor): $xmitd2d"
+    echo "Hospital transmissivity (doctor-to-patient): $xmitd2p"
+    echo "Hospital transmissivity (patient-to-doctor): $xmitp2d"
+    echo "Hospital transmissivity (patient-to-patient): $xmitp2p"
+    dirname=".run_${CASE}.${LCHOST}.mwprop$(printf "%1.2f" $mwprop).xmitd2d$(printf "%1.3f" $xmitd2d).xmitp2d$(printf "%1.3f" $xmitp2d).xmitd2p$(printf "%1.3f" $xmitd2p).xmitp2p$(printf "%1.3f" $xmitp2p)"
     if [ -d "$dirname" ]; then
         echo "  deleting existing directory $dirname"
         rm -rf $dirname
@@ -77,6 +89,10 @@ for mwprop in ${mwprop_vals[@]}; do
 
     ARG=""
     ARG+=" agent.med_workers_proportion=$mwprop"
+    ARG+=" disease.xmit_hosp_d2d=$xmitd2d"
+    ARG+=" disease.xmit_hosp_p2d=$xmitp2d"
+    ARG+=" disease.xmit_hosp_d2p=$xmitd2p"
+    ARG+=" disease.xmit_hosp_p2p=$xmitp2p"
     ARG+=" hospital_model.num_patients_per_doctor=50000000"
 
     cd $dirname
@@ -92,6 +108,10 @@ for mwprop in ${mwprop_vals[@]}; do
     echo "  running case ..."
     bash $runscript > run.log &
     cd $rootdir
+done
+done
+done
+done
 done
 
 echo "waiting for processes to finish ..."
