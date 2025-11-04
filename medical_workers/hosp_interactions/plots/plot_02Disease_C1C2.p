@@ -12,10 +12,10 @@ set style line 23 dt 4 lw 1 lc rgbcolor "blue"         pt  6 ps 1
 set style line 26 dt 4 lw 1 lc rgbcolor "red"          pt  8 ps 1
 set style line 29 dt 4 lw 1 lc rgbcolor "dark-green"   pt 10 ps 1
 
-set style line 30 dt 2 lw 1 lc rgbcolor "black"        pt  4 ps 1
-set style line 33 dt 2 lw 1 lc rgbcolor "blue"         pt  6 ps 1
-set style line 36 dt 2 lw 1 lc rgbcolor "red"          pt  8 ps 1
-set style line 39 dt 2 lw 1 lc rgbcolor "dark-green"   pt 10 ps 1
+set style line 30 dt 2 lw 1 lc rgbcolor "black"        pt  4 ps 0.5
+set style line 33 dt 2 lw 1 lc rgbcolor "blue"         pt  6 ps 0.5
+set style line 36 dt 2 lw 1 lc rgbcolor "red"          pt  8 ps 0.5
+set style line 39 dt 2 lw 1 lc rgbcolor "dark-green"   pt 10 ps 0.5
 
 set format x "%1g"
 set format y "%1.1e"
@@ -52,10 +52,10 @@ do for [xd2d = 0 : 12 : 6] {
     do for [mwp = 0 : 9 : 3] {
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d1
         keystr = "\"covid1, %age med. workers=" . sprintf("%d\"",mwp)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",mwp+20) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",mwp+20) . " t " . keystr . ","
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d2
         keystr = "\"covid2, %age med. workers=" . sprintf("%d\"",mwp)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",mwp+30) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",mwp+30) . " t " . keystr . ","
     }
 #    print "plot command is: " . pltcmd
     eval pltcmd
@@ -73,10 +73,10 @@ do for [xp2d = 0 : 12 : 6] {
     do for [mwp = 0 : 9 : 3] {
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d1
         keystr = "\"covid1, %age med. workers=" . sprintf("%d\"",mwp)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",mwp+20) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",mwp+20) . " t " . keystr . ","
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d2
         keystr = "\"covid2, %age med. workers=" . sprintf("%d\"",mwp)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",mwp+30) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",mwp+30) . " t " . keystr . ","
     }
 #    print "plot command is: " . pltcmd
     eval pltcmd
@@ -94,10 +94,10 @@ do for [xd2p = 0 : 10 : 5] {
     do for [mwp = 0 : 9 : 3] {
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d1
         keystr = "\"covid1, %age med. workers=" . sprintf("%d\"",mwp)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",mwp+20) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",mwp+20) . " t " . keystr . ","
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d2
         keystr = "\"covid2, %age med. workers=" . sprintf("%d\"",mwp)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",mwp+30) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",mwp+30) . " t " . keystr . ","
     }
 #    print "plot command is: " . pltcmd
     eval pltcmd
@@ -115,10 +115,10 @@ do for [mwp = 0 : 9 : 3] {
     do for [xp2p = 0 : 6 : 3] {
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d1
         keystr = "\"covid1, xmit_{hosp} (p2p)=" . sprintf("0.%03d\"",xp2p)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",xp2p+20) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",xp2p+20) . " t " . keystr . ","
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d2
         keystr = "\"covid2, xmit_{hosp} (p2p)=" . sprintf("0.%03d\"",xp2p)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",xp2p+30) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",xp2p+30) . " t " . keystr . ","
     }
 #    print "plot command is: " . pltcmd
     eval pltcmd
