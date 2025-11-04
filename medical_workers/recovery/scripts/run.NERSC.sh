@@ -24,6 +24,12 @@ else
     MYHOSTNAME=$LCHOST
 fi
 
+if [[ -z $MYCLUSTER ]]; then
+    echo "MYCLUSTER variable not defined!"
+    exit 1
+fi
+echo "MYCLUSTER is $MYCLUSTER"
+
 write_job () {
 
 # argument 1: filename
