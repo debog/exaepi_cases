@@ -1,11 +1,28 @@
 #!/bin/bash
 
-# Usage: CASE=<casename> ./run.NERSC.sh -m [*job*|run]
+# Usage: CASE=<casename> ./run.sh -m [*job*|run]
 # When using "-m run", make sure you are on compute node.
 
 clear
 rootdir=$PWD
 GPU_AWARE_MPI="amrex.use_gpu_aware_mpi=1"
+
+MYCLUSTER=""
+MYHOSTNAME=""
+if [[ -z $LCHOST ]]; then
+    if [[ ! -z $NERSC_HOST ]]; then
+        echo "NERSC_HOST is $NERSC_HOST"
+        MYCLUSTER="NERSC"
+        MYHOSTNAME=$NERSC_HOST
+    else
+        echo "ERROR: on unknown cluster! LCHOST=$LCHOST, NERSC_HOST=$NERSC_HOST"
+        exit 1
+    fi
+else
+    echo "LCHOST is $LCHOST"
+    MYCLUSTER="LC"
+    MYHOSTNAME=$LCHOST
+fi
 
 write_job () {
 
@@ -13,7 +30,10 @@ write_job () {
 
 arg=("$@")
 
-/bin/cat <<EOM >${arg[1]}
+if [[ "$MYCLUSTER" == "LC" ]]; then
+    echo "  Note: job writing not implemented for LC"
+elif [[ "$MYCLUSTER" == "NERSC" ]]; then
+    /bin/cat <<EOM >${arg[1]}
 #!/bin/bash
 
 #SBATCH -t 00:10:00
@@ -42,6 +62,7 @@ srun --cpu-bind=cores bash -c "
     2>&1 |tee $outfile
 
 EOM
+fi
 }
 
 write_run () {
@@ -50,7 +71,27 @@ write_run () {
 
 arg=("$@")
 
-/bin/cat <<EOM >${arg[1]}
+if [[ "$MYCLUSTER" == "LC" ]]; then
+
+    runcmd=""
+    if [[ "x$LCHOST" == "xdane" ]]; then
+        runcmd="srun -n $ntasks -N $nnodes -p pdebug"
+    elif [[ "x$LCHOST" == "xmatrix" ]]; then
+        runcmd="srun -p pdebug -n $ntasks -G $ntasks -N $nnodes -t 00:05:00"
+    elif [[ "x$LCHOST" == "xtuolumne" ]]; then
+        runcmd="flux run --exclusive --nodes=$nnodes --ntasks $ntasks -q=pdebug -t 5"
+    fi
+
+    /bin/cat <<EOM >${arg[1]}
+#!/bin/bash
+
+rm -rf $outfile plt* cases* out* Backtrace* *.core
+$runcmd $EXEC $INP $ARG 2>&1 |tee $outfile
+EOM
+
+elif [[ "$MYCLUSTER" == "NERSC" ]]; then
+
+    /bin/cat <<EOM >${arg[1]}
 #!/bin/bash
 
 # CUDA visible devices are ordered inverse to local task IDs
@@ -60,6 +101,8 @@ srun --cpu-bind=cores -n $ntasks bash -c "
     ${EXEC} ${INP} ${ARG} ${GPU_AWARE_MPI}" \
     2>&1 |tee $outfile
 EOM
+
+fi
 }
 
 mode="job"
@@ -84,12 +127,37 @@ for mwprop in ${mwprop_vals[@]}; do
     ((njobs_tot++))
 done
 
-jobscript="exaepi.${NERSC_HOST}.$CASE.job"
-runscript="run.${NERSC_HOST}.$CASE.sh"
+jobscript="exaepi.${MYHOSTNAME}.$CASE.job"
+runscript="run.${MYHOSTNAME}.$CASE.sh"
 
 ntasks=""
 nnodes="1"
-if [[ "x$NERSC_HOST" == "xperlmutter" ]]; then
+if [[ "x$MYHOSTNAME" == "xperlmutter" ]]; then
+    export OMP_NUM_THREADS=1
+    if [[ "x$CASE" == "xBay" ]]; then
+        ntasks=1
+    else
+        ntasks=4
+    fi
+    nnodes=$(( (ntasks+3)/4 ))
+elif [[ "x$MYHOSTNAME" == "xdane" ]]; then
+    if [[ "x$CASE" == "xBay" ]]; then
+        export OMP_NUM_THREADS=4
+        ntasks=25
+    else
+        export OMP_NUM_THREADS=1
+        ntasks=100
+    fi
+    nnodes=$(( (ntasks+111)/112 ))
+elif [[ "x$MYHOSTNAME" == "xmatrix" ]]; then
+    export OMP_NUM_THREADS=1
+    if [[ "x$CASE" == "xBay" ]]; then
+        ntasks=1
+    else
+        ntasks=4
+    fi
+    nnodes=$(( (ntasks+3)/4 ))
+elif [[ "x$MYHOSTNAME" == "xtuolumne" ]]; then
     export OMP_NUM_THREADS=1
     if [[ "x$CASE" == "xBay" ]]; then
         ntasks=1
@@ -100,7 +168,7 @@ if [[ "x$NERSC_HOST" == "xperlmutter" ]]; then
 fi
 
 INP_FILE=$rootdir/common/inputs.$CASE
-outfile=out.${NERSC_HOST}.log
+outfile=out.${MYHOSTNAME}.log
 
 EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
 echo "Executable file is ${EXEC}."
@@ -111,7 +179,7 @@ for mwprop in ${mwprop_vals[@]}; do
     echo ""
     echo "Running job $njobs_done of $njobs_tot..."
     echo "  Medical workers proportion: $mwprop"
-    dirname=".run_${CASE}.${NERSC_HOST}.mwprop$(printf "%1.2f" $mwprop)"
+    dirname=".run_${CASE}.${MYHOSTNAME}.mwprop$(printf "%1.2f" $mwprop)"
     if [ -d "$dirname" ]; then
         echo "  directory $dirname exists; checking for job completion"
         cd $dirname
@@ -121,7 +189,7 @@ for mwprop in ${mwprop_vals[@]}; do
             fail=1
         else
             run_complete=$(tail -n 1 $outfile |grep "finalized")
-            if [[ -z "run_complete" ]]; then
+            if [[ -z $run_complete ]]; then
                 echo "    run may not have completed."
                 fail=1
             fi
@@ -159,13 +227,18 @@ for mwprop in ${mwprop_vals[@]}; do
     write_run $# $runscript
 
     if [[ "x$mode" == "xjob" ]]; then
-        echo "  submitting job ..."
-        sbatch $jobscript
+        if [[ -f $jobscript ]]; then
+            echo "  submitting job ..."
+            sbatch $jobscript
+        fi
     else
-        echo "  running job ..."
-        bash $runscript > run.log
+        if [[ -f $runscript ]]; then
+            echo "  running job ..."
+            bash $runscript > run.log
+        fi
     fi
     cd $rootdir
 done
 
 echo "done."
+exit 0
