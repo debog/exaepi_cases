@@ -75,19 +75,19 @@ for xmitd2d in ${xmit_hosp_d2d_vals[@]}; do
 for xmitd2p in ${xmit_hosp_d2p_vals[@]}; do
 for xmitp2d in ${xmit_hosp_p2d_vals[@]}; do
 for xmitp2p in ${xmit_hosp_p2p_vals[@]}; do
-    echo ""
     dirname=".run_${CASE}.${LCHOST}.mwprop$(printf "%1.2f" $mwprop).xmitd2d$(printf "%1.3f" $xmitd2d).xmitp2d$(printf "%1.3f" $xmitp2d).xmitd2p$(printf "%1.3f" $xmitd2p).xmitp2p$(printf "%1.3f" $xmitp2p)"
-    echo "Looking in $dirname"
+
     if [[ ! -d "$dirname" ]]; then
-        echo "Directory doesn't exist; skipping"
         continue
     fi
 
+    echo ""
+    echo "Looking in $dirname"
     cd $dirname
     echo "  checking for run failure..."
     fail=0
     if [[ ! -f $outfile ]]; then
-        echo "$outfile doesn't exist; run possibly failed."
+        echo "  $outfile doesn't exist; run possibly failed."
         fail=1
     fi
     if [[ "$LCHOST" == "tuolumne" ]]; then
@@ -96,6 +96,11 @@ for xmitp2p in ${xmit_hosp_p2p_vals[@]}; do
             echo "  encountered HIP device failure."
             fail=1
         fi
+    fi
+    run_complete=$(tail -n 1 $outfile |grep "finalized")
+    if [[ -z "run_complete" ]]; then
+        echo "  run may not have completed."
+        fail=1
     fi
 
     if [[ $fail == 1 ]]; then

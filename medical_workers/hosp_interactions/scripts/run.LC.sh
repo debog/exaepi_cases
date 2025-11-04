@@ -82,8 +82,27 @@ for xmitp2p in ${xmit_hosp_p2p_vals[@]}; do
     echo "Hospital transmissivity (patient-to-patient): $xmitp2p"
     dirname=".run_${CASE}.${LCHOST}.mwprop$(printf "%1.2f" $mwprop).xmitd2d$(printf "%1.3f" $xmitd2d).xmitp2d$(printf "%1.3f" $xmitp2d).xmitd2p$(printf "%1.3f" $xmitd2p).xmitp2p$(printf "%1.3f" $xmitp2p)"
     if [ -d "$dirname" ]; then
-        echo "  deleting existing directory $dirname"
-        rm -rf $dirname
+        echo "  directory $dirname exists; checking for job completion"
+        cd $dirname
+        fail=0
+        if [[ ! -f $outfile ]]; then
+            echo "    $outfile doesn't exist; run possibly failed."
+            fail=1
+        else
+            run_complete=$(tail -n 1 $outfile |grep "finalized")
+            if [[ -z "run_complete" ]]; then
+                echo "    run may not have completed."
+                fail=1
+            fi
+        fi
+        cd ..
+        if [[ $fail == 1 ]]; then
+            echo "  last simulation failed; deleting existing directory..."
+            rm -rf $dirname
+        else
+            echo "  simulation already completed; skipping"
+            continue
+        fi
     fi
     echo "  creating directory $dirname"
     mkdir $dirname
