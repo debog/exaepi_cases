@@ -11,7 +11,6 @@ agent.random_travel_int = 24
 agent.air_travel_int = 1
 
 agent.aggregated_diag_int = -1
-agent.aggregated_diag_prefix = "cases"
 
 disease.initial_case_type = "file"
 disease.case_filename = "July4.cases"
