@@ -90,7 +90,6 @@ do for [xd2p = 0 : 10 : 5] {
 }
 
 do for [mwp = 0 : 9 : 3] {
-    mwp = 9
     xd2d=0
     xp2d=0
     xd2p=0

@@ -44,7 +44,7 @@ do for [xd2d = 0 : 12 : 6] {
     xd2p=0
     xp2d=0
     xp2p=0
-    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor) ", xd2d) . sprintf("0.%03d (patient-to-doctor) ", xp2d) . sprintf("0.%03d (doctor-to-patient) ", xd2p) . sprintf("0.%03d (patient-to-patient)", xp2p)
+    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor), ", xd2d) . sprintf("0.%03d (patient-to-doctor), ", xp2d) . sprintf("0.%03d (doctor-to-patient), ", xd2p) . sprintf("0.%03d (patient-to-patient)", xp2p)
     set title titlestr
     set key top right
     set xrange [0:70]
@@ -65,7 +65,7 @@ do for [xp2d = 0 : 12 : 6] {
     xd2d=0
     xd2p=0
     xp2p=0
-    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor) ", xd2d) . sprintf("0.%03d (patient-to-doctor) ", xp2d) . sprintf("0.%03d (doctor-to-patient) ", xd2p) . sprintf("0.%03d (patient-to-patient)", xp2p)
+    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor), ", xd2d) . sprintf("0.%03d (patient-to-doctor), ", xp2d) . sprintf("0.%03d (doctor-to-patient), ", xd2p) . sprintf("0.%03d (patient-to-patient)", xp2p)
     set title titlestr
     set key top right
     set xrange [0:70]
@@ -86,7 +86,7 @@ do for [xd2p = 0 : 10 : 5] {
     xd2d=0
     xp2d=0
     xp2p=0
-    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor) ", xd2d) . sprintf("0.%03d (patient-to-doctor) ", xp2d) . sprintf("0.%03d (doctor-to-patient) ", xd2p) . sprintf("0.%03d (patient-to-patient)", xp2p)
+    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor), ", xd2d) . sprintf("0.%03d (patient-to-doctor), ", xp2d) . sprintf("0.%03d (doctor-to-patient), ", xd2p) . sprintf("0.%03d (patient-to-patient)", xp2p)
     set title titlestr
     set key top right
     set xrange [0:70]
@@ -104,11 +104,10 @@ do for [xd2p = 0 : 10 : 5] {
 }
 
 do for [mwp = 0 : 9 : 3] {
-    mwp = 9
     xd2d=0
     xp2d=0
     xd2p=0
-    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor) ", xd2d) . sprintf("0.%03d (patient-to-doctor) ", xp2d) . sprintf("0.%03d (doctor-to-patient) ", xd2p) . ", med worker %age = " . sprintf("%d", mwp)
+    titlestr = "CA: xmit_{hosp} = " . sprintf("0.%03d (doctor-to-doctor), ", xd2d) . sprintf("0.%03d (patient-to-doctor), ", xp2d) . sprintf("0.%03d (doctor-to-patient), ", xd2p) . ", med worker %age = " . sprintf("%d", mwp)
     set title titlestr
     set key top right
     set xrange [0:70]
@@ -116,10 +115,10 @@ do for [mwp = 0 : 9 : 3] {
     do for [xp2p = 0 : 6 : 3] {
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d1
         keystr = "\"covid1, xmit_{hosp} (p2p)=" . sprintf("0.%03d\"",xp2p)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",xp2p+20) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",xp2p+20) . " t " . keystr . ","
         pltfile = path . dirname . sprintf(".mwprop0.0%1d",mwp) . sprintf(".xmitd2d0.%03d",xd2d) . sprintf(".xmitp2d0.%03d",xp2d) . sprintf(".xmitd2p0.%03d",xd2p) . sprintf(".xmitp2p0.%03d",xp2p) . fname_d2
         keystr = "\"covid2, xmit_{hosp} (p2p)=" . sprintf("0.%03d\"",xp2p)
-        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w lp ls " . sprintf("%d",xp2p+30) . " t " . keystr . ","
+        pltcmd = pltcmd . " \"" . pltfile . "\" u 1:3 w l ls " . sprintf("%d",xp2p+30) . " t " . keystr . ","
     }
 #    print "plot command is: " . pltcmd
     eval pltcmd

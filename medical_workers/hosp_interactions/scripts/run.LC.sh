@@ -51,7 +51,7 @@ elif [[ "x$LCHOST" == "xmatrix" ]]; then
         ntasks=4
     fi
     nnodes=$(( (ntasks+3)/4 ))
-    runcmd="srun -p pdebug -n $ntasks -G $ntasks -N $nnodes"
+    runcmd="srun -p pdebug -n $ntasks -G $ntasks -N $nnodes -t 00:05:00"
 elif [[ "x$LCHOST" == "xtuolumne" ]]; then
     export OMP_NUM_THREADS=1
     if [[ "x$CASE" == "xBay" ]]; then
@@ -60,7 +60,7 @@ elif [[ "x$LCHOST" == "xtuolumne" ]]; then
         ntasks=4
     fi
     nnodes=$(( (ntasks+3)/4 ))
-    runcmd="flux run --exclusive --nodes=$nnodes --ntasks $ntasks -q=pdebug"
+    runcmd="flux run --exclusive --nodes=$nnodes --ntasks $ntasks -q=pdebug -t 5"
 fi
 
 INP_FILE=$rootdir/common/inputs.$CASE
