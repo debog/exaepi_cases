@@ -125,6 +125,8 @@ if [[ "x$CASE" == "x" ]]; then
 fi
 echo "CASE is $CASE"
 
+declare -a mwprop_baseline=("0.00")
+declare -a nppd_baseline=("5000000")
 declare -a mwprop_vals=("0.03" "0.06" "0.09")
 declare -a nppd_vals=("5" "10" "20" "50" "100")
 
@@ -182,6 +184,93 @@ EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
 echo "Executable file is ${EXEC}."
 
 numjobs=0
+
+# run baseline case
+for mwprop in ${mwprop_baseline[@]}; do
+for nppd in ${nppd_baseline[@]}; do
+    echo ""
+    echo "Running baseline job ..."
+    echo "  Medical workers proportion: $mwprop, Num. patients/doctor: $nppd"
+    dirname=".run_${CASE}.${MYHOSTNAME}.baseline"
+    if [ -d "$dirname" ]; then
+        echo "  directory $dirname exists; checking for job completion"
+        cd $dirname
+        fail=0
+        if [[ ! -f $outfile ]]; then
+            echo "    $outfile doesn't exist; run possibly failed."
+            fail=1
+        else
+            run_complete=$(tail -n 1 $outfile |grep "finalized")
+            if [[ -z $run_complete ]]; then
+                echo "    run may not have completed."
+                fail=1
+            fi
+        fi
+        cd ..
+        if [[ $fail == 1 ]]; then
+            echo "  last simulation failed; deleting existing directory..."
+            rm -rf $dirname
+        else
+            echo "  simulation already completed; skipping"
+            continue
+        fi
+    fi
+    echo "  creating directory $dirname"
+    mkdir $dirname
+
+    ARG=""
+    ARG+=" agent.med_workers_proportion=$mwprop"
+    ARG+=" hospital_model.num_patients_per_doctor=$nppd"
+    ARG+=" hospital_model.write_pltfiles=true"
+
+    cd $dirname
+    echo "  creating shortcut for input file"
+    ln -sf $INP_FILE .
+    INP=$(ls inputs.${CASE})
+    echo "  creating shortcut for data files"
+    if [[ "x$CASE" == "xCA"* ]]; then
+        ln -sf $rootdir/common/CA* .
+    elif [[ "x$CASE" == "xBay"* ]]; then
+        ln -sf $rootdir/common/BayArea* .
+    fi
+    ln -sf $rootdir/common/July4.cases .
+    echo "  writing job script"
+    write_job $# $jobscript
+    echo "  writing run script"
+    write_run $# $runscript
+
+    if [[ "x$mode" == "xjob" ]]; then
+        if [[ -f $jobscript ]]; then
+            echo "  submitting job ..."
+            sbatch $jobscript
+        fi
+    else
+        if [[ -f $runscript ]]; then
+            echo "  running job ..."
+            if [[ "$MYCLUSTER" == "LC" ]]; then
+                ((numjobs++))
+                bash $runscript > run.log &
+            else
+                bash $runscript > run.log
+            fi
+        fi
+    fi
+    cd $rootdir
+
+    if [[ "$MYCLUSTER" == "LC" ]]; then
+        if [[ "x$mode" == "xrun" ]]; then
+            if [[ $numjobs -ge 4 ]]; then
+                echo "Waiting for submitted jobs to finish..."
+                jobs -l
+                wait
+                numjobs=0
+            fi
+        fi
+    fi
+done
+done
+
+# run other cases
 njobs_done=0
 for mwprop in ${mwprop_vals[@]}; do
 for nppd in ${nppd_vals[@]}; do
