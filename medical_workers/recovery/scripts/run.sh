@@ -125,12 +125,14 @@ if [[ "x$CASE" == "x" ]]; then
 fi
 echo "CASE is $CASE"
 
-#declare -a mwprop_vals=("0.00" "0.03" "0.06" "0.09")
-declare -a mwprop_vals=("0.06")
+declare -a mwprop_vals=("0.03" "0.06" "0.09")
+declare -a nppd_vals=("5" "10" "20" "50" "100")
 
 njobs_tot=0
 for mwprop in ${mwprop_vals[@]}; do
+for nppd in ${nppd_vals[@]}; do
     ((njobs_tot++))
+done
 done
 
 jobscript="exaepi.${MYHOSTNAME}.$CASE.job"
@@ -179,13 +181,15 @@ outfile=out.${MYHOSTNAME}.log
 EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
 echo "Executable file is ${EXEC}."
 
+numjobs=0
 njobs_done=0
 for mwprop in ${mwprop_vals[@]}; do
+for nppd in ${nppd_vals[@]}; do
     ((njobs_done++))
     echo ""
     echo "Running job $njobs_done of $njobs_tot..."
-    echo "  Medical workers proportion: $mwprop"
-    dirname=".run_${CASE}.${MYHOSTNAME}.mwprop$(printf "%1.2f" $mwprop)"
+    echo "  Medical workers proportion: $mwprop, Num. patients/doctor: $nppd"
+    dirname=".run_${CASE}.${MYHOSTNAME}.mwprop$(printf "%1.2f" $mwprop).nppd$(printf "%03d" $nppd)"
     if [ -d "$dirname" ]; then
         echo "  directory $dirname exists; checking for job completion"
         cd $dirname
@@ -214,7 +218,8 @@ for mwprop in ${mwprop_vals[@]}; do
 
     ARG=""
     ARG+=" agent.med_workers_proportion=$mwprop"
-    ARG+=" hospital_model.num_patients_per_doctor=50000000"
+    ARG+=" hospital_model.num_patients_per_doctor=$nppd"
+    ARG+=" hospital_model.write_pltfiles=true"
 
     cd $dirname
     echo "  creating shortcut for input file"
@@ -240,11 +245,34 @@ for mwprop in ${mwprop_vals[@]}; do
     else
         if [[ -f $runscript ]]; then
             echo "  running job ..."
-            bash $runscript > run.log
+            if [[ "$MYCLUSTER" == "LC" ]]; then
+                ((numjobs++))
+                bash $runscript > run.log &
+            else
+                bash $runscript > run.log
+            fi
         fi
     fi
     cd $rootdir
+
+    if [[ "$MYCLUSTER" == "LC" ]]; then
+        if [[ "x$mode" == "xrun" ]]; then
+            if [[ $numjobs -ge 4 ]]; then
+                echo "Waiting for submitted jobs to finish..."
+                jobs -l
+                wait
+                numjobs=0
+            fi
+        fi
+    fi
 done
+done
+
+if [[ "$MYCLUSTER" == "LC" ]]; then
+    echo "waiting for processes to finish ..."
+    jobs -l
+    wait
+fi
 
 echo "done."
 exit 0
