@@ -58,6 +58,24 @@ test_cases:
       - July4.cases
     nsteps: 70
     tags: [regional, multi_strain, standard]
+    # Machine-specific resource overrides
+    machine_overrides:
+      perlmutter:
+        tasks_per_node: 1
+        gpus_per_node: 1
+      matrix:
+        tasks: 1
+        gpus: 1
+      tuolumne:
+        tasks: 1
+        gpus: 1
+      dane:
+        tasks: 25
+      linux:
+        tasks: 4
+      linux-gpu:
+        tasks: 1
+        gpus: 1
 
   ma:
     name: "Massachusetts"

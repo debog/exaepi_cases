@@ -386,6 +386,35 @@ The old workflow scripts in `scripts/` directory are preserved for reference. To
 
 ## Advanced Usage
 
+### Machine-Specific Resource Overrides
+
+Test cases can specify different resource requirements for different machines using the `machine_overrides` section. For example, the Bay Area case uses fewer resources:
+
+```yaml
+bay:
+  name: "Bay Area"
+  # ... other config ...
+  machine_overrides:
+    perlmutter:
+      tasks_per_node: 1
+      gpus_per_node: 1
+    matrix:
+      tasks: 1
+      gpus: 1
+    tuolumne:
+      tasks: 1
+      gpus: 1
+    dane:
+      tasks: 25
+    linux:
+      tasks: 4
+    linux-gpu:
+      tasks: 1
+      gpus: 1
+```
+
+This allows test cases to scale appropriately for their problem size while still using the same configuration system.
+
 ### Adding a New Test Case
 
 Edit `config/test_cases.yaml`:

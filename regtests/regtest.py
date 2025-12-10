@@ -231,8 +231,13 @@ class RegtestOrchestrator:
 
     def _create_run_script(self, case_name: str, machine: str, test_dir: Path):
         """Create machine-specific run script"""
-        machine_config = self.machines['machines'][machine]
+        machine_config = self.machines['machines'][machine].copy()
         case_config = self.test_cases['test_cases'][case_name]
+
+        # Apply machine-specific overrides from test case configuration
+        if 'machine_overrides' in case_config and machine in case_config['machine_overrides']:
+            overrides = case_config['machine_overrides'][machine]
+            machine_config.update(overrides)
 
         # Determine script name based on machine
         script_name = f"run.{case_name}.{machine}.sh"
@@ -303,8 +308,9 @@ class RegtestOrchestrator:
 
         # Add machine-specific configuration
         if machine == 'perlmutter':
+            ngpu = machine_config.get('gpus_per_node', 4)
             lines.extend([
-                "NGPU=4",
+                f"NGPU={ngpu}",
                 "",
                 '# pin to closest NIC to GPU',
                 'export MPICH_OFI_NIC_POLICY=GPU',
@@ -321,9 +327,10 @@ class RegtestOrchestrator:
                 '    2>&1 |tee $OUTFILE',
             ])
         elif machine == 'matrix':
+            ngpu = machine_config.get('gpus', 4)
             lines.extend([
                 "NNODE=1",
-                "NGPU=4",
+                f"NGPU={ngpu}",
                 "NOMP=1",
                 "",
                 "export OMP_NUM_THREADS=$NOMP",
@@ -331,9 +338,10 @@ class RegtestOrchestrator:
                 "srun -n $NGPU -G $NGPU -N $NNODE -p pdebug $EXEC $INP 2>&1 > $OUTFILE",
             ])
         elif machine == 'dane':
+            nproc = machine_config.get('tasks', 100)
             lines.extend([
                 "NNODE=1",
-                "NPROC=100",
+                f"NPROC={nproc}",
                 "NOMP=1",
                 "",
                 "export OMP_NUM_THREADS=$NOMP",
@@ -341,9 +349,10 @@ class RegtestOrchestrator:
                 "srun -N $NNODE -n $NPROC -p pdebug $EXEC $INP 2>&1 > $OUTFILE",
             ])
         elif machine == 'tuolumne':
+            ngpu = machine_config.get('gpus', 4)
             lines.extend([
                 "NNODE=1",
-                "NGPU=4",
+                f"NGPU={ngpu}",
                 "NOMP=1",
                 "",
                 "export OMP_NUM_THREADS=$NOMP",
