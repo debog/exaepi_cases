@@ -1,1 +1,0 @@
-../../common/run.bay.dane.sh

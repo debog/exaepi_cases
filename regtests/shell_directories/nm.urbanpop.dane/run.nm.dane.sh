@@ -1,1 +1,0 @@
-../../common/run.nm.dane.sh
