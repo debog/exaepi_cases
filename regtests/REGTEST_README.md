@@ -1,0 +1,425 @@
+# ExaEpi Regression Test Suite - New Streamlined Workflow
+
+This directory contains a streamlined, configuration-driven regression test suite for ExaEpi across multiple HPC systems.
+
+## Overview
+
+The new workflow replaces scattered bash scripts with a unified Python orchestration tool (`regtest.py`) and configuration files. This provides:
+
+- **Single interface** for all test operations
+- **Machine auto-detection**
+- **Configuration-driven** test case and machine definitions
+- **Dynamic directory generation** (no more 32+ pre-created directories)
+- **Simplified workflow** with Makefile shortcuts
+
+## Quick Start
+
+### Prerequisites
+
+Set required environment variables:
+```bash
+export EXAEPI_BUILD=/path/to/exaepi/build
+export EXAEPI_DIR=/path/to/exaepi/source
+```
+
+### Validate Environment
+
+```bash
+./regtest.py validate
+# or
+make validate
+```
+
+### List Available Options
+
+```bash
+# List test cases
+./regtest.py list-cases
+make list-cases
+
+# List machines
+./regtest.py list-machines
+make list-machines
+```
+
+### Run Baseline Tests
+
+```bash
+# Create and run baselines (auto-detects machine)
+make baseline CASES=standard
+
+# Specify machine explicitly
+make baseline CASES=ca,bay MACHINE=perlmutter
+```
+
+### Run Test Cases
+
+```bash
+# Create and run tests (auto-detects machine on HPC systems)
+make test CASES=standard
+
+# For Linux workstation, specify machine explicitly
+make test CASES=ca,bay MACHINE=linux
+
+# Run all tests
+make test CASES=all
+
+# Run quick subset
+make quick-test
+```
+
+### Compare Results
+
+```bash
+make compare
+# or
+./regtest.py compare --machine linux  # Specify machine if needed
+```
+
+## Detailed Usage
+
+### Using regtest.py Directly
+
+```bash
+# Create baseline directories
+./regtest.py create-baseline --cases standard --machine perlmutter
+
+# Run baselines (submit jobs or run directly depending on machine)
+./regtest.py run-baseline --cases ca,bay
+
+# Create test directories
+./regtest.py create-test --cases all
+
+# Run tests
+./regtest.py run-test --cases all
+
+# Compare test results against baselines
+./regtest.py compare
+```
+
+### Test Case Selection
+
+You can specify test cases in multiple ways:
+
+**Individual cases:**
+```bash
+--cases ca,bay,ma
+```
+
+**Test groups:**
+```bash
+--cases standard    # ca, bay, ma, nm
+--cases all_ca      # All California variants
+--cases quick       # bay, ma
+--cases full        # All test cases
+```
+
+**Special keyword:**
+```bash
+--cases all         # All available test cases
+```
+
+### Machine Selection
+
+**Auto-detect (recommended):**
+```bash
+./regtest.py run-baseline --cases ca
+# Automatically detects perlmutter, dane, matrix, or tuolumne
+```
+
+**Explicit:**
+```bash
+--machine perlmutter
+--machine dane
+```
+
+## Directory Structure
+
+```
+regtests/
+├── config/                  # Configuration files
+│   ├── machines.yaml       # Machine-specific settings
+│   ├── test_cases.yaml     # Test case definitions
+│   └── templates/          # (Future) Job script templates
+├── common/                  # Shared data files and legacy scripts
+├── scripts/                 # Legacy bash scripts (kept for reference)
+├── baselines/              # Generated baseline test directories
+├── tests/                  # Generated test directories
+├── regtest.py              # Main orchestration script
+├── Makefile                # Convenience wrapper
+└── REGTEST_README.md       # This file
+```
+
+## Configuration Files
+
+### config/machines.yaml
+
+Defines machine-specific settings:
+- Scheduler type (slurm, flux)
+- Batch vs interactive mode
+- Resource requirements (nodes, GPUs, etc.)
+- Environment variables
+- Run commands
+
+To add a new machine, add an entry to this file.
+
+### config/test_cases.yaml
+
+Defines test cases:
+- Input files
+- Required data files
+- Test parameters
+- Tags and groupings
+
+To add a new test case, add an entry to this file.
+
+## Workflow Comparison
+
+### Old Workflow
+```bash
+# Multiple separate steps with machine-specific scripts
+./scripts/create_baseline_dirs.perlmutter.sh
+./scripts/submit_baseline_jobs.perlmutter
+# Wait...
+./scripts/create_testing_dirs.perlmutter.sh
+./scripts/submit_test_jobs.perlmutter
+# Wait...
+./scripts/compare_results.perlmutter
+./scripts/create_plots.sh
+```
+
+### New Workflow
+```bash
+# Single unified interface
+make baseline CASES=standard
+# Wait...
+make test CASES=standard
+# Wait...
+make compare
+```
+
+## Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make help` | Show help message |
+| `make validate` | Validate environment setup |
+| `make list-cases` | List available test cases |
+| `make list-machines` | List available machines |
+| `make baseline` | Create and run baseline tests |
+| `make test` | Create and run tests |
+| `make compare` | Compare results |
+| `make clean` | Remove test directories |
+| `make clean-baselines` | Remove baseline directories |
+| `make clean-all` | Remove all generated directories |
+
+### Quick Test Shortcuts
+
+```bash
+make ca          # Run just California test
+make bay         # Run just Bay Area test
+make ma          # Run just Massachusetts test
+make nm          # Run just New Mexico test
+make quick-test  # Run quick test subset (bay, ma)
+```
+
+## Test Case Groups
+
+- **standard**: ca, bay, ma, nm (main test suite)
+- **all_ca**: All California variants (ca, ca.noair, ca.random, ca.2dc1c2)
+- **quick**: bay, ma (fast tests for quick validation)
+- **full**: All available test cases
+- **all_variants**: Alternative configurations (ca.noair, ca.random, etc.)
+
+## Machine-Specific Notes
+
+### Perlmutter (NERSC)
+- Uses SLURM batch mode
+- 4 GPUs per node
+- Jobs submitted with `sbatch`
+- Auto-detects via `$NERSC_HOST` environment variable
+
+### LC Systems (Dane, Matrix, Tuolumne)
+- Interactive mode (direct `srun` or `flux run`)
+- Jobs run in background
+- Auto-detects via `$LCHOST` environment variable
+
+**Dane:**
+- CPU-based system
+- 100 MPI tasks
+
+**Matrix:**
+- GPU-based system
+- 4 GPUs
+
+**Tuolumne:**
+- CPU-based system
+- Uses Flux scheduler
+- 100 MPI tasks
+
+### Linux Workstation/Cluster
+- Standard Linux systems with MPICH or OpenMPI
+- No batch scheduler required
+- Auto-detects MPI launcher (`mpirun` or `mpiexec`)
+- Default: 4 MPI ranks (configurable)
+- Manual specification required: `--machine linux`
+
+**Configuration Options:**
+
+You can customize the Linux machine settings in `config/machines.yaml`:
+
+```yaml
+linux:
+  tasks: 8              # Change number of MPI ranks
+  mpi_launcher: mpirun  # Force specific launcher
+  mpi_flags: "--bind-to core"  # Add MPI flags
+```
+
+**Usage:**
+```bash
+# Run on Linux workstation with default settings (4 MPI ranks)
+./regtest.py create-baseline --cases ca --machine linux
+./regtest.py run-baseline --cases ca --machine linux
+
+# Or use Makefile
+make baseline CASES=ca MACHINE=linux
+```
+
+### Linux Workstation with CUDA GPUs
+- Linux systems with NVIDIA GPUs
+- Supports single or multiple GPUs
+- No GPU-aware MPI by default (can be enabled in config)
+- Default: 1 GPU, 1 MPI rank
+- Manual specification required: `--machine linux-gpu`
+
+**Configuration Options:**
+
+```yaml
+linux-gpu:
+  gpus: 2               # Number of GPUs
+  tasks: 2              # MPI ranks (typically 1 per GPU)
+  gpu_aware_mpi: "amrex.use_gpu_aware_mpi=1"  # If your MPI supports it
+```
+
+**Usage:**
+```bash
+# Run on Linux workstation with GPU
+./regtest.py run-test --cases bay --machine linux-gpu
+
+# Or use Makefile
+make test CASES=bay MACHINE=linux-gpu
+```
+
+## Migrating from Old Scripts
+
+The old workflow scripts in `scripts/` directory are preserved for reference. To migrate:
+
+1. Use `regtest.py` or `Makefile` instead of individual bash scripts
+2. Baselines and tests are now created in `baselines/` and `tests/` directories
+3. No need to maintain `shell_directories/` - directories are generated on demand
+4. Machine detection is automatic - no need for separate scripts per machine
+
+## Troubleshooting
+
+**Environment validation fails:**
+- Ensure `EXAEPI_BUILD` and `EXAEPI_DIR` are set
+- Check that ExaEpi executable exists in `$EXAEPI_BUILD/bin/`
+- Verify comparison tool exists at `$EXAEPI_DIR/utilities/tests/chkdiff.sh`
+
+**Machine not auto-detected:**
+- Check that machine environment variable is set (`NERSC_HOST` or `LCHOST`)
+- For Linux workstations, auto-detection is not available - use `--machine linux` or `--machine linux-gpu`
+- Use `--machine` flag to specify explicitly
+- Run `./regtest.py list-machines` to see available machines
+
+**MPI launcher not found (Linux systems):**
+- Ensure `mpirun` or `mpiexec` is in your PATH
+- For MPICH: `which mpiexec`
+- For OpenMPI: `which mpirun`
+- If using a custom launcher, specify it in `config/machines.yaml`
+
+**Test case not found:**
+- Run `./regtest.py list-cases` to see available cases
+- Check spelling (case-sensitive)
+- Ensure test case is defined in `config/test_cases.yaml`
+
+**Comparison fails:**
+- Ensure both baseline and test runs completed successfully
+- Check that output files exist in both directories
+- Verify `chkdiff.sh` tool is available
+
+## Advanced Usage
+
+### Adding a New Test Case
+
+Edit `config/test_cases.yaml`:
+
+```yaml
+test_cases:
+  my_new_test:
+    name: "My New Test"
+    description: "Description of test"
+    input_file: inputs.mytest
+    data_files:
+      - data1.dat
+      - data2.bin
+    nsteps: 100
+    tags: [custom, experimental]
+```
+
+Then run:
+```bash
+./regtest.py create-test --cases my_new_test
+```
+
+### Adding a New Machine
+
+Edit `config/machines.yaml`:
+
+```yaml
+machines:
+  my_machine:
+    display_name: "My Machine"
+    env_var: MY_MACHINE_ENV
+    scheduler: slurm
+    batch_mode: true
+    # ... other settings
+```
+
+### Disabling a Test
+
+Create a `.disabled` file in the test directory:
+```bash
+touch baselines/ca.perlmutter/.disabled
+```
+
+The test will be skipped during runs and comparisons.
+
+### Running Specific Test Variants
+
+```bash
+# Run only California without air travel
+./regtest.py run-test --cases ca.noair
+
+# Run all California variants
+./regtest.py run-test --cases all_ca
+```
+
+## Future Enhancements
+
+Planned improvements:
+- [ ] Templated job scripts using Jinja2
+- [ ] HTML test report generation
+- [ ] Python-based plotting (replace gnuplot scripts)
+- [ ] Test result database/history tracking
+- [ ] Parallel test execution optimization
+- [ ] CI/CD integration hooks
+
+## Legacy Files
+
+The following directories contain the old workflow scripts and are kept for reference:
+- `scripts/` - Old bash scripts for creating/running tests
+- `shell_directories/` - Pre-created test directory templates (32 directories)
+- `common/` - Shared data files and run scripts (still used)
+
+These can be removed once the new workflow is fully validated.

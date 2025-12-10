@@ -1,0 +1,90 @@
+# Example Linux Machine Configurations
+#
+# Copy the relevant section to machines.yaml and customize as needed
+
+# Example 1: Basic Linux workstation with 8 CPU cores
+linux:
+  display_name: "Linux Workstation/Cluster (MPICH/OpenMPI)"
+  env_var: null
+  scheduler: none
+  batch_mode: false
+  mpi_launcher: auto  # Auto-detect mpirun or mpiexec
+  nodes: 1
+  tasks: 8  # Use 8 MPI ranks
+  run_script_template: run.linux.sh.j2
+  env_setup:
+    OMP_NUM_THREADS: 1
+
+# Example 2: Linux with specific MPI launcher and flags
+linux:
+  display_name: "Linux Workstation (OpenMPI)"
+  env_var: null
+  scheduler: none
+  batch_mode: false
+  mpi_launcher: mpirun  # Force mpirun
+  mpi_flags: "--bind-to core --map-by socket"  # OpenMPI binding
+  nodes: 1
+  tasks: 16
+  run_script_template: run.linux.sh.j2
+  env_setup:
+    OMP_NUM_THREADS: 1
+
+# Example 3: Linux with MPICH
+linux:
+  display_name: "Linux Cluster (MPICH)"
+  env_var: null
+  scheduler: none
+  batch_mode: false
+  mpi_launcher: mpiexec  # MPICH uses mpiexec
+  nodes: 1
+  tasks: 32
+  run_script_template: run.linux.sh.j2
+  env_setup:
+    OMP_NUM_THREADS: 1
+
+# Example 4: Linux workstation with single NVIDIA GPU
+linux-gpu:
+  display_name: "Linux Workstation with CUDA GPU"
+  env_var: null
+  scheduler: none
+  batch_mode: false
+  mpi_launcher: auto
+  nodes: 1
+  gpus: 1
+  tasks: 1  # 1 MPI rank per GPU
+  run_script_template: run.linux_gpu.sh.j2
+  env_setup:
+    OMP_NUM_THREADS: 1
+  gpu_aware_mpi: "amrex.use_gpu_aware_mpi=0"
+
+# Example 5: Linux workstation with 4 NVIDIA GPUs
+linux-gpu:
+  display_name: "Linux Workstation with 4 GPUs"
+  env_var: null
+  scheduler: none
+  batch_mode: false
+  mpi_launcher: mpirun
+  nodes: 1
+  gpus: 4
+  tasks: 4  # 1 MPI rank per GPU
+  run_script_template: run.linux_gpu.sh.j2
+  env_setup:
+    OMP_NUM_THREADS: 1
+  gpu_aware_mpi: "amrex.use_gpu_aware_mpi=0"
+
+# Example 6: Linux with GPU-aware MPI (if supported)
+linux-gpu:
+  display_name: "Linux with GPU-aware MPI"
+  env_var: null
+  scheduler: none
+  batch_mode: false
+  mpi_launcher: mpirun
+  mpi_flags: "--mca pml ucx --mca btl ^vader,tcp,openib,smcuda"  # UCX for GPU-aware
+  nodes: 1
+  gpus: 2
+  tasks: 2
+  run_script_template: run.linux_gpu.sh.j2
+  env_setup:
+    OMP_NUM_THREADS: 1
+    UCX_MEMTYPE_CACHE: n  # Disable UCX memory cache for GPUs
+  gpu_aware_mpi: "amrex.use_gpu_aware_mpi=1"  # Enable if your MPI+UCX supports it

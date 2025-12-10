@@ -1,0 +1,125 @@
+# Test case definitions for ExaEpi regression tests
+
+test_cases:
+  ca:
+    name: "California (with air travel)"
+    description: "Full California simulation with air travel"
+    input_file: inputs.ca
+    data_files:
+      - CA.dat
+      - CA-wf.bin
+      - CA_airports.dat
+      - CA_CY23AirTraffic.dat
+      - July4.cases
+    nsteps: 120
+    tags: [regional, air_travel, standard]
+
+  ca.noair:
+    name: "California (no air travel)"
+    description: "California simulation without air travel"
+    input_file: inputs.ca.noair
+    data_files:
+      - CA.dat
+      - CA-wf.bin
+      - July4.cases
+    nsteps: 120
+    tags: [regional, no_air, variant]
+
+  ca.random:
+    name: "California (random seed)"
+    description: "California simulation with random initial conditions"
+    input_file: inputs.ca.random
+    data_files:
+      - CA.dat
+      - CA-wf.bin
+    nsteps: 120
+    tags: [regional, random, variant]
+
+  ca.2dc1c2:
+    name: "California (2 disease strains, 1 comm, 2 clusters)"
+    description: "Multi-strain California simulation"
+    input_file: inputs_2dc1c2.ca
+    data_files:
+      - CA.dat
+      - CA-wf.bin
+      - CA_airports.dat
+      - CA_CY23AirTraffic.dat
+      - July4.cases
+    nsteps: 120
+    tags: [regional, multi_strain, variant]
+
+  bay:
+    name: "Bay Area"
+    description: "Bay Area simulation with 2 disease strains"
+    input_file: inputs.bay
+    data_files:
+      - BayArea.dat
+      - BayArea-wf.bin
+      - July4.cases
+    nsteps: 70
+    tags: [regional, multi_strain, standard]
+
+  ma:
+    name: "Massachusetts"
+    description: "Massachusetts simulation with random initial cases"
+    input_file: inputs.ma
+    data_files:
+      - MA.dat
+      - MA-wf.dat
+    nsteps: 70
+    tags: [regional, random, standard]
+
+  nm:
+    name: "New Mexico/Texas"
+    description: "New Mexico and Texas simulation"
+    input_file: inputs.nm
+    data_files:
+      - NM_TX_2010.dat
+      - nm-july4.cases
+      - small.cases
+    nsteps: 120
+    tags: [regional, standard]
+
+  nm.urbanpop:
+    name: "New Mexico (urban population)"
+    description: "New Mexico simulation with urban population data"
+    input_file: inputs.nm.urbanpop
+    data_files:
+      - NM_TX_2010.dat
+      - urbanpop_nm.csv.gz
+      - urbanpop_nm.idx
+      - nm-july4.cases
+    nsteps: 120
+    tags: [regional, urban_pop, variant]
+
+# Special test configurations
+special_tests:
+  cmchk.bay:
+    name: "Bay Area checkpoint/restart test"
+    description: "Checkpoint/restart validation for Bay Area"
+    base_case: bay
+    checkpoint_mode: true
+    machines: [matrix, perlmutter]
+
+  cmchk.ca:
+    name: "California checkpoint/restart test"
+    description: "Checkpoint/restart validation for California"
+    base_case: ca
+    checkpoint_mode: true
+    machines: [matrix, perlmutter]
+
+  tv.ca:
+    name: "California travel-only test"
+    description: "Travel validation test for California"
+    base_case: ca
+    travel_validation: true
+    machines: [dane]
+
+# Test groups for batch operations
+test_groups:
+  standard: [ca, bay, ma, nm]
+  all_ca: [ca, ca.noair, ca.random, ca.2dc1c2]
+  all_variants: [ca.noair, ca.random, ca.2dc1c2, nm.urbanpop]
+  quick: [bay, ma]
+  checkpoint: [cmchk.bay, cmchk.ca]
+  full: [ca, ca.noair, ca.random, ca.2dc1c2, bay, ma, nm, nm.urbanpop]

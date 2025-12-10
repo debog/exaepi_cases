@@ -1,0 +1,105 @@
+# Machine-specific configuration for ExaEpi regression tests
+
+machines:
+  perlmutter:
+    display_name: "Perlmutter (NERSC)"
+    env_var: NERSC_HOST
+    scheduler: slurm
+    batch_mode: true
+    nodes: 1
+    gpus_per_node: 4
+    tasks_per_node: 4
+    cpus_per_task: 32
+    queue: regular
+    account: m5071_g
+    time_limit: "00:30:00"
+    constraints: gpu
+    gpu_bind: none
+    run_script_template: run.perlmutter.sh.j2
+    job_script_template: exaepi.perlmutter.job.j2
+    env_setup:
+      MPICH_OFI_NIC_POLICY: GPU
+      OMP_NUM_THREADS: 1
+    gpu_aware_mpi: "amrex.use_gpu_aware_mpi=1"
+    cuda_device_mapping: "3-SLURM_LOCALID"  # Inverse mapping for Perlmutter topology
+
+  dane:
+    display_name: "Dane (LLNL)"
+    env_var: LCHOST
+    scheduler: slurm
+    batch_mode: false
+    nodes: 1
+    tasks: 100
+    queue: pdebug
+    run_command: "srun -N {nodes} -n {tasks} -p {queue}"
+    compare_command: "srun -n 1 -p pdebug"
+    run_script_template: run.lc_cpu.sh.j2
+    env_setup:
+      OMP_NUM_THREADS: 1
+
+  matrix:
+    display_name: "Matrix (LLNL)"
+    env_var: LCHOST
+    scheduler: slurm
+    batch_mode: false
+    nodes: 1
+    gpus: 4
+    tasks: 4
+    queue: pdebug
+    run_command: "srun -p {queue} -n {tasks} -G {gpus} -N {nodes}"
+    compare_command: "srun -p pdebug -n 1 -G 1 -N 1"
+    run_script_template: run.lc_gpu.sh.j2
+    env_setup:
+      OMP_NUM_THREADS: 1
+
+  tuolumne:
+    display_name: "Tuolumne (LLNL)"
+    env_var: LCHOST
+    scheduler: flux
+    batch_mode: false
+    nodes: 1
+    tasks: 100
+    queue: pdebug
+    run_command: "flux run --exclusive --nodes={nodes} --ntasks {tasks} -q={queue}"
+    compare_command: "flux run --exclusive --nodes=1 --ntasks 1 -q=pdebug"
+    run_script_template: run.lc_cpu.sh.j2
+    env_setup:
+      OMP_NUM_THREADS: 1
+
+  linux:
+    display_name: "Linux Workstation/Cluster (MPICH/OpenMPI)"
+    env_var: null  # No specific env var required
+    scheduler: none
+    batch_mode: false
+    mpi_launcher: auto  # Will try mpirun, mpiexec in order
+    nodes: 1
+    tasks: 4  # Default to 4 MPI ranks, can be overridden
+    run_script_template: run.linux.sh.j2
+    env_setup:
+      OMP_NUM_THREADS: 1
+    # Optional: specify MPI implementation if needed
+    # mpi_impl: mpich  # or openmpi
+    # Optional: additional MPI flags
+    # mpi_flags: "--bind-to core"
+
+  linux-gpu:
+    display_name: "Linux Workstation with CUDA GPUs"
+    env_var: null
+    scheduler: none
+    batch_mode: false
+    mpi_launcher: auto
+    nodes: 1
+    gpus: 1  # Default to 1 GPU
+    tasks: 1  # Typically 1 MPI rank per GPU
+    run_script_template: run.linux_gpu.sh.j2
+    env_setup:
+      OMP_NUM_THREADS: 1
+    gpu_aware_mpi: "amrex.use_gpu_aware_mpi=0"  # Usually not available on workstations
+
+# Machine groups for convenience
+machine_groups:
+  lc_systems: [dane, matrix, tuolumne]
+  gpu_systems: [perlmutter, matrix, linux-gpu]
+  cpu_systems: [dane, tuolumne, linux]
+  workstation: [linux, linux-gpu]
+  all: [perlmutter, dane, matrix, tuolumne, linux, linux-gpu]
