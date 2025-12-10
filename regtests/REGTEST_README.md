@@ -22,6 +22,33 @@ export EXAEPI_BUILD=/path/to/exaepi/build
 export EXAEPI_DIR=/path/to/exaepi/source
 ```
 
+**Note on EXAEPI_BUILD structure:**
+
+The system supports two directory structures:
+
+1. **Direct build** (typical for workstations/PCs):
+   ```
+   $EXAEPI_BUILD/
+   └── bin/
+       └── agent
+   ```
+
+2. **Machine-specific subdirectories** (for shared filesystems):
+   ```
+   $EXAEPI_BUILD/
+   ├── perlmutter/
+   │   └── bin/
+   │       └── agent
+   ├── dane/
+   │   └── bin/
+   │       └── agent
+   └── linux/
+       └── bin/
+           └── agent
+   ```
+
+   The tool automatically detects which structure you're using and finds the appropriate executable.
+
 ### Validate Environment
 
 ```bash

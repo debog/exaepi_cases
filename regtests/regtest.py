@@ -56,7 +56,50 @@ class RegtestOrchestrator:
                     return machine
         return None
 
-    def validate_environment(self) -> bool:
+    def _find_build_dir(self, machine: str = None) -> Optional[Path]:
+        """
+        Find the build directory, checking for machine-specific subdirectories.
+
+        EXAEPI_BUILD can be structured in two ways:
+        1. Direct build: $EXAEPI_BUILD/bin/agent
+        2. Machine subdirectories: $EXAEPI_BUILD/<machine>/bin/agent
+
+        Returns the appropriate build directory path, or None if not found.
+        """
+        if 'EXAEPI_BUILD' not in os.environ:
+            return None
+
+        base_build_dir = Path(os.environ['EXAEPI_BUILD'])
+
+        # First, check for direct build (PC/workstation case)
+        direct_bin = base_build_dir / "bin"
+        if direct_bin.exists() and list(direct_bin.glob("*agent*")):
+            return base_build_dir
+
+        # If machine is specified, check for machine-specific subdirectory
+        if machine:
+            machine_build_dir = base_build_dir / machine
+            machine_bin = machine_build_dir / "bin"
+            if machine_bin.exists() and list(machine_bin.glob("*agent*")):
+                return machine_build_dir
+
+            # Also check with current machine if different
+            if self.current_machine and self.current_machine != machine:
+                current_machine_dir = base_build_dir / self.current_machine
+                current_bin = current_machine_dir / "bin"
+                if current_bin.exists() and list(current_bin.glob("*agent*")):
+                    return current_machine_dir
+
+        # Check for any machine subdirectories
+        if self.current_machine:
+            current_machine_dir = base_build_dir / self.current_machine
+            current_bin = current_machine_dir / "bin"
+            if current_bin.exists() and list(current_bin.glob("*agent*")):
+                return current_machine_dir
+
+        return None
+
+    def validate_environment(self, machine: str = None) -> bool:
         """Validate required environment variables and paths"""
         errors = []
 
@@ -64,15 +107,15 @@ class RegtestOrchestrator:
         if 'EXAEPI_BUILD' not in os.environ:
             errors.append("EXAEPI_BUILD environment variable not set")
         else:
-            build_dir = Path(os.environ['EXAEPI_BUILD'])
-            bin_dir = build_dir / "bin"
-            if not bin_dir.exists():
-                errors.append(f"EXAEPI_BUILD bin directory not found: {bin_dir}")
-            else:
-                # Check for executable
-                executables = list(bin_dir.glob("*agent*"))
-                if not executables:
-                    errors.append(f"No agent executable found in {bin_dir}")
+            build_dir = self._find_build_dir(machine)
+            if build_dir is None:
+                base_dir = Path(os.environ['EXAEPI_BUILD'])
+                machine_name = machine or self.current_machine or '<machine>'
+                errors.append(
+                    f"No valid build found. Checked:\n"
+                    f"      - Direct build: {base_dir}/bin/\n"
+                    f"      - Machine subdirectory: {base_dir}/{machine_name}/bin/"
+                )
 
         # Check for EXAEPI_DIR (needed for comparison tool)
         if 'EXAEPI_DIR' not in os.environ:
@@ -220,7 +263,37 @@ class RegtestOrchestrator:
 
         lines.extend([
             "",
-            'EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)',
+            '# Find ExaEpi executable (check direct build or machine subdirectory)',
+            'if [ -d "$EXAEPI_BUILD/bin" ] && ls $EXAEPI_BUILD/bin/*agent* &> /dev/null; then',
+            '    # Direct build',
+            '    EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)',
+        ])
+
+        # Add machine-specific subdirectory checks
+        if machine in ['dane', 'matrix', 'tuolumne']:
+            lines.extend([
+                'elif [ -d "$EXAEPI_BUILD/$LCHOST/bin" ] && ls $EXAEPI_BUILD/$LCHOST/bin/*agent* &> /dev/null; then',
+                '    # Machine-specific subdirectory',
+                '    EXEC=$(ls $EXAEPI_BUILD/$LCHOST/bin/*agent*)',
+            ])
+        elif machine == 'perlmutter':
+            lines.extend([
+                'elif [ -d "$EXAEPI_BUILD/$NERSC_HOST/bin" ] && ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent* &> /dev/null; then',
+                '    # Machine-specific subdirectory',
+                '    EXEC=$(ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent*)',
+            ])
+        elif machine in ['linux', 'linux-gpu']:
+            lines.extend([
+                f'elif [ -d "$EXAEPI_BUILD/{machine}/bin" ] && ls $EXAEPI_BUILD/{machine}/bin/*agent* &> /dev/null; then',
+                '    # Machine-specific subdirectory',
+                f'    EXEC=$(ls $EXAEPI_BUILD/{machine}/bin/*agent*)',
+            ])
+
+        lines.extend([
+            'else',
+            '    echo "ERROR: ExaEpi executable not found in $EXAEPI_BUILD/bin/ or machine subdirectories"',
+            '    exit 1',
+            'fi',
             'echo "Executable file is ${EXEC}."',
             "",
             'INP=$(ls inputs*)',
@@ -401,7 +474,15 @@ class RegtestOrchestrator:
                 'INP=$(ls inputs*)',
                 'echo "Input file is ${INP}."',
                 "",
-                'EXEC=$(ls $EXAEPI_BUILD/bin/agent)',
+                '# Find ExaEpi executable (check direct build or machine subdirectory)',
+                'if [ -d "$EXAEPI_BUILD/bin" ] && ls $EXAEPI_BUILD/bin/*agent* &> /dev/null; then',
+                '    EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)',
+                'elif [ -d "$EXAEPI_BUILD/$NERSC_HOST/bin" ] && ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent* &> /dev/null; then',
+                '    EXEC=$(ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent*)',
+                'else',
+                '    echo "ERROR: ExaEpi executable not found"',
+                '    exit 1',
+                'fi',
                 'echo "Executable file is ${EXEC}."',
                 "",
                 '# pin to closest NIC to GPU',
@@ -824,7 +905,8 @@ Examples:
         return 0
 
     # Validate environment for other actions
-    if not orch.validate_environment():
+    # Pass the machine to validation if available
+    if not orch.validate_environment(args.machine):
         print("\nPlease fix environment issues before proceeding.")
         return 1
 

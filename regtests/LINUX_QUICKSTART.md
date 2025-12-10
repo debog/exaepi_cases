@@ -10,6 +10,12 @@ This guide helps you run ExaEpi regression tests on standard Linux workstations 
    export EXAEPI_DIR=/path/to/your/exaepi/source
    ```
 
+   **Build directory structure:**
+   - For a PC/workstation: `$EXAEPI_BUILD/bin/agent` (direct build)
+   - For shared filesystems: `$EXAEPI_BUILD/linux/bin/agent` (machine subdirectory)
+
+   The system automatically detects which structure you're using.
+
 2. **MPI installation** (one of):
    - MPICH: `mpiexec` available in PATH
    - OpenMPI: `mpirun` available in PATH
