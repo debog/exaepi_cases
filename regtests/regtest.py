@@ -904,9 +904,12 @@ Examples:
         orch.list_machines()
         return 0
 
+    # Resolve machine parameter - convert "current" to None for auto-detection
+    machine = None if args.machine == 'current' else args.machine
+
     # Validate environment for other actions
     # Pass the machine to validation if available
-    if not orch.validate_environment(args.machine):
+    if not orch.validate_environment(machine):
         print("\nPlease fix environment issues before proceeding.")
         return 1
 
@@ -914,19 +917,19 @@ Examples:
     cases = args.cases.split(',') if args.cases else ['all']
 
     if args.action == 'create-baseline':
-        orch.create_baselines(cases, args.machine)
+        orch.create_baselines(cases, machine)
 
     elif args.action == 'run-baseline':
-        orch.run_baselines(cases, args.machine)
+        orch.run_baselines(cases, machine)
 
     elif args.action == 'create-test':
-        orch.create_tests(cases, args.machine)
+        orch.create_tests(cases, machine)
 
     elif args.action == 'run-test':
-        orch.run_tests(cases, args.machine)
+        orch.run_tests(cases, machine)
 
     elif args.action == 'compare':
-        orch.compare_results(args.machine)
+        orch.compare_results(machine)
 
     return 0
 
