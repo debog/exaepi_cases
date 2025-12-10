@@ -343,12 +343,13 @@ class RegtestOrchestrator:
         elif machine == 'tuolumne':
             lines.extend([
                 "NNODE=1",
-                "NPROC=100",
+                "NGPU=4",
                 "NOMP=1",
                 "",
                 "export OMP_NUM_THREADS=$NOMP",
+                "export MPICH_GPU_SUPPORT_ENABLED=1",
                 "rm -rf Backtrace* plt* cases* $OUTFILE *.core output.dat",
-                "flux run --exclusive --nodes=$NNODE --ntasks $NPROC -q=pdebug $EXEC $INP 2>&1 > $OUTFILE",
+                "flux run --exclusive --nodes=$NNODE --ntasks $NGPU --gpus-per-task 1 -q=pdebug $EXEC $INP 2>&1 > $OUTFILE",
             ])
         elif machine == 'linux':
             # Standard Linux with MPI (MPICH/OpenMPI)

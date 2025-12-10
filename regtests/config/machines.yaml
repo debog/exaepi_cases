@@ -53,18 +53,21 @@ machines:
       OMP_NUM_THREADS: 1
 
   tuolumne:
-    display_name: "Tuolumne (LLNL)"
+    display_name: "Tuolumne (LLNL) - AMD GPU"
     env_var: LCHOST
     scheduler: flux
     batch_mode: false
     nodes: 1
-    tasks: 100
+    gpus: 4  # AMD MI250X GPUs (4 GCDs per node)
+    tasks: 4  # 1 task per GPU
     queue: pdebug
-    run_command: "flux run --exclusive --nodes={nodes} --ntasks {tasks} -q={queue}"
-    compare_command: "flux run --exclusive --nodes=1 --ntasks 1 -q=pdebug"
-    run_script_template: run.lc_cpu.sh.j2
+    run_command: "flux run --exclusive --nodes={nodes} --ntasks {tasks} --gpus-per-task 1 -q={queue}"
+    compare_command: "flux run --exclusive --nodes=1 --ntasks 1 --gpus-per-task 1 -q=pdebug"
+    run_script_template: run.lc_gpu.sh.j2
     env_setup:
       OMP_NUM_THREADS: 1
+      MPICH_GPU_SUPPORT_ENABLED: 1
+    gpu_aware_mpi: "amrex.use_gpu_aware_mpi=0"  # Typically disabled for AMD GPUs
 
   linux:
     display_name: "Linux Workstation/Cluster (MPICH/OpenMPI)"
@@ -99,7 +102,7 @@ machines:
 # Machine groups for convenience
 machine_groups:
   lc_systems: [dane, matrix, tuolumne]
-  gpu_systems: [perlmutter, matrix, linux-gpu]
-  cpu_systems: [dane, tuolumne, linux]
+  gpu_systems: [perlmutter, matrix, tuolumne, linux-gpu]
+  cpu_systems: [dane, linux]
   workstation: [linux, linux-gpu]
   all: [perlmutter, dane, matrix, tuolumne, linux, linux-gpu]
