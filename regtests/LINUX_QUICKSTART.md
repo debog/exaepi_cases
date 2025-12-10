@@ -260,8 +260,10 @@ make compare MACHINE=linux
 make plot MACHINE=linux
 
 # 10. View plots
-ls plots/*/
-# Open PNG files with your preferred image viewer
+ls plots/*/comparison.png
+# Open PNG files with your preferred image viewer (e.g., eog, feh, xdg-open)
+# Each comparison.png contains 6 subplots showing all key metrics
+# The script also prints L1, L2, and L∞ norms for quantitative comparison
 ```
 
 ## See Also

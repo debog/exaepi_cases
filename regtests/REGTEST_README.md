@@ -454,15 +454,34 @@ make plot CASES=standard
 
 ### Plot Output
 
-The plotting system (`plot_results.py`) generates PNG comparison plots:
+The plotting system (`plot_results.py`) generates a single PNG file per test case:
 
-- **Individual metric plots**: `plots/<case.machine>/infections.png`, `deaths.png`, `hospitalizations.png`
-- **Combined plot**: `plots/<case.machine>/all_metrics.png`
+- **Comparison plot**: `plots/<case.machine>/comparison.png`
+  - Single image with 6 subplots (2x3 grid)
+  - Metrics: Susceptible, Total Infectious, Hospitalized, ICU, Deaths, Recovered
 
-Each plot shows:
+Each subplot shows:
 - Baseline results as a solid black line
 - Test results as blue points
 - Grid and legends for easy interpretation
+
+### Norm Calculations
+
+The script automatically computes and prints difference norms for each metric:
+
+- **L1 norm**: Sum of absolute differences
+- **L2 norm**: Root mean square difference
+- **L∞ norm**: Maximum absolute difference
+
+Both absolute and relative (normalized by baseline) norms are reported:
+
+```
+  Metric               L1 (abs)     L2 (abs)     L∞ (abs)     L1 (rel)   L2 (rel)   L∞ (rel)
+  -------------------- ------------ ------------ ------------ ---------- ---------- ----------
+  Susceptible          1.23e+05     4.56e+03     7.89e+02     0.0012     0.0034     0.0056
+  Total Infectious     2.34e+04     5.67e+02     8.90e+01     0.0023     0.0045     0.0067
+  ...
+```
 
 ### Plot Requirements
 
@@ -480,9 +499,12 @@ If matplotlib is not installed, the plotting commands will show an informative e
 
 Edit `plot_results.py` to customize:
 - Plot styles (colors, line styles, markers)
-- Figure size and DPI
-- Metrics to plot (currently: infections, deaths, hospitalizations)
+- Figure size and DPI (default: 16x10 inches at 150 DPI)
+- Metrics to plot (currently: Susceptible, Total Infectious, Hospitalized, ICU, Deaths, Recovered)
+- Subplot layout (currently: 2x3 grid)
 - Grid and legend positioning
+
+Metrics are defined by combining output.dat columns based on ExaEpi epidemiological compartments. See the column definitions at the top of `plot_results.py`.
 
 ## Future Enhancements
 

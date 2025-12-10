@@ -3,7 +3,28 @@
 ExaEpi Regression Test Plotting Module
 
 Generates comparison plots between baseline and test results using matplotlib.
+Computes L1, L2, and L∞ norms of differences.
 Replaces the old gnuplot scripts with a modern Python-based solution.
+
+Column definitions from ExaEpi src/main.cpp and src/AgentDefinitions.H:
+  0: Day        - Simulation day
+  1: Su         - Susceptible
+  2: PS/PI      - Presymptomatic/Preinfectious
+  3: S/PI/NH    - Symptomatic/Preinfectious/Non-Hospitalized
+  4: S/PI/H     - Symptomatic/Preinfectious/Hospitalized
+  5: PS/I       - Presymptomatic/Infectious
+  6: S/I/NH     - Symptomatic/Infectious/Non-Hospitalized
+  7: S/I/H      - Symptomatic/Infectious/Hospitalized
+  8: A/PI       - Asymptomatic/Preinfectious
+  9: A/I        - Asymptomatic/Infectious
+ 10: H/NI       - Hospitalized/Noninfectious
+ 11: H/I        - Hospitalized/Infectious
+ 12: ICU        - In ICU
+ 13: V          - On ventilator
+ 14: R          - Recovered
+ 15: D          - Dead
+ 16: NewS       - Became symptomatic this step
+ 17: NewH       - Became hospitalized this step
 """
 
 import argparse
@@ -34,7 +55,7 @@ class RegtestPlotter:
 
         # Plot configuration
         self.plot_config = {
-            'figsize': (12, 8),
+            'figsize': (16, 10),
             'dpi': 150,
             'baseline_style': {
                 'color': 'black',
@@ -45,7 +66,7 @@ class RegtestPlotter:
             'test_style': {
                 'color': 'blue',
                 'marker': 'o',
-                'markersize': 4,
+                'markersize': 3,
                 'linestyle': 'none',
                 'label': 'Current'
             },
@@ -57,27 +78,44 @@ class RegtestPlotter:
             }
         }
 
-        # Metrics to plot (column indices in output.dat)
+        # Metrics to plot (column indices in output.dat, 0-indexed after header skip)
         # Format: Day, Su, PS/PI, S/PI/NH, S/PI/H, PS/I, S/I/NH, S/I/H, A/PI, A/I, H/NI, H/I, ICU, V, R, D, NewS, NewH
-        # Column indices are 0-based after header row is skipped
         self.metrics = {
-            'total_infected': {
-                'column': 9,  # A/I - Asymptomatic/Infected (column 10 in 1-indexed)
-                'ylabel': 'Number of Infected (Asymptomatic)',
-                'title_suffix': 'Asymptomatic Infected',
-                'legend_loc': 'upper right'
+            'susceptible': {
+                'columns': [1],  # Su
+                'ylabel': 'Susceptible',
+                'title': 'Susceptible',
+                'combine': 'sum'
+            },
+            'total_infectious': {
+                'columns': [5, 6, 7, 9, 11],  # PS/I, S/I/NH, S/I/H, A/I, H/I
+                'ylabel': 'Total Infectious',
+                'title': 'Total Infectious',
+                'combine': 'sum'
+            },
+            'hospitalized': {
+                'columns': [10, 11],  # H/NI, H/I
+                'ylabel': 'Hospitalized',
+                'title': 'Hospitalized (non-ICU)',
+                'combine': 'sum'
+            },
+            'icu': {
+                'columns': [12],  # ICU
+                'ylabel': 'ICU Patients',
+                'title': 'ICU Patients',
+                'combine': 'sum'
             },
             'deaths': {
-                'column': 15,  # D - Deaths (column 16 in 1-indexed)
+                'columns': [15],  # D
                 'ylabel': 'Cumulative Deaths',
-                'title_suffix': 'Deaths',
-                'legend_loc': 'upper left'
+                'title': 'Deaths',
+                'combine': 'sum'
             },
-            'hospitalizations': {
-                'column': 17,  # NewH - New Hospitalizations (column 18 in 1-indexed)
-                'ylabel': 'New Hospitalizations',
-                'title_suffix': 'Hospitalizations',
-                'legend_loc': 'upper right'
+            'recovered': {
+                'columns': [14],  # R
+                'ylabel': 'Recovered',
+                'title': 'Recovered',
+                'combine': 'sum'
             }
         }
 
@@ -95,103 +133,101 @@ class RegtestPlotter:
             print(f"ERROR loading {filepath}: {e}")
             return None
 
+    def extract_metric(self, data: np.ndarray, metric_config: Dict) -> np.ndarray:
+        """Extract and combine columns for a metric"""
+        columns = metric_config['columns']
+
+        if len(columns) == 1:
+            return data[:, columns[0]]
+        else:
+            # Sum multiple columns
+            result = np.zeros(data.shape[0])
+            for col in columns:
+                result += data[:, col]
+            return result
+
+    def compute_norms(self, baseline_values: np.ndarray, test_values: np.ndarray) -> Dict[str, float]:
+        """Compute L1, L2, and L∞ norms of the difference"""
+        diff = test_values - baseline_values
+
+        # Absolute norms
+        l1_abs = np.sum(np.abs(diff))
+        l2_abs = np.sqrt(np.sum(diff**2))
+        linf_abs = np.max(np.abs(diff))
+
+        # Relative norms (normalized by baseline norm)
+        baseline_l1 = np.sum(np.abs(baseline_values))
+        baseline_l2 = np.sqrt(np.sum(baseline_values**2))
+        baseline_linf = np.max(np.abs(baseline_values))
+
+        l1_rel = l1_abs / baseline_l1 if baseline_l1 > 0 else 0.0
+        l2_rel = l2_abs / baseline_l2 if baseline_l2 > 0 else 0.0
+        linf_rel = linf_abs / baseline_linf if baseline_linf > 0 else 0.0
+
+        return {
+            'l1_abs': l1_abs,
+            'l2_abs': l2_abs,
+            'linf_abs': linf_abs,
+            'l1_rel': l1_rel,
+            'l2_rel': l2_rel,
+            'linf_rel': linf_rel
+        }
+
     def create_comparison_plot(
         self,
         baseline_data: np.ndarray,
         test_data: np.ndarray,
-        metric_name: str,
         case_name: str,
         machine: str,
         output_file: Path
     ):
-        """Create a comparison plot for a single metric"""
+        """Create a single comparison plot with all metrics as subplots"""
 
-        metric = self.metrics[metric_name]
+        fig = plt.figure(figsize=self.plot_config['figsize'])
+        gs = GridSpec(2, 3, figure=fig, hspace=0.35, wspace=0.3)
 
-        fig, ax = plt.subplots(figsize=self.plot_config['figsize'])
-
-        # Extract time and metric columns
+        # Extract time
         baseline_time = baseline_data[:, 0]
-        baseline_values = baseline_data[:, metric['column']]
-
         test_time = test_data[:, 0]
-        test_values = test_data[:, metric['column']]
 
-        # Plot baseline (solid line)
-        ax.plot(baseline_time, baseline_values, **self.plot_config['baseline_style'])
-
-        # Plot test results (points)
-        ax.plot(test_time, test_values, **self.plot_config['test_style'])
-
-        # Formatting
-        ax.set_xlabel('Days', fontsize=14, fontweight='bold')
-        ax.set_ylabel(metric['ylabel'], fontsize=14, fontweight='bold')
-        ax.set_title(
-            f"{case_name.upper()} - {metric['title_suffix']} ({machine})",
-            fontsize=16,
-            fontweight='bold'
-        )
-
-        ax.grid(True, **self.plot_config['grid_style'])
-        ax.legend(loc=metric['legend_loc'], fontsize=12, framealpha=0.9)
-
-        # Use scientific notation for y-axis if values are large
-        if baseline_values.max() > 10000 or test_values.max() > 10000:
-            ax.ticklabel_format(style='scientific', axis='y', scilimits=(0, 0))
-
-        plt.tight_layout()
-
-        # Save plot
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        plt.savefig(output_file, dpi=self.plot_config['dpi'], bbox_inches='tight')
-        plt.close()
-
-        print(f"  Created: {output_file.name}")
-
-    def create_combined_plot(
-        self,
-        baseline_data: np.ndarray,
-        test_data: np.ndarray,
-        case_name: str,
-        machine: str,
-        output_file: Path
-    ):
-        """Create a combined plot with all metrics"""
-
-        fig = plt.figure(figsize=(14, 10))
-        gs = GridSpec(2, 2, figure=fig, hspace=0.3, wspace=0.3)
+        print(f"\n  Metric comparison for {case_name}.{machine}:")
+        print(f"  {'Metric':<20} {'L1 (abs)':<12} {'L2 (abs)':<12} {'L∞ (abs)':<12} {'L1 (rel)':<10} {'L2 (rel)':<10} {'L∞ (rel)':<10}")
+        print(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*12} {'-'*10} {'-'*10} {'-'*10}")
 
         # Plot each metric
         for idx, (metric_name, metric) in enumerate(self.metrics.items()):
-            if idx >= 3:  # Only plot first 3 metrics
-                break
+            row = idx // 3
+            col = idx % 3
+            ax = fig.add_subplot(gs[row, col])
 
-            ax = fig.add_subplot(gs[idx // 2, idx % 2])
+            # Extract metric data
+            baseline_values = self.extract_metric(baseline_data, metric)
+            test_values = self.extract_metric(test_data, metric)
 
-            # Extract data
-            baseline_time = baseline_data[:, 0]
-            baseline_values = baseline_data[:, metric['column']]
+            # Compute norms
+            norms = self.compute_norms(baseline_values, test_values)
 
-            test_time = test_data[:, 0]
-            test_values = test_data[:, metric['column']]
+            # Print norms
+            print(f"  {metric['title']:<20} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<10.4f} {norms['l2_rel']:<10.4f} {norms['linf_rel']:<10.4f}")
 
             # Plot
             ax.plot(baseline_time, baseline_values, **self.plot_config['baseline_style'])
             ax.plot(test_time, test_values, **self.plot_config['test_style'])
 
             # Formatting
-            ax.set_xlabel('Days', fontsize=11)
-            ax.set_ylabel(metric['ylabel'], fontsize=11)
-            ax.set_title(metric['title_suffix'], fontsize=12, fontweight='bold')
+            ax.set_xlabel('Days', fontsize=10)
+            ax.set_ylabel(metric['ylabel'], fontsize=10)
+            ax.set_title(metric['title'], fontsize=11, fontweight='bold')
             ax.grid(True, **self.plot_config['grid_style'])
-            ax.legend(loc=metric['legend_loc'], fontsize=10)
+            ax.legend(loc='best', fontsize=9)
 
+            # Use scientific notation for y-axis if values are large
             if baseline_values.max() > 10000 or test_values.max() > 10000:
                 ax.ticklabel_format(style='scientific', axis='y', scilimits=(0, 0))
 
         # Overall title
         fig.suptitle(
-            f"{case_name.upper()} - All Metrics ({machine})",
+            f"{case_name.upper()} - Comparison ({machine})",
             fontsize=16,
             fontweight='bold',
             y=0.995
@@ -202,16 +238,14 @@ class RegtestPlotter:
         plt.savefig(output_file, dpi=self.plot_config['dpi'], bbox_inches='tight')
         plt.close()
 
-        print(f"  Created: {output_file.name}")
+        print(f"\n  Created: {output_file.name}")
 
     def plot_case(
         self,
         case_name: str,
-        machine: str,
-        create_individual: bool = True,
-        create_combined: bool = True
+        machine: str
     ) -> bool:
-        """Generate plots for a specific test case and machine"""
+        """Generate plot for a specific test case and machine"""
 
         # Construct directory names
         test_dirname = f"{case_name}.{machine}"
@@ -228,7 +262,7 @@ class RegtestPlotter:
             print(f"WARNING: Test output not found: {test_output}")
             return False
 
-        print(f"\nGenerating plots for {case_name}.{machine}...")
+        print(f"\nGenerating plot for {case_name}.{machine}...")
 
         # Load data
         baseline_data = self.load_output_data(baseline_output)
@@ -241,41 +275,22 @@ class RegtestPlotter:
         plot_output_dir = self.plot_dir / test_dirname
         plot_output_dir.mkdir(parents=True, exist_ok=True)
 
-        success = True
-
-        # Create individual metric plots
-        if create_individual:
-            for metric_name in self.metrics.keys():
-                output_file = plot_output_dir / f"{metric_name}.png"
-                try:
-                    self.create_comparison_plot(
-                        baseline_data,
-                        test_data,
-                        metric_name,
-                        case_name,
-                        machine,
-                        output_file
-                    )
-                except Exception as e:
-                    print(f"  ERROR creating {metric_name} plot: {e}")
-                    success = False
-
-        # Create combined plot
-        if create_combined:
-            output_file = plot_output_dir / "all_metrics.png"
-            try:
-                self.create_combined_plot(
-                    baseline_data,
-                    test_data,
-                    case_name,
-                    machine,
-                    output_file
-                )
-            except Exception as e:
-                print(f"  ERROR creating combined plot: {e}")
-                success = False
-
-        return success
+        # Create comparison plot
+        output_file = plot_output_dir / "comparison.png"
+        try:
+            self.create_comparison_plot(
+                baseline_data,
+                test_data,
+                case_name,
+                machine,
+                output_file
+            )
+            return True
+        except Exception as e:
+            print(f"  ERROR creating comparison plot: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def find_test_directories(self, machine: Optional[str] = None) -> List[Tuple[str, str]]:
         """Find all test directories and extract case name and machine"""
@@ -309,9 +324,7 @@ class RegtestPlotter:
     def plot_all(
         self,
         machine: Optional[str] = None,
-        cases: Optional[List[str]] = None,
-        individual: bool = True,
-        combined: bool = True
+        cases: Optional[List[str]] = None
     ):
         """Generate plots for all test cases"""
 
@@ -340,10 +353,11 @@ class RegtestPlotter:
         # Generate plots
         success_count = 0
         for case_name, case_machine in test_cases:
-            if self.plot_case(case_name, case_machine, individual, combined):
+            if self.plot_case(case_name, case_machine):
                 success_count += 1
 
-        print(f"\nSuccessfully generated plots for {success_count}/{len(test_cases)} test cases")
+        print(f"\n{'='*80}")
+        print(f"Successfully generated plots for {success_count}/{len(test_cases)} test cases")
         print(f"Plots saved in: {self.plot_dir}")
 
         return success_count > 0
@@ -366,9 +380,6 @@ Examples:
 
   # Plot multiple specific cases
   %(prog)s --case ca,bay --machine linux
-
-  # Only create combined plots (faster)
-  %(prog)s --no-individual
         """
     )
 
@@ -384,18 +395,6 @@ Examples:
         help='Machine to plot results for (default: all machines)'
     )
 
-    parser.add_argument(
-        '--no-individual',
-        action='store_true',
-        help='Skip individual metric plots, only create combined plots'
-    )
-
-    parser.add_argument(
-        '--no-combined',
-        action='store_true',
-        help='Skip combined plots, only create individual metric plots'
-    )
-
     args = parser.parse_args()
 
     # Parse cases
@@ -407,9 +406,7 @@ Examples:
     # Generate plots
     success = plotter.plot_all(
         machine=args.machine,
-        cases=cases,
-        individual=not args.no_individual,
-        combined=not args.no_combined
+        cases=cases
     )
 
     return 0 if success else 1
