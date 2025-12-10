@@ -191,8 +191,8 @@ class RegtestPlotter:
         test_time = test_data[:, 0]
 
         print(f"\n  Metric comparison for {case_name}.{machine}:")
-        print(f"  {'Metric':<20} {'L1 (abs)':<12} {'L2 (abs)':<12} {'L∞ (abs)':<12} {'L1 (rel)':<10} {'L2 (rel)':<10} {'L∞ (rel)':<10}")
-        print(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*12} {'-'*10} {'-'*10} {'-'*10}")
+        print(f"  {'Metric':<20} {'L1 (abs)':<12} {'L2 (abs)':<12} {'L∞ (abs)':<12} {'L1 (rel)':<12} {'L2 (rel)':<12} {'L∞ (rel)':<12}")
+        print(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12}")
 
         # Plot each metric
         for idx, (metric_name, metric) in enumerate(self.metrics.items()):
@@ -208,7 +208,7 @@ class RegtestPlotter:
             norms = self.compute_norms(baseline_values, test_values)
 
             # Print norms
-            print(f"  {metric['title']:<20} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<10.4f} {norms['l2_rel']:<10.4f} {norms['linf_rel']:<10.4f}")
+            print(f"  {metric['title']:<20} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<12.2e} {norms['l2_rel']:<12.2e} {norms['linf_rel']:<12.2e}")
 
             # Plot
             ax.plot(baseline_time, baseline_values, **self.plot_config['baseline_style'])
@@ -217,7 +217,11 @@ class RegtestPlotter:
             # Formatting
             ax.set_xlabel('Days', fontsize=10)
             ax.set_ylabel(metric['ylabel'], fontsize=10)
-            ax.set_title(metric['title'], fontsize=11, fontweight='bold')
+
+            # Title with norms
+            title = f"{metric['title']}\n"
+            title += f"L1={norms['l1_rel']:.2e}, L2={norms['l2_rel']:.2e}, L∞={norms['linf_rel']:.2e}"
+            ax.set_title(title, fontsize=10, fontweight='bold')
             ax.grid(True, **self.plot_config['grid_style'])
             ax.legend(loc='best', fontsize=9)
 

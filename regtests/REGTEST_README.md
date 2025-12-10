@@ -473,15 +473,17 @@ The script automatically computes and prints difference norms for each metric:
 - **L2 norm**: Root mean square difference
 - **L∞ norm**: Maximum absolute difference
 
-Both absolute and relative (normalized by baseline) norms are reported:
+Both absolute and relative (normalized by baseline) norms are reported in scientific notation:
 
 ```
-  Metric               L1 (abs)     L2 (abs)     L∞ (abs)     L1 (rel)   L2 (rel)   L∞ (rel)
-  -------------------- ------------ ------------ ------------ ---------- ---------- ----------
-  Susceptible          1.23e+05     4.56e+03     7.89e+02     0.0012     0.0034     0.0056
-  Total Infectious     2.34e+04     5.67e+02     8.90e+01     0.0023     0.0045     0.0067
+  Metric               L1 (abs)     L2 (abs)     L∞ (abs)     L1 (rel)     L2 (rel)     L∞ (rel)
+  -------------------- ------------ ------------ ------------ ------------ ------------ ------------
+  Susceptible          1.23e+05     4.56e+03     7.89e+02     1.23e-03     3.45e-03     5.67e-03
+  Total Infectious     2.34e+04     5.67e+02     8.90e+01     2.34e-03     4.56e-03     6.78e-03
   ...
 ```
+
+The relative norms are also displayed in each subplot title for quick visual reference.
 
 ### Plot Requirements
 
