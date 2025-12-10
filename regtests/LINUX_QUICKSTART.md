@@ -44,6 +44,9 @@ make test CASES=ca MACHINE=linux
 
 # Compare against baseline (after creating baselines)
 ./regtest.py compare --machine linux
+
+# Generate comparison plots
+./regtest.py plot --machine linux
 ```
 
 ### Linux System with NVIDIA GPU(s)
@@ -253,9 +256,12 @@ ls -la tests/*/output.dat
 # 8. Compare results
 make compare MACHINE=linux
 
-# 9. View plots (if needed)
-cd plots
-# ... generate plots ...
+# 9. Generate plots
+make plot MACHINE=linux
+
+# 10. View plots
+ls plots/*/
+# Open PNG files with your preferred image viewer
 ```
 
 ## See Also

@@ -15,6 +15,7 @@ help:
 	@echo "  make baseline [CASES=<cases>] [MACHINE=<machine>]  - Create and run baseline tests"
 	@echo "  make test [CASES=<cases>] [MACHINE=<machine>]       - Create and run tests"
 	@echo "  make compare [MACHINE=<machine>]                    - Compare test results against baselines"
+	@echo "  make plot [CASES=<cases>] [MACHINE=<machine>]       - Generate comparison plots"
 	@echo "  make clean                                          - Remove test directories"
 	@echo "  make clean-baselines                                - Remove baseline directories"
 	@echo "  make clean-all                                      - Remove all generated directories"
@@ -77,6 +78,10 @@ test: create-test run-test
 .PHONY: compare
 compare:
 	@$(PYTHON) regtest.py compare --machine $(MACHINE)
+
+.PHONY: plot
+plot:
+	@$(PYTHON) regtest.py plot --cases $(CASES) --machine $(MACHINE)
 
 .PHONY: clean
 clean:

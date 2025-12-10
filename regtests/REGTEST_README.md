@@ -432,21 +432,63 @@ The test will be skipped during runs and comparisons.
 ./regtest.py run-test --cases all_ca
 ```
 
+## Generating Plots
+
+After running tests and baselines, you can generate comparison plots:
+
+### Basic Plotting
+
+```bash
+# Generate plots for all test cases on current machine
+./regtest.py plot
+
+# Or use Makefile
+make plot
+
+# Generate plots for specific cases
+make plot CASES=ca,bay MACHINE=linux
+
+# Plot all standard cases
+make plot CASES=standard
+```
+
+### Plot Output
+
+The plotting system (`plot_results.py`) generates PNG comparison plots:
+
+- **Individual metric plots**: `plots/<case.machine>/infections.png`, `deaths.png`, `hospitalizations.png`
+- **Combined plot**: `plots/<case.machine>/all_metrics.png`
+
+Each plot shows:
+- Baseline results as a solid black line
+- Test results as blue points
+- Grid and legends for easy interpretation
+
+### Plot Requirements
+
+The plotting system requires matplotlib:
+
+```bash
+pip install matplotlib
+# or
+conda install matplotlib
+```
+
+If matplotlib is not installed, the plotting commands will show an informative error message.
+
+### Customizing Plots
+
+Edit `plot_results.py` to customize:
+- Plot styles (colors, line styles, markers)
+- Figure size and DPI
+- Metrics to plot (currently: infections, deaths, hospitalizations)
+- Grid and legend positioning
+
 ## Future Enhancements
 
 Planned improvements:
 - [ ] Templated job scripts using Jinja2
 - [ ] HTML test report generation
-- [ ] Python-based plotting (replace gnuplot scripts)
 - [ ] Test result database/history tracking
 - [ ] Parallel test execution optimization
 - [ ] CI/CD integration hooks
-
-## Legacy Files
-
-The following directories contain the old workflow scripts and are kept for reference:
-- `scripts/` - Old bash scripts for creating/running tests
-- `shell_directories/` - Pre-created test directory templates (32 directories)
-- `common/` - Shared data files and run scripts (still used)
-
-These can be removed once the new workflow is fully validated.

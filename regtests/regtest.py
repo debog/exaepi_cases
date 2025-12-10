@@ -829,6 +829,45 @@ class RegtestOrchestrator:
             for group_name, machines in sorted(self.machines['machine_groups'].items()):
                 print(f"  {group_name:15} - {', '.join(machines)}")
 
+    def generate_plots(self, cases: List[str] = None, machine: str = None):
+        """Generate comparison plots using plot_results.py"""
+
+        # Resolve machine
+        machine = machine or self.current_machine
+        if not machine:
+            print("ERROR: Cannot determine machine. Use --machine to specify.")
+            return
+
+        print(f"Generating plots for machine: {machine}")
+        print()
+
+        # Build plot_results.py command
+        plot_script = self.root_dir / "plot_results.py"
+
+        if not plot_script.exists():
+            print(f"ERROR: Plot script not found: {plot_script}")
+            return
+
+        cmd = [str(plot_script), "--machine", machine]
+
+        # Add case filter if specified
+        if cases and cases != ['all']:
+            # Resolve test case groups
+            resolved_cases = self.resolve_test_cases(cases)
+            if resolved_cases:
+                cmd.extend(["--case", ",".join(sorted(resolved_cases))])
+
+        # Run plot generation
+        print(f"Running: {' '.join(cmd)}")
+        print()
+
+        result = subprocess.run(cmd)
+
+        if result.returncode == 0:
+            print("\nPlot generation completed successfully!")
+        else:
+            print(f"\nPlot generation failed with exit code {result.returncode}")
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -858,7 +897,7 @@ Examples:
     parser.add_argument(
         'action',
         choices=['create-baseline', 'run-baseline', 'create-test', 'run-test',
-                'compare', 'list-cases', 'list-machines', 'validate'],
+                'compare', 'plot', 'list-cases', 'list-machines', 'validate'],
         help='Action to perform'
     )
 
@@ -906,6 +945,12 @@ Examples:
 
     # Resolve machine parameter - convert "current" to None for auto-detection
     machine = None if args.machine == 'current' else args.machine
+
+    # Plot action doesn't require full environment validation (only reads existing data)
+    if args.action == 'plot':
+        cases = args.cases.split(',') if args.cases else ['all']
+        orch.generate_plots(cases, machine)
+        return 0
 
     # Validate environment for other actions
     # Pass the machine to validation if available
