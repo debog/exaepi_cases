@@ -4,7 +4,14 @@ This guide helps you run ExaEpi regression tests on standard Linux workstations 
 
 ## Prerequisites
 
-1. **ExaEpi built with MPI support**
+1. **Python dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   This installs: PyYAML, matplotlib, numpy
+
+2. **ExaEpi built with MPI support**
    ```bash
    export EXAEPI_BUILD=/path/to/your/exaepi/build
    export EXAEPI_DIR=/path/to/your/exaepi/source
@@ -16,16 +23,9 @@ This guide helps you run ExaEpi regression tests on standard Linux workstations 
 
    The system automatically detects which structure you're using.
 
-2. **MPI installation** (one of):
+3. **MPI installation** (one of):
    - MPICH: `mpiexec` available in PATH
    - OpenMPI: `mpirun` available in PATH
-
-3. **Python 3 with PyYAML**
-   ```bash
-   pip install pyyaml
-   # or
-   conda install pyyaml
-   ```
 
 ## Basic Usage
 

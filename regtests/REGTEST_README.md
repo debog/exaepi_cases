@@ -16,11 +16,20 @@ The new workflow replaces scattered bash scripts with a unified Python orchestra
 
 ### Prerequisites
 
-Set required environment variables:
-```bash
-export EXAEPI_BUILD=/path/to/exaepi/build
-export EXAEPI_DIR=/path/to/exaepi/source
-```
+1. **Install Python dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   # or
+   conda install --file requirements.txt
+   ```
+
+   Required packages: PyYAML, matplotlib, numpy
+
+2. **Set environment variables:**
+   ```bash
+   export EXAEPI_BUILD=/path/to/exaepi/build
+   export EXAEPI_DIR=/path/to/exaepi/source
+   ```
 
 **Note on EXAEPI_BUILD structure:**
 

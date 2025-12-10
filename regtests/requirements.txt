@@ -1,0 +1,9 @@
+# ExaEpi Regression Test Requirements
+# Python dependencies for regression testing and plotting
+
+# Configuration file parsing (regtest.py)
+PyYAML>=5.1
+
+# Plotting and numerical computations (plot_results.py)
+matplotlib>=3.3.0
+numpy>=1.19.0
