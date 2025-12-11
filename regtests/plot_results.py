@@ -248,40 +248,59 @@ class RegtestPlotter:
         self,
         case_name: str,
         machine: str
-    ) -> bool:
-        """Generate plot for a specific test case and machine"""
+    ) -> Tuple[bool, str]:
+        """Generate plot for a specific test case and machine
 
-        # Construct directory names
+        Returns:
+            Tuple[bool, str]: (success, error_message)
+        """
+
         test_dirname = f"{case_name}.{machine}"
 
-        baseline_output = self.baseline_dir / test_dirname / "output.dat"
-        test_output = self.test_dir / test_dirname / "output.dat"
-
-        # Check if files exist
-        if not baseline_output.exists():
-            print(f"WARNING: Baseline output not found: {baseline_output}")
-            return False
-
-        if not test_output.exists():
-            print(f"WARNING: Test output not found: {test_output}")
-            return False
-
-        print(f"\nGenerating plot for {case_name}.{machine}...")
-
-        # Load data
-        baseline_data = self.load_output_data(baseline_output)
-        test_data = self.load_output_data(test_output)
-
-        if baseline_data is None or test_data is None:
-            return False
-
-        # Create plot output directory
-        plot_output_dir = self.plot_dir / test_dirname
-        plot_output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create comparison plot
-        output_file = plot_output_dir / "comparison.png"
         try:
+            # Construct directory names
+            baseline_output = self.baseline_dir / test_dirname / "output.dat"
+            test_output = self.test_dir / test_dirname / "output.dat"
+
+            # Check if files exist
+            if not baseline_output.exists():
+                error_msg = f"Baseline output not found: {baseline_output}"
+                print(f"\nWARNING: {error_msg}")
+                return False, error_msg
+
+            if not test_output.exists():
+                error_msg = f"Test output not found: {test_output}"
+                print(f"\nWARNING: {error_msg}")
+                return False, error_msg
+
+            print(f"\nGenerating plot for {case_name}.{machine}...")
+
+            # Load data
+            baseline_data = self.load_output_data(baseline_output)
+            test_data = self.load_output_data(test_output)
+
+            if baseline_data is None:
+                error_msg = "Failed to load baseline data"
+                print(f"  ERROR: {error_msg}")
+                return False, error_msg
+
+            if test_data is None:
+                error_msg = "Failed to load test data"
+                print(f"  ERROR: {error_msg}")
+                return False, error_msg
+
+            # Validate data shapes match
+            if baseline_data.shape != test_data.shape:
+                error_msg = f"Data shape mismatch: baseline {baseline_data.shape} vs test {test_data.shape}"
+                print(f"  ERROR: {error_msg}")
+                return False, error_msg
+
+            # Create plot output directory
+            plot_output_dir = self.plot_dir / test_dirname
+            plot_output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create comparison plot
+            output_file = plot_output_dir / "comparison.png"
             self.create_comparison_plot(
                 baseline_data,
                 test_data,
@@ -289,12 +308,14 @@ class RegtestPlotter:
                 machine,
                 output_file
             )
-            return True
+            return True, ""
+
         except Exception as e:
-            print(f"  ERROR creating comparison plot: {e}")
+            error_msg = f"{type(e).__name__}: {str(e)}"
+            print(f"  ERROR: {error_msg}")
             import traceback
             traceback.print_exc()
-            return False
+            return False, error_msg
 
     def find_test_directories(self, machine: Optional[str] = None) -> List[Tuple[str, str]]:
         """Find all test directories and extract case name and machine"""
@@ -356,13 +377,31 @@ class RegtestPlotter:
 
         # Generate plots
         success_count = 0
-        for case_name, case_machine in test_cases:
-            if self.plot_case(case_name, case_machine):
-                success_count += 1
+        failed_cases = []
 
+        for case_name, case_machine in test_cases:
+            success, error_msg = self.plot_case(case_name, case_machine)
+            if success:
+                success_count += 1
+            else:
+                failed_cases.append((f"{case_name}.{case_machine}", error_msg))
+
+        # Print summary
         print(f"\n{'='*80}")
-        print(f"Successfully generated plots for {success_count}/{len(test_cases)} test cases")
-        print(f"Plots saved in: {self.plot_dir}")
+        print(f"Plot Generation Summary:")
+        print(f"  Successful: {success_count}/{len(test_cases)}")
+        print(f"  Failed:     {len(failed_cases)}/{len(test_cases)}")
+
+        if failed_cases:
+            print(f"\nFailed cases:")
+            for case_name, error_msg in failed_cases:
+                print(f"  ✗ {case_name}")
+                print(f"    Reason: {error_msg}")
+
+        if success_count > 0:
+            print(f"\nPlots saved in: {self.plot_dir}")
+
+        print(f"{'='*80}")
 
         return success_count > 0
 
