@@ -1,0 +1,12 @@
+# Python dependencies for ExaEpi Medical Workers Studies
+# Install with: pip install -r requirements.txt
+# Or with conda: conda install --file requirements.txt
+
+# YAML configuration parsing
+PyYAML>=5.1
+
+# Scientific plotting
+matplotlib>=3.3.0
+
+# Numerical operations
+numpy>=1.19.0
