@@ -233,6 +233,71 @@ class SweepPlotter:
 
             mwprop_groups[mwprop].append((run_dir, params))
 
+        # Define metrics
+        metrics = [
+            ('Infections', [3, 4, 5, 6, 7, 8], 0, 0, False),
+            ('Hospitalizations', [10, 11], 0, 1, False),
+            ('Deaths', [15], 1, 0, False),
+            ('Overloaded Hospitals', None, 1, 1, True),  # From hospital data
+            ('Underserved Patients', None, 2, 0, True)   # From hospital data
+        ]
+
+        # Determine global y-axis limits by scanning all data
+        print("\nDetermining global axis limits...")
+        global_limits = {}
+
+        for metric_name, columns, row, col, is_hospital_metric in metrics:
+            all_values = []
+
+            # Include baseline data
+            if baseline_data is not None and not is_hospital_metric:
+                values = self.extract_metric(baseline_data, columns)
+                all_values.extend(values)
+            elif baseline_hosp_data is not None and is_hospital_metric:
+                if metric_name == 'Overloaded Hospitals':
+                    values = baseline_hosp_data[:, 1]
+                else:
+                    values = baseline_hosp_data[:, 2]
+                all_values.extend(values)
+
+            # Include all parameter sweep data
+            for mwprop, runs in mwprop_groups.items():
+                for run_dir, params in runs:
+                    if not is_hospital_metric:
+                        data, _ = self.load_output_data(run_dir / "output.dat")
+                        if data is not None:
+                            values = self.extract_metric(data, columns)
+                            all_values.extend(values)
+                    else:
+                        data, _ = self.load_hospital_data(run_dir / "num_bad_hospitals.dat")
+                        if data is not None:
+                            if metric_name == 'Overloaded Hospitals':
+                                values = data[:, 1]
+                            else:
+                                values = data[:, 2]
+                            all_values.extend(values)
+
+            # Calculate limits
+            if all_values:
+                min_val = np.min(all_values)
+                max_val = np.max(all_values)
+
+                if is_hospital_metric:
+                    # For log scale, ensure minimum is at least 1
+                    min_val = 1
+                    # Add some headroom (10% in log space)
+                    max_val = max_val * 1.1 if max_val > 0 else 10
+                else:
+                    # For linear scale, start from 0
+                    min_val = 0
+                    # Add 10% headroom
+                    max_val = max_val * 1.1
+
+                global_limits[metric_name] = (min_val, max_val)
+            else:
+                # Default limits if no data
+                global_limits[metric_name] = (0, 100) if not is_hospital_metric else (1, 100)
+
         # Generate plots for each medical workers proportion
         for mwprop in sorted(mwprop_groups.keys()):
             print(f"\nGenerating plots for medical workers proportion: {mwprop:.2f}")
@@ -245,15 +310,6 @@ class SweepPlotter:
             # Plot baseline if available
             if baseline_data is not None:
                 time_baseline = baseline_data[:, 0]
-
-            # Plot each metric
-            metrics = [
-                ('Infections', [3, 4, 5, 6, 7, 8], 0, 0, False),
-                ('Hospitalizations', [10, 11], 0, 1, False),
-                ('Deaths', [15], 1, 0, False),
-                ('Overloaded Hospitals', None, 1, 1, True),  # From hospital data
-                ('Underserved Patients', None, 2, 0, True)   # From hospital data
-            ]
 
             for metric_name, columns, row, col, is_hospital_metric in metrics:
                 ax = axes[row, col]
@@ -311,9 +367,10 @@ class SweepPlotter:
                 # Use log scale for hospital metrics, linear for others
                 if is_hospital_metric:
                     ax.set_yscale('log')
-                    ax.set_ylim(bottom=1)
-                else:
-                    ax.set_ylim(bottom=0)
+
+                # Apply global y-axis limits
+                if metric_name in global_limits:
+                    ax.set_ylim(global_limits[metric_name])
 
                 # Set x-range
                 ax.set_xlim(self.default_config['xrange'])
@@ -352,6 +409,36 @@ class SweepPlotter:
                 mwprop_groups[mwprop] = []
             mwprop_groups[mwprop].append((run_dir, params))
 
+        # Define metrics
+        metrics = [
+            ('Infections', [3, 4, 5, 6, 7, 8], 0),
+            ('Hospitalizations', [10, 11], 1),
+            ('Deaths', [15], 2)
+        ]
+
+        # Determine global y-axis limits by scanning all data
+        print("\nDetermining global axis limits...")
+        global_limits = {}
+
+        for metric_name, columns, idx in metrics:
+            all_values = []
+
+            # Include all parameter sweep data
+            for mwprop, runs in mwprop_groups.items():
+                for run_dir, params in runs:
+                    data, _ = self.load_output_data(run_dir / "output.dat")
+                    if data is not None:
+                        values = self.extract_metric(data, columns)
+                        all_values.extend(values)
+
+            # Calculate limits
+            if all_values:
+                min_val = 0  # Linear scale
+                max_val = np.max(all_values) * 1.1  # Add 10% headroom
+                global_limits[metric_name] = (min_val, max_val)
+            else:
+                global_limits[metric_name] = (0, 100)
+
         # For each medical workers proportion, create a summary plot
         for mwprop in sorted(mwprop_groups.keys()):
             print(f"\nGenerating plots for medical workers proportion: {mwprop:.2f}")
@@ -360,12 +447,6 @@ class SweepPlotter:
             fig, axes = plt.subplots(1, 3, figsize=(16, 5))
             fig.suptitle(f"{case.upper()}: Hospital Interactions - Medical Workers = {int(mwprop*100)}%\n{machine}",
                         fontsize=16, fontweight='bold')
-
-            metrics = [
-                ('Infections', [3, 4, 5, 6, 7, 8], 0),
-                ('Hospitalizations', [10, 11], 1),
-                ('Deaths', [15], 2)
-            ]
 
             # Plot a sample of parameter combinations
             runs = mwprop_groups[mwprop]
@@ -406,6 +487,10 @@ class SweepPlotter:
                 if idx == 2:  # Only show legend on last plot
                     ax.legend(loc='best', fontsize=6, title='d2d,d2p,p2d,p2p', ncol=2)
                 ax.set_xlim(self.default_config['xrange'])
+
+                # Apply global y-axis limits
+                if metric_name in global_limits:
+                    ax.set_ylim(global_limits[metric_name])
 
             # Save figure
             output_file = output_dir / f"{study_name}_{case}_{machine}_mwprop{int(mwprop*100):02d}.{self.default_config['format']}"
