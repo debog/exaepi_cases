@@ -233,6 +233,42 @@ class SweepOrchestrator:
 
         return f".run_{study_name}.{case}.{machine}{param_str}"
 
+    def _parse_hospital_data(self, log_file: Path, output_file: Path):
+        """Parse hospital statistics from log file and create num_bad_hospitals.dat
+
+        Extracts lines like: "Day X: Y hospitals over capacity, Z underserved hospitalized agents"
+        Creates a data file with columns: Day, Overloaded_Hospitals, Underserved_Patients
+        """
+        import re
+
+        try:
+            if not log_file.exists():
+                return False
+
+            # Pattern to match: "Day X: Y hospitals over capacity, Z underserved hospitalized agents"
+            pattern = r'Day\s+(\d+):\s+(\d+)\s+hospitals over capacity,\s+(\d+)\s+underserved hospitalized agents'
+
+            data_lines = []
+            with open(log_file, 'r') as f:
+                for line in f:
+                    match = re.search(pattern, line)
+                    if match:
+                        day = match.group(1)
+                        overloaded = match.group(2)
+                        underserved = match.group(3)
+                        data_lines.append(f"{day} {overloaded} {underserved}\n")
+
+            if data_lines:
+                with open(output_file, 'w') as f:
+                    f.writelines(data_lines)
+                return True
+
+            return False
+
+        except Exception as e:
+            print(f"WARNING: Failed to parse hospital data from {log_file}: {str(e)}")
+            return False
+
     def _create_run_script(self, study_name: str, case: str, machine: str, params: dict,
                           run_dir: Path, is_baseline: bool = False):
         """Create machine-specific run script"""
@@ -555,6 +591,48 @@ class SweepOrchestrator:
 
         return True
 
+    def parse_hospital_data(self, study_name: str, case: str, machine: str):
+        """Parse hospital statistics from log files and create num_bad_hospitals.dat files"""
+        if study_name not in self.studies['studies']:
+            print(f"ERROR: Unknown study '{study_name}'")
+            return False
+
+        study_dir = self.root_dir / study_name
+        pattern = f".run_{study_name}.{case}.{machine}*"
+        run_dirs = sorted(study_dir.glob(pattern))
+
+        if not run_dirs:
+            print(f"No run directories found for {study_name}/{case}/{machine}")
+            return False
+
+        print(f"\nParsing hospital data for {len(run_dirs)} runs...")
+
+        parsed_count = 0
+        skipped_count = 0
+        failed_count = 0
+
+        for run_dir in run_dirs:
+            log_file = run_dir / f"out.{machine}.log"
+            output_file = run_dir / "num_bad_hospitals.dat"
+
+            if not log_file.exists():
+                skipped_count += 1
+                continue
+
+            # Parse and create data file
+            if self._parse_hospital_data(log_file, output_file):
+                parsed_count += 1
+                print(f"  ✓ {run_dir.name}")
+            else:
+                failed_count += 1
+                print(f"  ✗ {run_dir.name} (no hospital data found in log)")
+
+        print(f"\n✓ Parsed: {parsed_count}")
+        print(f"  Skipped (no log): {skipped_count}")
+        print(f"  Failed: {failed_count}")
+
+        return True
+
     def check_status(self, study_name: str, case: str, machine: str):
         """Check completion status of parameter sweep"""
         if study_name not in self.studies['studies']:
@@ -636,7 +714,7 @@ def main():
 
     parser.add_argument(
         'action',
-        choices=['validate', 'list-studies', 'list-machines', 'create', 'run', 'status', 'plot'],
+        choices=['validate', 'list-studies', 'list-machines', 'create', 'run', 'parse-hospital-data', 'status', 'plot'],
         help='Action to perform'
     )
 
@@ -711,6 +789,10 @@ def main():
 
     elif args.action == 'run':
         success = orch.run_sweeps(args.study, args.case, machine, args.max_parallel)
+        return 0 if success else 1
+
+    elif args.action == 'parse-hospital-data':
+        success = orch.parse_hospital_data(args.study, args.case, machine)
         return 0 if success else 1
 
     elif args.action == 'status':

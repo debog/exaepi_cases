@@ -26,9 +26,10 @@ Column definitions from ExaEpi src/main.cpp and src/AgentDefinitions.H:
  17: NewH       - Became hospitalized this step
 
 Hospital data file (num_bad_hospitals.dat):
-  Column 2: Day
-  Column 3: Number of overloaded hospitals
-  Column 7: Number of underserved patients
+  Parsed from log output: "Day X: Y hospitals over capacity, Z underserved hospitalized agents"
+  Column 0: Day
+  Column 1: Number of overloaded hospitals
+  Column 2: Number of underserved patients
 """
 
 import argparse
@@ -262,11 +263,11 @@ class SweepPlotter:
                     values = self.extract_metric(baseline_data, columns)
                     ax.plot(time_baseline, values, 'k-', linewidth=2, label='Baseline')
                 elif baseline_hosp_data is not None and is_hospital_metric:
-                    time_hosp = baseline_hosp_data[:, 1]  # Column 2 is day
+                    time_hosp = baseline_hosp_data[:, 0]  # Column 0 is day
                     if metric_name == 'Overloaded Hospitals':
-                        values = baseline_hosp_data[:, 2]  # Column 3
+                        values = baseline_hosp_data[:, 1]  # Column 1
                     else:  # Underserved Patients
-                        values = baseline_hosp_data[:, 6]  # Column 7
+                        values = baseline_hosp_data[:, 2]  # Column 2
                     ax.plot(time_hosp, values, 'k-', linewidth=2, label='Baseline')
 
                 # Plot parameter sweep results
@@ -285,11 +286,11 @@ class SweepPlotter:
                         data, error = self.load_hospital_data(run_dir / "num_bad_hospitals.dat")
                         if data is None:
                             continue
-                        time = data[:, 1]
+                        time = data[:, 0]
                         if metric_name == 'Overloaded Hospitals':
-                            values = data[:, 2]
+                            values = data[:, 1]
                         else:
-                            values = data[:, 6]
+                            values = data[:, 2]
 
                     # Plot with unique color/marker
                     color = self.colors[idx % len(self.colors)]
@@ -307,9 +308,8 @@ class SweepPlotter:
                 ax.grid(True, alpha=0.3)
                 ax.legend(loc='best', fontsize=8)
 
-                # Log scale for hospital metrics if specified
-                if is_hospital_metric:
-                    ax.set_yscale('log')
+                # Set y-axis to start from 0 for better visualization
+                ax.set_ylim(bottom=0)
 
                 # Set x-range
                 ax.set_xlim(self.default_config['xrange'])

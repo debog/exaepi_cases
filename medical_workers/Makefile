@@ -6,20 +6,21 @@ CASE ?= CA
 MACHINE ?= current
 MAX_PARALLEL ?= 4
 
-.PHONY: help validate list-studies list-machines create run status plot clean
+.PHONY: help validate list-studies list-machines create run parse-hospital-data status plot clean
 
 help:
 	@echo "ExaEpi Medical Workers Parameter Sweep Makefile"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make validate                    - Validate environment setup"
-	@echo "  make list-studies                - List available studies"
-	@echo "  make list-machines               - List available machines"
+	@echo "  make validate                         - Validate environment setup"
+	@echo "  make list-studies                     - List available studies"
+	@echo "  make list-machines                    - List available machines"
 	@echo "  make create STUDY=<name> CASE=<case>  - Create run directories"
 	@echo "  make run STUDY=<name> CASE=<case>     - Run parameter sweep"
+	@echo "  make parse-hospital-data STUDY=<name> CASE=<case> - Parse hospital data from logs"
 	@echo "  make status STUDY=<name> CASE=<case>  - Check completion status"
 	@echo "  make plot STUDY=<name> CASE=<case>    - Generate plots"
-	@echo "  make clean STUDY=<name>          - Remove run directories"
+	@echo "  make clean STUDY=<name>               - Remove run directories"
 	@echo ""
 	@echo "Variables:"
 	@echo "  STUDY        - Study name (recovery, hosp_interactions)"
@@ -47,6 +48,9 @@ create:
 
 run:
 	./sweeps.py run --study $(STUDY) --case $(CASE) --machine $(MACHINE) --max-parallel $(MAX_PARALLEL)
+
+parse-hospital-data:
+	./sweeps.py parse-hospital-data --study $(STUDY) --case $(CASE) --machine $(MACHINE)
 
 status:
 	./sweeps.py status --study $(STUDY) --case $(CASE) --machine $(MACHINE)
