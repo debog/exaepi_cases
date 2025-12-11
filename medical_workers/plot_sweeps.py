@@ -443,54 +443,116 @@ class SweepPlotter:
         for mwprop in sorted(mwprop_groups.keys()):
             print(f"\nGenerating plots for medical workers proportion: {mwprop:.2f}")
 
-            # Create figure with 3 subplots (one per metric)
-            fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+            runs = mwprop_groups[mwprop]
+
+            # Group runs by which parameter varies
+            # For each transmission parameter, find runs where only that parameter varies
+            param_sweeps = {
+                'xmit_hosp_d2d': [],
+                'xmit_hosp_d2p': [],
+                'xmit_hosp_p2d': [],
+                'xmit_hosp_p2p': []
+            }
+
+            # Find unique parameter combinations and group by varying parameter
+            param_combinations = {}
+            for run_dir, params in runs:
+                d2d = params.get('xmit_hosp_d2d', 0.0)
+                d2p = params.get('xmit_hosp_d2p', 0.0)
+                p2d = params.get('xmit_hosp_p2d', 0.0)
+                p2p = params.get('xmit_hosp_p2p', 0.0)
+                combo = (d2d, d2p, p2d, p2p)
+                param_combinations[combo] = (run_dir, params)
+
+            # For each parameter, find combinations where only it varies
+            all_values = {
+                'xmit_hosp_d2d': set(),
+                'xmit_hosp_d2p': set(),
+                'xmit_hosp_p2d': set(),
+                'xmit_hosp_p2p': set()
+            }
+
+            for combo in param_combinations.keys():
+                all_values['xmit_hosp_d2d'].add(combo[0])
+                all_values['xmit_hosp_d2p'].add(combo[1])
+                all_values['xmit_hosp_p2d'].add(combo[2])
+                all_values['xmit_hosp_p2p'].add(combo[3])
+
+            # Create 4x3 subplot layout (4 rows for each parameter, 3 columns for metrics)
+            fig, axes = plt.subplots(4, 3, figsize=(16, 16))
             fig.suptitle(f"{case.upper()}: Hospital Interactions - Medical Workers = {int(mwprop*100)}%\n{machine}",
                         fontsize=16, fontweight='bold')
 
-            # Plot a sample of parameter combinations
-            runs = mwprop_groups[mwprop]
-            print(f"  Plotting {min(len(runs), 20)} of {len(runs)} parameter combinations")
+            param_names = ['xmit_hosp_d2d', 'xmit_hosp_d2p', 'xmit_hosp_p2d', 'xmit_hosp_p2p']
+            param_labels = ['Doctor-to-Doctor', 'Doctor-to-Patient', 'Patient-to-Doctor', 'Patient-to-Patient']
 
-            for metric_name, columns, idx in metrics:
-                ax = axes[idx]
+            for param_idx, (param_name, param_label) in enumerate(zip(param_names, param_labels)):
+                # Find combinations where only this parameter varies
+                # Use the most common values for other parameters
+                other_params = [p for p in param_names if p != param_name]
 
-                # Plot subset of runs (limit to avoid overcrowding)
-                for run_idx, (run_dir, params) in enumerate(runs[:20]):  # Limit to 20 curves
-                    data, error = self.load_output_data(run_dir / "output.dat")
-                    if data is None:
-                        continue
+                # Find the combination where other params are at their minimum (typically 0)
+                min_other_values = {p: min(all_values[p]) for p in other_params}
 
-                    time = data[:, 0]
-                    values = self.extract_metric(data, columns)
+                # Get all runs where other params match the min values and this param varies
+                varying_runs = []
+                for combo, (run_dir, params) in param_combinations.items():
+                    d2d, d2p, p2d, p2p = combo
+                    param_dict = {
+                        'xmit_hosp_d2d': d2d,
+                        'xmit_hosp_d2p': d2p,
+                        'xmit_hosp_p2d': p2d,
+                        'xmit_hosp_p2p': p2p
+                    }
 
-                    # Use varied colors/styles
-                    color = self.colors[run_idx % len(self.colors)]
-                    linestyle = self.linestyles[run_idx % len(self.linestyles)]
+                    # Check if other params are at min
+                    if all(param_dict[p] == min_other_values[p] for p in other_params):
+                        varying_runs.append((param_dict[param_name], run_dir, params))
 
-                    # Create label with transmission parameters
-                    d2d = params.get('xmit_hosp_d2d', 0.0)
-                    d2p = params.get('xmit_hosp_d2p', 0.0)
-                    p2d = params.get('xmit_hosp_p2d', 0.0)
-                    p2p = params.get('xmit_hosp_p2p', 0.0)
+                # Sort by parameter value
+                varying_runs.sort(key=lambda x: x[0])
 
-                    label = f"{d2d:.3f},{d2p:.3f},{p2d:.3f},{p2p:.3f}"
+                # Plot each metric
+                for metric_idx, (metric_name, columns, _) in enumerate(metrics):
+                    ax = axes[param_idx, metric_idx]
 
-                    ax.plot(time, values, color=color, linestyle=linestyle,
-                           linewidth=1, alpha=0.7, label=label if run_idx < 10 else None)
+                    for color_idx, (param_val, run_dir, params) in enumerate(varying_runs):
+                        data, error = self.load_output_data(run_dir / "output.dat")
+                        if data is None:
+                            continue
 
-                # Formatting
-                ax.set_xlabel('Days', fontsize=10)
-                ax.set_ylabel(metric_name, fontsize=10)
-                ax.set_title(metric_name, fontsize=11, fontweight='bold')
-                ax.grid(True, alpha=0.3)
-                if idx == 2:  # Only show legend on last plot
-                    ax.legend(loc='best', fontsize=6, title='d2d,d2p,p2d,p2p', ncol=2)
-                ax.set_xlim(self.default_config['xrange'])
+                        time = data[:, 0]
+                        values = self.extract_metric(data, columns)
 
-                # Apply global y-axis limits
-                if metric_name in global_limits:
-                    ax.set_ylim(global_limits[metric_name])
+                        # Use varied colors
+                        color = self.colors[color_idx % len(self.colors)]
+
+                        # Create label with higher precision
+                        label = f"{param_val:.4f}"
+
+                        ax.plot(time, values, color=color, linewidth=1.5,
+                               alpha=0.8, label=label, marker='o', markersize=2, markevery=max(1, len(time)//10))
+
+                    # Formatting
+                    ax.set_xlabel('Days', fontsize=10)
+                    ax.set_ylabel(metric_name, fontsize=10)
+
+                    # Add row label on leftmost subplot
+                    if metric_idx == 0:
+                        ax.set_title(f"{param_label}\n{metric_name}", fontsize=11, fontweight='bold')
+                    else:
+                        ax.set_title(metric_name, fontsize=11, fontweight='bold')
+
+                    ax.grid(True, alpha=0.3)
+
+                    # Add legend to each subplot
+                    ax.legend(loc='best', fontsize=8, title=param_name.replace('xmit_hosp_', ''))
+
+                    ax.set_xlim(self.default_config['xrange'])
+
+                    # Apply global y-axis limits
+                    if metric_name in global_limits:
+                        ax.set_ylim(global_limits[metric_name])
 
             # Save figure
             output_file = output_dir / f"{study_name}_{case}_{machine}_mwprop{int(mwprop*100):02d}.{self.default_config['format']}"
