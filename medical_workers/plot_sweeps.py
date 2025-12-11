@@ -82,9 +82,9 @@ class SweepPlotter:
         }
 
         # Color and marker schemes for different parameter values
-        self.colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray']
-        self.markers = ['o', 's', '^', 'v', 'D', 'p', '*', 'h']
-        self.linestyles = ['-', '--', '-.', ':']
+        self.colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'cyan', 'magenta']
+        self.markers = ['o', 's', '^', 'v', 'D', 'p', '*', 'h', 'X', 'P']
+        self.linestyles = ['-', '--', '-.', ':', (0, (5, 2, 1, 2)), (0, (3, 1, 1, 1))]
 
     def _load_yaml(self, filepath: Path) -> dict:
         """Load YAML configuration file"""
@@ -348,10 +348,10 @@ class SweepPlotter:
                         else:
                             values = data[:, 2]
 
-                    # Plot with unique color/marker
+                    # Plot with unique color/marker/linestyle combination
                     color = self.colors[idx % len(self.colors)]
                     marker = self.markers[idx % len(self.markers)]
-                    linestyle = '--'
+                    linestyle = self.linestyles[idx % len(self.linestyles)]
 
                     ax.plot(time, values, color=color, linestyle=linestyle, linewidth=1.5,
                            marker=marker, markersize=3, markevery=max(1, len(time)//10),
@@ -537,14 +537,16 @@ class SweepPlotter:
                         time = data[:, 0]
                         values = self.extract_metric(data, columns)
 
-                        # Use varied colors
+                        # Use varied colors, markers, and linestyles
                         color = self.colors[color_idx % len(self.colors)]
+                        marker = self.markers[color_idx % len(self.markers)]
+                        linestyle = self.linestyles[color_idx % len(self.linestyles)]
 
                         # Create label with higher precision
                         label = f"{param_val:.4f}"
 
-                        ax.plot(time, values, color=color, linewidth=1.5,
-                               alpha=0.8, label=label, marker='o', markersize=2, markevery=max(1, len(time)//10))
+                        ax.plot(time, values, color=color, linestyle=linestyle, linewidth=1.5,
+                               alpha=0.8, label=label, marker=marker, markersize=3, markevery=max(1, len(time)//10))
 
                     # Formatting
                     ax.set_xlabel('Days', fontsize=10)
