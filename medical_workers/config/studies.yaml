@@ -27,12 +27,20 @@ studies:
       med_workers_proportion: 0.00
       num_patients_per_doctor: 5000000
       write_pltfiles: true
+      xmit_hosp_d2d: 0.0575  # Doctor-to-doctor transmission
+      xmit_hosp_d2p: 0.0     # Doctor-to-patient transmission
+      xmit_hosp_p2d: 0.0     # Patient-to-doctor transmission
+      xmit_hosp_p2p: 0.0     # Patient-to-patient transmission
 
     # Parameter sweeps
     parameters:
       med_workers_proportion: [0.03, 0.06, 0.09]
       num_patients_per_doctor: [5, 10, 20, 50, 100]
       write_pltfiles: [true]
+      xmit_hosp_d2d: [0.0575]  # Doctor-to-doctor transmission (fixed)
+      xmit_hosp_d2p: [0.0]     # Doctor-to-patient transmission (disabled)
+      xmit_hosp_p2d: [0.0]     # Patient-to-doctor transmission (disabled)
+      xmit_hosp_p2p: [0.0]     # Patient-to-patient transmission (disabled)
 
     # Output metrics to track
     metrics:
