@@ -93,6 +93,7 @@ test_cases:
     input_file: inputs.nm
     data_files:
       - NM_TX_2010.dat
+      - US-wf.bin
       - nm-july4.cases
       - small.cases
     nsteps: 120
@@ -104,6 +105,7 @@ test_cases:
     input_file: inputs.nm.urbanpop
     data_files:
       - NM_TX_2010.dat
+      - US-wf.bin
       - urbanpop_nm.csv.gz
       - urbanpop_nm.idx
       - nm-july4.cases
