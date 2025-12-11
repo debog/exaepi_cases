@@ -269,8 +269,10 @@ class RegtestPlotter:
         else:
             print(f"\n  Metric comparison for {case_name}.{machine}:")
 
-        print(f"  {'Metric':<20} {'L1 (abs)':<12} {'L2 (abs)':<12} {'L∞ (abs)':<12} {'L1 (rel)':<12} {'L2 (rel)':<12} {'L∞ (rel)':<12}")
-        print(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12}")
+        # Use wider column for metric names to accommodate long names and disease labels
+        metric_width = 35
+        print(f"  {'Metric':<{metric_width}} {'L1 (abs)':<12} {'L2 (abs)':<12} {'L∞ (abs)':<12} {'L1 (rel)':<12} {'L2 (rel)':<12} {'L∞ (rel)':<12}")
+        print(f"  {'-'*metric_width} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12}")
 
         # Plot each metric
         for idx, (metric_name, metric) in enumerate(self.metrics.items()):
@@ -291,9 +293,14 @@ class RegtestPlotter:
                 # Compute norms (only print for first disease or single disease)
                 norms = self.compute_norms(baseline_values, test_values)
 
-                disease_label = f" ({disease_names[disease_idx]})" if is_multi_disease else ""
                 if disease_idx == 0 or is_multi_disease:
-                    print(f"  {metric['title']}{disease_label:<20} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<12.2e} {norms['l2_rel']:<12.2e} {norms['linf_rel']:<12.2e}")
+                    # Format metric name with disease label if multi-disease
+                    if is_multi_disease:
+                        metric_label = f"{metric['title']} ({disease_names[disease_idx]})"
+                    else:
+                        metric_label = metric['title']
+
+                    print(f"  {metric_label:<{metric_width}} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<12.2e} {norms['l2_rel']:<12.2e} {norms['linf_rel']:<12.2e}")
 
                 # Plot with disease-specific styling
                 if is_multi_disease:
