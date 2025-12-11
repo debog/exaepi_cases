@@ -505,12 +505,15 @@ class SweepPlotter:
                         'xmit_hosp_p2p': p2p
                     }
 
-                    # Check if other params are at min
-                    if all(param_dict[p] == min_other_values[p] for p in other_params):
+                    # Check if other params are at min (use tolerance for floating point comparison)
+                    tolerance = 1e-6
+                    if all(abs(param_dict[p] - min_other_values[p]) < tolerance for p in other_params):
                         varying_runs.append((param_dict[param_name], run_dir, params))
 
                 # Sort by parameter value
                 varying_runs.sort(key=lambda x: x[0])
+
+                print(f"  {param_label}: found {len(varying_runs)} parameter variations")
 
                 # Plot each metric
                 for metric_idx, (metric_name, columns, _) in enumerate(metrics):
