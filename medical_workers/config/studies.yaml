@@ -76,7 +76,7 @@ studies:
     name: "Hospital Interactions Study"
     description: "Parameter sweep for medical workers and hospital transmission rates"
     base_case: CA
-    cases: [CA, Bay]
+    cases: [CA, Bay, CA_2DC1C2]
 
     # Data files required (in common/ directory)
     data_files:
@@ -91,6 +91,14 @@ studies:
       Bay:
         - BayArea.dat
         - BayArea-wf.bin
+        - July4.cases
+      CA_2DC1C2:
+        - CA.dat
+        - CA-wf.bin
+        - CA-sg-wf.bin
+        - CA_scaled.dat
+        - CA_airports.dat
+        - CA_CY23AirTraffic.dat
         - July4.cases
 
     # No baseline - all combinations are run
