@@ -486,6 +486,11 @@ class SweepPlotter:
             param_names = ['xmit_hosp_d2d', 'xmit_hosp_d2p', 'xmit_hosp_p2d', 'xmit_hosp_p2p']
             param_labels = ['Doctor-to-Doctor', 'Doctor-to-Patient', 'Patient-to-Doctor', 'Patient-to-Patient']
 
+            # Debug: print all unique parameter values
+            print(f"\n  Available parameter values:")
+            for pname in param_names:
+                print(f"    {pname}: {sorted(all_values[pname])}")
+
             for param_idx, (param_name, param_label) in enumerate(zip(param_names, param_labels)):
                 # Find combinations where only this parameter varies
                 # Use the most common values for other parameters
@@ -493,6 +498,11 @@ class SweepPlotter:
 
                 # Find the combination where other params are at their minimum (typically 0)
                 min_other_values = {p: min(all_values[p]) for p in other_params}
+
+                print(f"\n  {param_label}: Looking for runs where:")
+                for p in other_params:
+                    print(f"    {p} = {min_other_values[p]}")
+                print(f"    {param_name} varies")
 
                 # Get all runs where other params match the min values and this param varies
                 varying_runs = []
@@ -513,7 +523,7 @@ class SweepPlotter:
                 # Sort by parameter value
                 varying_runs.sort(key=lambda x: x[0])
 
-                print(f"  {param_label}: found {len(varying_runs)} parameter variations")
+                print(f"    Found {len(varying_runs)} runs with {param_name} values: {[v[0] for v in varying_runs]}")
 
                 # Plot each metric
                 for metric_idx, (metric_name, columns, _) in enumerate(metrics):
