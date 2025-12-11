@@ -1,0 +1,122 @@
+# Parameter sweep study definitions for ExaEpi medical workers analysis
+
+studies:
+  recovery:
+    name: "Medical Workers Recovery Study"
+    description: "Parameter sweep for medical workers proportion and patients per doctor"
+    base_case: CA
+    cases: [CA, Bay]
+
+    # Data files required (in common/ directory)
+    data_files:
+      CA:
+        - CA.dat
+        - CA-wf.bin
+        - CA-sg-wf.bin
+        - CA_scaled.dat
+        - CA_airports.dat
+        - CA_CY23AirTraffic.dat
+        - July4.cases
+      Bay:
+        - BayArea.dat
+        - BayArea-wf.bin
+        - July4.cases
+
+    # Baseline parameters
+    baseline:
+      med_workers_proportion: 0.00
+      num_patients_per_doctor: 5000000
+      write_pltfiles: true
+
+    # Parameter sweeps
+    parameters:
+      med_workers_proportion: [0.03, 0.06, 0.09]
+      num_patients_per_doctor: [5, 10, 20, 50, 100]
+      write_pltfiles: [true]
+
+    # Output metrics to track
+    metrics:
+      - name: "Infections"
+        columns: [3, 4, 5, 6, 7, 8]  # Sum of infectious compartments
+        ylabel: "Number of Infections"
+      - name: "Hospitalizations"
+        columns: [9, 10]  # H/NI + H/I
+        ylabel: "Number of Hospitalizations"
+      - name: "Deaths"
+        columns: [14]  # D
+        ylabel: "Number of Deaths"
+
+    # Additional output files to track
+    output_files:
+      - output.dat
+      - num_bad_hospitals.dat
+
+    # Hospital metrics
+    hospital_metrics:
+      - name: "Overloaded Hospitals"
+        file: "num_bad_hospitals.dat"
+        column: 3
+        ylabel: "Number of Overloaded Hospitals"
+        log_scale: true
+      - name: "Underserved Patients"
+        file: "num_bad_hospitals.dat"
+        column: 7
+        ylabel: "Number of Underserved Patients"
+        log_scale: true
+
+  hosp_interactions:
+    name: "Hospital Interactions Study"
+    description: "Parameter sweep for medical workers and hospital transmission rates"
+    base_case: CA
+    cases: [CA, Bay]
+
+    # Data files required (in common/ directory)
+    data_files:
+      CA:
+        - CA.dat
+        - CA-wf.bin
+        - CA-sg-wf.bin
+        - CA_scaled.dat
+        - CA_airports.dat
+        - CA_CY23AirTraffic.dat
+        - July4.cases
+      Bay:
+        - BayArea.dat
+        - BayArea-wf.bin
+        - July4.cases
+
+    # No baseline - all combinations are run
+    baseline: null
+
+    # Parameter sweeps
+    parameters:
+      med_workers_proportion: [0.00, 0.03, 0.06, 0.09]
+      xmit_hosp_d2d: [0.000, 0.006, 0.012]  # Doctor-to-doctor transmission
+      xmit_hosp_d2p: [0.000, 0.005, 0.010]  # Doctor-to-patient transmission
+      xmit_hosp_p2d: [0.000, 0.006, 0.012]  # Patient-to-doctor transmission
+      xmit_hosp_p2p: [0.000, 0.003, 0.006]  # Patient-to-patient transmission
+      num_patients_per_doctor: [50000000]   # Fixed high value
+
+    # Output metrics to track
+    metrics:
+      - name: "Infections"
+        columns: [3, 4, 5, 6, 7, 8]
+        ylabel: "Number of Infections"
+      - name: "Hospitalizations"
+        columns: [9, 10]
+        ylabel: "Number of Hospitalizations"
+      - name: "Deaths"
+        columns: [14]
+        ylabel: "Number of Deaths"
+
+    # Output files to track
+    output_files:
+      - output.dat
+
+# Plot configuration
+plot_config:
+  figsize: [14, 10]
+  dpi: 150
+  xrange: [0, 80]
+  grid: true
+  format: png  # or eps for publication

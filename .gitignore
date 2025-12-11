@@ -10,3 +10,4 @@ Backtrace*
 *core
 std*
 .run*
+__pycache__/
