@@ -558,6 +558,31 @@ class SweepOrchestrator:
 
         return True
 
+    def generate_plots(self, study_name: str, case: str, machine: str):
+        """Generate plots for parameter sweep results"""
+        if study_name not in self.studies['studies']:
+            print(f"ERROR: Unknown study '{study_name}'")
+            return False
+
+        # Call plot_sweeps.py
+        plot_script = self.root_dir / "plot_sweeps.py"
+        if not plot_script.exists():
+            print(f"ERROR: Plotting script not found: {plot_script}")
+            return False
+
+        print(f"Generating plots for {study_name}/{case}/{machine}...")
+
+        # Run plotting script
+        result = subprocess.run(
+            [sys.executable, str(plot_script),
+             '--study', study_name,
+             '--case', case,
+             '--machine', machine],
+            capture_output=False
+        )
+
+        return result.returncode == 0
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -650,8 +675,8 @@ def main():
         return 0 if success else 1
 
     elif args.action == 'plot':
-        print("Plotting not yet implemented")
-        return 1
+        success = orch.generate_plots(args.study, args.case, machine)
+        return 0 if success else 1
 
     return 0
 

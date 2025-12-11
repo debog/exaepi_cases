@@ -209,11 +209,27 @@ Status for recovery/CA/dane:
   Failed:        0
 ```
 
-### 4. Generate Plots (Coming Soon)
+### 4. Generate Plots
 
 ```bash
 ./sweeps.py plot --study recovery --case CA --machine dane
+# or
+make plot STUDY=recovery CASE=CA MACHINE=dane
 ```
+
+The plotting system generates:
+- **Recovery study**: One plot per medical workers proportion showing:
+  - Infections, hospitalizations, deaths over time
+  - Overloaded hospitals and underserved patients
+  - Baseline vs different patients-per-doctor values
+  - Color-coded curves with markers
+
+- **Hospital interactions study**: One plot per medical workers proportion showing:
+  - Infections, hospitalizations, deaths
+  - Sample of parameter combinations (transmission rates)
+  - Multiple curves showing parameter space coverage
+
+Output: `<study>/plots/<study>_<case>_<machine>_mwprop<XX>.png`
 
 ## Advanced Usage
 
@@ -280,13 +296,52 @@ Each run directory contains:
 - `out.<machine>.log` - Simulation log
 - `plt*` - Plot files (if enabled)
 
-## Plotting (Coming Soon)
+## Plotting
 
-The plotting system will generate:
-- Time series plots for each metric
-- Comparison across parameter values
-- Publication-ready figures (PNG/EPS)
-- Multi-panel layouts for parameter sweeps
+The plotting system (`plot_sweeps.py`) generates publication-ready figures:
+
+### Recovery Study Plots
+
+For each medical workers proportion value (3%, 6%, 9%), generates a 5-panel figure:
+1. **Infections** - Total infectious individuals over time
+2. **Hospitalizations** - Hospital census (non-ICU)
+3. **Deaths** - Cumulative deaths
+4. **Overloaded Hospitals** - Number of hospitals exceeding capacity (log scale)
+5. **Underserved Patients** - Patients not receiving adequate care (log scale)
+
+Each plot shows:
+- Baseline (black solid line)
+- Parameter sweep results for different patients-per-doctor values
+- Color-coded curves with distinct markers
+- Legend identifying each parameter combination
+
+### Hospital Interactions Study Plots
+
+For each medical workers proportion value, generates a 3-panel figure:
+1. **Infections** - Total infectious individuals
+2. **Hospitalizations** - Hospital census
+3. **Deaths** - Cumulative deaths
+
+Shows sample of transmission rate parameter combinations (up to 20 curves per plot) with varied colors and line styles.
+
+### Output Format
+
+- **Format**: PNG (configurable to EPS in config/studies.yaml)
+- **Resolution**: 150 DPI (publication quality)
+- **Location**: `<study>/plots/<study>_<case>_<machine>_mwprop<XX>.png`
+- **Naming**: `recovery_CA_dane_mwprop03.png`, `hosp_interactions_Bay_matrix_mwprop06.png`
+
+### Customization
+
+Edit `config/studies.yaml` to customize:
+```yaml
+plot_config:
+  figsize: [14, 10]  # Figure size in inches
+  dpi: 150           # Resolution
+  xrange: [0, 80]    # X-axis range (days)
+  grid: true         # Show grid
+  format: png        # Output format (png or eps)
+```
 
 ## Migration from Old Scripts
 
@@ -349,12 +404,13 @@ make run STUDY=recovery CASE=CA  # Automatically skips completed
 
 ## Future Enhancements
 
-- [ ] Python-based plotting with matplotlib
+- [x] Python-based plotting with matplotlib
 - [ ] HTML report generation
 - [ ] Automated comparison to baselines
 - [ ] Parameter sensitivity analysis
 - [ ] Batch job submission for SLURM/Flux
-- [ ] Integration with regression testing framework
+- [ ] Statistical analysis and confidence intervals
+- [ ] Automated detection of optimal parameter combinations
 
 ## See Also
 
