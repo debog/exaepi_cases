@@ -119,19 +119,41 @@ class RegtestPlotter:
             }
         }
 
-    def load_output_data(self, filepath: Path) -> Optional[np.ndarray]:
-        """Load output.dat file"""
+    def load_output_data(self, filepath: Path) -> Tuple[Optional[np.ndarray], str]:
+        """Load output.dat file
+
+        Returns:
+            Tuple[Optional[np.ndarray], str]: (data, error_message)
+        """
         try:
             if not filepath.exists():
-                print(f"WARNING: Output file not found: {filepath}")
-                return None
+                error_msg = f"Output file not found: {filepath}"
+                return None, error_msg
 
             # Skip header row if present
             data = np.loadtxt(filepath, skiprows=1)
-            return data
+
+            # Validate minimum column count (need at least 18 columns for all metrics)
+            if data.shape[1] < 18:
+                error_msg = f"Insufficient columns in output file (found {data.shape[1]}, need 18). Test may have failed or not completed."
+                return None, error_msg
+
+            # Validate data has rows
+            if data.shape[0] == 0:
+                error_msg = "Output file is empty (no data rows). Test may have failed."
+                return None, error_msg
+
+            return data, ""
+
+        except ValueError as e:
+            if "could not convert" in str(e):
+                error_msg = f"Invalid data format in output file. File may be corrupted or test failed."
+            else:
+                error_msg = f"Data format error: {str(e)}"
+            return None, error_msg
         except Exception as e:
-            print(f"ERROR loading {filepath}: {e}")
-            return None
+            error_msg = f"Failed to read output file: {type(e).__name__}: {str(e)}"
+            return None, error_msg
 
     def extract_metric(self, data: np.ndarray, metric_config: Dict) -> np.ndarray:
         """Extract and combine columns for a metric"""
@@ -275,22 +297,22 @@ class RegtestPlotter:
             print(f"\nGenerating plot for {case_name}.{machine}...")
 
             # Load data
-            baseline_data = self.load_output_data(baseline_output)
-            test_data = self.load_output_data(test_output)
+            baseline_data, baseline_error = self.load_output_data(baseline_output)
+            test_data, test_error = self.load_output_data(test_output)
 
             if baseline_data is None:
-                error_msg = "Failed to load baseline data"
+                error_msg = f"Baseline: {baseline_error}"
                 print(f"  ERROR: {error_msg}")
                 return False, error_msg
 
             if test_data is None:
-                error_msg = "Failed to load test data"
+                error_msg = f"Test: {test_error}"
                 print(f"  ERROR: {error_msg}")
                 return False, error_msg
 
             # Validate data shapes match
             if baseline_data.shape != test_data.shape:
-                error_msg = f"Data shape mismatch: baseline {baseline_data.shape} vs test {test_data.shape}"
+                error_msg = f"Data shape mismatch (baseline: {baseline_data.shape[0]} rows × {baseline_data.shape[1]} cols, test: {test_data.shape[0]} rows × {test_data.shape[1]} cols). Tests may have run for different durations or with different outputs."
                 print(f"  ERROR: {error_msg}")
                 return False, error_msg
 
@@ -299,17 +321,29 @@ class RegtestPlotter:
 
             # Create comparison plot - save directly in plots/ directory
             output_file = self.plot_dir / f"{test_dirname}.png"
-            self.create_comparison_plot(
-                baseline_data,
-                test_data,
-                case_name,
-                machine,
-                output_file
-            )
+            try:
+                self.create_comparison_plot(
+                    baseline_data,
+                    test_data,
+                    case_name,
+                    machine,
+                    output_file
+                )
+            except IndexError as e:
+                error_msg = f"Data column access error. Output file may have incorrect format or missing columns. {str(e)}"
+                print(f"  ERROR: {error_msg}")
+                return False, error_msg
+            except Exception as e:
+                error_msg = f"Plot generation failed: {type(e).__name__}: {str(e)}"
+                print(f"  ERROR: {error_msg}")
+                import traceback
+                traceback.print_exc()
+                return False, error_msg
+
             return True, ""
 
         except Exception as e:
-            error_msg = f"{type(e).__name__}: {str(e)}"
+            error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
             print(f"  ERROR: {error_msg}")
             import traceback
             traceback.print_exc()
