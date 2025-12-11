@@ -452,32 +452,50 @@ class SweepOrchestrator:
             print("Run './sweeps.py create' first")
             return False
 
-        print(f"\nFound {len(run_dirs)} run directories")
-        print(f"Batch mode: {batch_mode}")
-        print(f"Max parallel jobs: {max_parallel if not batch_mode else 'N/A'}")
-
-        # Run jobs
-        running_jobs = []
-        completed = 0
+        # Count jobs that need to run
+        jobs_to_run = []
         skipped = 0
 
         for run_dir in run_dirs:
             # Check if already completed
             outfile = run_dir / f"out.{machine}.log"
+            already_done = False
             if outfile.exists():
-                with open(outfile, 'r') as f:
-                    last_line = f.readlines()[-1] if f.readlines() else ""
-                    if "finalized" in last_line:
-                        skipped += 1
-                        continue
+                try:
+                    with open(outfile, 'r') as f:
+                        lines = f.readlines()
+                        if lines:
+                            last_line = lines[-1]
+                            if "finalized" in last_line:
+                                already_done = True
+                                skipped += 1
+                except Exception:
+                    pass
 
-            # Find run script
-            run_script = run_dir / f"run.{machine}.sh"
-            if not run_script.exists():
-                print(f"WARNING: Run script not found in {run_dir.name}")
-                continue
+            if not already_done:
+                run_script = run_dir / f"run.{machine}.sh"
+                if run_script.exists():
+                    jobs_to_run.append((run_dir, run_script))
 
-            print(f"\nRunning: {run_dir.name}")
+        total_jobs = len(jobs_to_run)
+        total_runs = len(run_dirs)
+
+        print(f"\nFound {total_runs} run directories")
+        print(f"  Already completed: {skipped}")
+        print(f"  To run: {total_jobs}")
+        print(f"Batch mode: {batch_mode}")
+        print(f"Max parallel jobs: {max_parallel if not batch_mode else 'N/A'}")
+
+        if total_jobs == 0:
+            print("\n✓ All jobs already completed")
+            return True
+
+        # Run jobs
+        running_jobs = []
+        completed = 0
+
+        for idx, (run_dir, run_script) in enumerate(jobs_to_run, 1):
+            print(f"\nStarting job {idx}/{total_jobs}: {run_dir.name}")
 
             if batch_mode:
                 # Submit batch job (SLURM/Flux)
@@ -492,23 +510,27 @@ class SweepOrchestrator:
                     stderr=subprocess.DEVNULL
                 )
                 running_jobs.append(proc)
-                completed += 1
 
                 # Wait if max parallel reached
                 if len(running_jobs) >= max_parallel:
                     print(f"  Waiting for {len(running_jobs)} jobs to complete...")
                     for proc in running_jobs:
                         proc.wait()
+                    completed += len(running_jobs)
                     running_jobs = []
+                    remaining = total_jobs - completed
+                    print(f"  Progress: {completed}/{total_jobs} completed, {remaining} remaining")
 
         # Wait for remaining jobs
         if running_jobs:
-            print(f"\nWaiting for {len(running_jobs)} remaining jobs...")
+            print(f"\nWaiting for final {len(running_jobs)} jobs to complete...")
             for proc in running_jobs:
                 proc.wait()
+            completed += len(running_jobs)
 
-        print(f"\n✓ Submitted/ran {completed} jobs")
-        print(f"  Skipped (already completed): {skipped}")
+        print(f"\n✓ Completed {completed} jobs")
+        if skipped > 0:
+            print(f"  Skipped (already completed): {skipped}")
 
         return True
 
