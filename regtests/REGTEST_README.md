@@ -492,28 +492,35 @@ make plot CASES=standard
 
 ### Plot Output
 
-The plotting system (`plot_results.py`) generates PNG files for test cases:
+The plotting system (`plot_results.py`) generates a single PNG file per test case: `plots/<case.machine>.png`
 
-- **Single-disease simulations**: `plots/<case.machine>.png`
-  - Single image with 6 subplots (2x3 grid)
-  - Metrics: Susceptible, Total Infectious, Hospitalized, ICU, Deaths, Recovered
-  - Example: `plots/bay.linux.png`, `plots/ca.perlmutter.png`
+**Single-disease simulations**:
+- Single image with 6 subplots (2x3 grid)
+- Metrics: Susceptible, Total Infectious, Hospitalized, ICU, Deaths, Recovered
+- Example: `plots/bay.linux.png`, `plots/ca.perlmutter.png`
+- Each subplot shows:
+  - Baseline results as a solid black line
+  - Test results as blue points
 
-- **Multi-disease simulations**: One plot per disease
-  - Pattern: `plots/<case.machine>_<disease_name>.png`
-  - Example for ca.2dc1c2 (2 diseases): `plots/ca.2dc1c2.linux_covid1.png`, `plots/ca.2dc1c2.linux_covid2.png`
-  - Disease names are read from `agent.disease_names` in input file
-  - Default names (`default00`, `default01`, ...) used if not specified
+**Multi-disease simulations** (e.g., ca.2dc1c2):
+- Single image with 6 subplots showing all diseases on the same axes
+- Example: `plots/ca.2dc1c2.linux.png`
+- Each disease uses a different color (red, green, orange, etc.)
+- Each subplot shows:
+  - For each disease: baseline (solid line) and test results (markers)
+  - Legend identifies each disease strain
+- Disease names are read from `agent.disease_names` in input file
+- Default names (`default00`, `default01`, ...) used if not specified
 
-Each subplot shows:
-- Baseline results as a solid black line
-- Test results as blue points
+All plots include:
 - Grid and legends for easy interpretation
+- Norm calculations (L1, L2, L∞) displayed in subplot titles or printed to console
 
 **Multi-disease detection**: The plotting system automatically detects multi-disease simulations by:
 1. Parsing the input file for `agent.number_of_diseases`
 2. Reading `agent.disease_names` if specified
 3. Looking for `output_<disease_name>.dat` files instead of `output.dat`
+4. Plotting all diseases on the same axes for direct comparison
 
 ### Norm Calculations
 

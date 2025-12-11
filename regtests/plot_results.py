@@ -235,22 +235,40 @@ class RegtestPlotter:
 
     def create_comparison_plot(
         self,
-        baseline_data: np.ndarray,
-        test_data: np.ndarray,
+        baseline_data_list: List[np.ndarray],
+        test_data_list: List[np.ndarray],
+        disease_names: List[str],
         case_name: str,
         machine: str,
         output_file: Path
     ):
-        """Create a single comparison plot with all metrics as subplots"""
+        """Create a single comparison plot with all metrics as subplots
+
+        For multi-disease cases, all diseases are plotted on the same axes.
+
+        Args:
+            baseline_data_list: List of baseline data arrays (one per disease)
+            test_data_list: List of test data arrays (one per disease)
+            disease_names: List of disease names (empty for single disease)
+            case_name: Test case name
+            machine: Machine name
+            output_file: Output file path
+        """
 
         fig = plt.figure(figsize=self.plot_config['figsize'])
         gs = GridSpec(2, 3, figure=fig, hspace=0.35, wspace=0.3)
 
-        # Extract time
-        baseline_time = baseline_data[:, 0]
-        test_time = test_data[:, 0]
+        # Define colors for multiple diseases (beyond baseline black and test blue)
+        disease_colors = ['red', 'green', 'orange', 'purple', 'brown', 'pink']
 
-        print(f"\n  Metric comparison for {case_name}.{machine}:")
+        num_diseases = len(baseline_data_list)
+        is_multi_disease = num_diseases > 1
+
+        if is_multi_disease:
+            print(f"\n  Metric comparison for {case_name}.{machine} ({num_diseases} diseases):")
+        else:
+            print(f"\n  Metric comparison for {case_name}.{machine}:")
+
         print(f"  {'Metric':<20} {'L1 (abs)':<12} {'L2 (abs)':<12} {'L∞ (abs)':<12} {'L1 (rel)':<12} {'L2 (rel)':<12} {'L∞ (rel)':<12}")
         print(f"  {'-'*20} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12} {'-'*12}")
 
@@ -260,42 +278,89 @@ class RegtestPlotter:
             col = idx % 3
             ax = fig.add_subplot(gs[row, col])
 
-            # Extract metric data
-            baseline_values = self.extract_metric(baseline_data, metric)
-            test_values = self.extract_metric(test_data, metric)
+            # Plot each disease
+            for disease_idx, (baseline_data, test_data) in enumerate(zip(baseline_data_list, test_data_list)):
+                # Extract time
+                baseline_time = baseline_data[:, 0]
+                test_time = test_data[:, 0]
 
-            # Compute norms
-            norms = self.compute_norms(baseline_values, test_values)
+                # Extract metric data
+                baseline_values = self.extract_metric(baseline_data, metric)
+                test_values = self.extract_metric(test_data, metric)
 
-            # Print norms
-            print(f"  {metric['title']:<20} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<12.2e} {norms['l2_rel']:<12.2e} {norms['linf_rel']:<12.2e}")
+                # Compute norms (only print for first disease or single disease)
+                norms = self.compute_norms(baseline_values, test_values)
 
-            # Plot
-            ax.plot(baseline_time, baseline_values, **self.plot_config['baseline_style'])
-            ax.plot(test_time, test_values, **self.plot_config['test_style'])
+                disease_label = f" ({disease_names[disease_idx]})" if is_multi_disease else ""
+                if disease_idx == 0 or is_multi_disease:
+                    print(f"  {metric['title']}{disease_label:<20} {norms['l1_abs']:<12.2e} {norms['l2_abs']:<12.2e} {norms['linf_abs']:<12.2e} {norms['l1_rel']:<12.2e} {norms['l2_rel']:<12.2e} {norms['linf_rel']:<12.2e}")
+
+                # Plot with disease-specific styling
+                if is_multi_disease:
+                    # Multi-disease: use different colors for each disease
+                    disease_name = disease_names[disease_idx]
+                    color = disease_colors[disease_idx % len(disease_colors)]
+
+                    # Baseline: solid line
+                    ax.plot(baseline_time, baseline_values,
+                           color=color, linestyle='-', linewidth=2,
+                           label=f'{disease_name} Baseline')
+
+                    # Test: markers
+                    ax.plot(test_time, test_values,
+                           color=color, marker='o', markersize=3, linestyle='none',
+                           label=f'{disease_name} Current')
+                else:
+                    # Single disease: use standard black/blue styling
+                    ax.plot(baseline_time, baseline_values, **self.plot_config['baseline_style'])
+                    ax.plot(test_time, test_values, **self.plot_config['test_style'])
 
             # Formatting
             ax.set_xlabel('Days', fontsize=10)
             ax.set_ylabel(metric['ylabel'], fontsize=10)
 
-            # Title with norms
-            title = f"{metric['title']}\n"
-            title += f"L1={norms['l1_rel']:.2e}, L2={norms['l2_rel']:.2e}, L∞={norms['linf_rel']:.2e}"
+            # Title (with norms from first disease for multi-disease)
+            if is_multi_disease:
+                title = f"{metric['title']} (all diseases)"
+            else:
+                # Recompute norms for single disease (we're outside the loop)
+                baseline_values = self.extract_metric(baseline_data_list[0], metric)
+                test_values = self.extract_metric(test_data_list[0], metric)
+                norms = self.compute_norms(baseline_values, test_values)
+                title = f"{metric['title']}\n"
+                title += f"L1={norms['l1_rel']:.2e}, L2={norms['l2_rel']:.2e}, L∞={norms['linf_rel']:.2e}"
+
             ax.set_title(title, fontsize=10, fontweight='bold')
             ax.grid(True, **self.plot_config['grid_style'])
-            ax.legend(loc='best', fontsize=9)
+
+            # Legend placement
+            if is_multi_disease:
+                ax.legend(loc='best', fontsize=7, ncol=1)
+            else:
+                ax.legend(loc='best', fontsize=9)
 
             # Use scientific notation for y-axis if values are large
-            if baseline_values.max() > 10000 or test_values.max() > 10000:
+            max_val = max([self.extract_metric(bd, metric).max() for bd in baseline_data_list] +
+                         [self.extract_metric(td, metric).max() for td in test_data_list])
+            if max_val > 10000:
                 ax.ticklabel_format(style='scientific', axis='y', scilimits=(0, 0))
 
         # Overall title
-        fig.suptitle(
-            f"{case_name.upper()} - Comparison ({machine})",
-            fontsize=16,
-            fontweight='bold',
-            y=0.995
-        )
+        if is_multi_disease:
+            title_diseases = ', '.join(disease_names)
+            fig.suptitle(
+                f"{case_name.upper()} - Comparison ({machine})\nDiseases: {title_diseases}",
+                fontsize=16,
+                fontweight='bold',
+                y=0.998
+            )
+        else:
+            fig.suptitle(
+                f"{case_name.upper()} - Comparison ({machine})",
+                fontsize=16,
+                fontweight='bold',
+                y=0.995
+            )
 
         # Save
         plt.savefig(output_file, dpi=self.plot_config['dpi'], bbox_inches='tight')
@@ -347,42 +412,44 @@ class RegtestPlotter:
             if input_file and input_file.exists():
                 num_diseases, disease_names = self.parse_disease_config(input_file)
 
-            # Determine output files to plot
+            # Determine output files to load
             if num_diseases == 1:
                 # Single disease case - use output.dat
-                output_files = [("", "output.dat")]  # (suffix for plot name, filename)
+                output_files = ["output.dat"]
             else:
                 # Multi-disease case - use output_<disease>.dat for each disease
-                output_files = [(f"_{disease}", f"output_{disease}.dat") for disease in disease_names]
+                output_files = [f"output_{disease}.dat" for disease in disease_names]
                 print(f"\nDetected {num_diseases}-disease simulation: {', '.join(disease_names)}")
+
+            print(f"\nGenerating plot for {case_name}.{machine}...")
 
             # Create plot output directory
             self.plot_dir.mkdir(parents=True, exist_ok=True)
 
-            # Generate plots for each disease
-            success_count = 0
+            # Load data for all diseases
+            baseline_data_list = []
+            test_data_list = []
             error_messages = []
 
-            for suffix, output_filename in output_files:
+            for disease_idx, output_filename in enumerate(output_files):
                 # Construct file paths
                 baseline_output = baseline_dir_path / output_filename
                 test_output = test_dir_path / output_filename
 
+                disease_label = f" ({disease_names[disease_idx]})" if num_diseases > 1 else ""
+
                 # Check if files exist
                 if not baseline_output.exists():
-                    error_msg = f"Baseline output not found: {baseline_output}"
-                    print(f"\nWARNING: {error_msg}")
+                    error_msg = f"Baseline output not found{disease_label}: {baseline_output}"
+                    print(f"  WARNING: {error_msg}")
                     error_messages.append(error_msg)
                     continue
 
                 if not test_output.exists():
-                    error_msg = f"Test output not found: {test_output}"
-                    print(f"\nWARNING: {error_msg}")
+                    error_msg = f"Test output not found{disease_label}: {test_output}"
+                    print(f"  WARNING: {error_msg}")
                     error_messages.append(error_msg)
                     continue
-
-                disease_label = suffix.replace("_", " ") if suffix else ""
-                print(f"\nGenerating plot for {case_name}.{machine}{disease_label}...")
 
                 # Load data
                 baseline_data, baseline_error = self.load_output_data(baseline_output)
@@ -407,36 +474,37 @@ class RegtestPlotter:
                     error_messages.append(error_msg)
                     continue
 
-                # Create comparison plot - save directly in plots/ directory
-                output_file = self.plot_dir / f"{test_dirname}{suffix}.png"
-                try:
-                    self.create_comparison_plot(
-                        baseline_data,
-                        test_data,
-                        case_name + disease_label,
-                        machine,
-                        output_file
-                    )
-                    success_count += 1
-                except IndexError as e:
-                    error_msg = f"Data column access error{disease_label}. Output file may have incorrect format or missing columns. {str(e)}"
-                    print(f"  ERROR: {error_msg}")
-                    error_messages.append(error_msg)
-                    continue
-                except Exception as e:
-                    error_msg = f"Plot generation failed{disease_label}: {type(e).__name__}: {str(e)}"
-                    print(f"  ERROR: {error_msg}")
-                    import traceback
-                    traceback.print_exc()
-                    error_messages.append(error_msg)
-                    continue
+                # Add to lists
+                baseline_data_list.append(baseline_data)
+                test_data_list.append(test_data)
 
-            # Return success if at least one plot was generated
-            if success_count > 0:
-                return True, ""
-            else:
-                combined_error = "; ".join(error_messages) if error_messages else "No plots generated"
+            # Check if we have any data to plot
+            if not baseline_data_list or not test_data_list:
+                combined_error = "; ".join(error_messages) if error_messages else "No data available to plot"
                 return False, combined_error
+
+            # Create comparison plot - save directly in plots/ directory
+            output_file = self.plot_dir / f"{test_dirname}.png"
+            try:
+                self.create_comparison_plot(
+                    baseline_data_list,
+                    test_data_list,
+                    disease_names,
+                    case_name,
+                    machine,
+                    output_file
+                )
+                return True, ""
+            except IndexError as e:
+                error_msg = f"Data column access error. Output file may have incorrect format or missing columns. {str(e)}"
+                print(f"  ERROR: {error_msg}")
+                return False, error_msg
+            except Exception as e:
+                error_msg = f"Plot generation failed: {type(e).__name__}: {str(e)}"
+                print(f"  ERROR: {error_msg}")
+                import traceback
+                traceback.print_exc()
+                return False, error_msg
 
         except Exception as e:
             error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
