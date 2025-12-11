@@ -308,8 +308,12 @@ class SweepPlotter:
                 ax.grid(True, alpha=0.3)
                 ax.legend(loc='best', fontsize=8)
 
-                # Set y-axis to start from 0 for better visualization
-                ax.set_ylim(bottom=0)
+                # Use log scale for hospital metrics, linear for others
+                if is_hospital_metric:
+                    ax.set_yscale('log')
+                    ax.set_ylim(bottom=1)
+                else:
+                    ax.set_ylim(bottom=0)
 
                 # Set x-range
                 ax.set_xlim(self.default_config['xrange'])

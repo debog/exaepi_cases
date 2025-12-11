@@ -685,13 +685,17 @@ class SweepOrchestrator:
             print(f"ERROR: Unknown study '{study_name}'")
             return False
 
+        # First parse hospital data from logs
+        print(f"\nParsing hospital data from logs...")
+        self.parse_hospital_data(study_name, case, machine)
+
         # Call plot_sweeps.py
         plot_script = self.root_dir / "plot_sweeps.py"
         if not plot_script.exists():
             print(f"ERROR: Plotting script not found: {plot_script}")
             return False
 
-        print(f"Generating plots for {study_name}/{case}/{machine}...")
+        print(f"\nGenerating plots for {study_name}/{case}/{machine}...")
 
         # Run plotting script
         result = subprocess.run(
