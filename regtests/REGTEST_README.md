@@ -494,9 +494,10 @@ make plot CASES=standard
 
 The plotting system (`plot_results.py`) generates a single PNG file per test case:
 
-- **Comparison plot**: `plots/<case.machine>/comparison.png`
+- **Comparison plot**: `plots/<case.machine>.png`
   - Single image with 6 subplots (2x3 grid)
   - Metrics: Susceptible, Total Infectious, Hospitalized, ICU, Deaths, Recovered
+  - Example: `plots/bay.linux.png`, `plots/ca.perlmutter.png`
 
 Each subplot shows:
 - Baseline results as a solid black line

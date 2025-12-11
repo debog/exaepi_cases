@@ -238,11 +238,10 @@ class RegtestPlotter:
         )
 
         # Save
-        output_file.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(output_file, dpi=self.plot_config['dpi'], bbox_inches='tight')
         plt.close()
 
-        print(f"\n  Created: {output_file.name}")
+        print(f"\n  Created: {output_file}")
 
     def plot_case(
         self,
@@ -296,11 +295,10 @@ class RegtestPlotter:
                 return False, error_msg
 
             # Create plot output directory
-            plot_output_dir = self.plot_dir / test_dirname
-            plot_output_dir.mkdir(parents=True, exist_ok=True)
+            self.plot_dir.mkdir(parents=True, exist_ok=True)
 
-            # Create comparison plot
-            output_file = plot_output_dir / "comparison.png"
+            # Create comparison plot - save directly in plots/ directory
+            output_file = self.plot_dir / f"{test_dirname}.png"
             self.create_comparison_plot(
                 baseline_data,
                 test_data,
