@@ -378,13 +378,21 @@ class SweepPlotter:
             # Remove unused subplot
             fig.delaxes(axes[2, 1])
 
-            # Save figure
-            output_file = output_dir / f"{study_name}_{case}_{machine}_mwprop{int(mwprop*100):02d}.{self.default_config['format']}"
+            # Save figure in both PNG and EPS formats
             plt.tight_layout()
-            plt.savefig(output_file, dpi=self.default_config['dpi'], bbox_inches='tight')
-            plt.close()
+            base_name = f"{study_name}_{case}_{machine}_mwprop{int(mwprop*100):02d}"
 
-            print(f"  Created: {output_file}")
+            # Save PNG
+            output_file_png = output_dir / f"{base_name}.png"
+            plt.savefig(output_file_png, dpi=self.default_config['dpi'], bbox_inches='tight')
+            print(f"  Created: {output_file_png}")
+
+            # Save EPS
+            output_file_eps = output_dir / f"{base_name}.eps"
+            plt.savefig(output_file_eps, format='eps', bbox_inches='tight')
+            print(f"  Created: {output_file_eps}")
+
+            plt.close()
 
         return True
 
@@ -569,13 +577,21 @@ class SweepPlotter:
                     if metric_name in global_limits:
                         ax.set_ylim(global_limits[metric_name])
 
-            # Save figure
-            output_file = output_dir / f"{study_name}_{case}_{machine}_mwprop{int(mwprop*100):02d}.{self.default_config['format']}"
+            # Save figure in both PNG and EPS formats
             plt.tight_layout()
-            plt.savefig(output_file, dpi=self.default_config['dpi'], bbox_inches='tight')
-            plt.close()
+            base_name = f"{study_name}_{case}_{machine}_mwprop{int(mwprop*100):02d}"
 
-            print(f"  Created: {output_file}")
+            # Save PNG
+            output_file_png = output_dir / f"{base_name}.png"
+            plt.savefig(output_file_png, dpi=self.default_config['dpi'], bbox_inches='tight')
+            print(f"  Created: {output_file_png}")
+
+            # Save EPS
+            output_file_eps = output_dir / f"{base_name}.eps"
+            plt.savefig(output_file_eps, format='eps', bbox_inches='tight')
+            print(f"  Created: {output_file_eps}")
+
+            plt.close()
 
         return True
 
