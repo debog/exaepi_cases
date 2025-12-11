@@ -485,8 +485,15 @@ class SweepOrchestrator:
 
         if not run_dirs:
             print(f"No run directories found matching: {pattern}")
-            print("Run './sweeps.py create' first")
-            return False
+            print("Creating run directories automatically...")
+            if not self.create_runs(study_name, case, machine):
+                print("ERROR: Failed to create run directories")
+                return False
+            # Re-scan for directories after creation
+            run_dirs = sorted(study_dir.glob(pattern))
+            if not run_dirs:
+                print("ERROR: No run directories created")
+                return False
 
         # Get executable path and timestamp for version checking
         exec_path = self._find_executable(machine)
