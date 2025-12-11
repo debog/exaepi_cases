@@ -163,7 +163,7 @@ class SweepPlotter:
 
         # Extract transmission rates
         for xmit_type in ['xmitd2d', 'xmitd2p', 'xmitp2d', 'xmitp2p']:
-            match = re.search(rf'{xmit_type}(\d{{3}})', dirname)
+            match = re.search(rf'{xmit_type}(\d{{4}})', dirname)
             if match:
                 params[xmit_type.replace('xmit', 'xmit_hosp_')] = float(match.group(1)) / 1000.0
 
