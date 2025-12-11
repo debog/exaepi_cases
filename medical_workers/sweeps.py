@@ -452,9 +452,18 @@ class SweepOrchestrator:
             print("Run './sweeps.py create' first")
             return False
 
+        # Get executable path and timestamp for version checking
+        exec_path = self._find_executable(machine)
+        if not exec_path:
+            print(f"ERROR: Could not find ExaEpi executable for machine {machine}")
+            return False
+
+        exec_mtime = exec_path.stat().st_mtime
+
         # Count jobs that need to run
         jobs_to_run = []
         skipped = 0
+        outdated = 0
 
         for run_dir in run_dirs:
             # Check if already completed
@@ -467,8 +476,15 @@ class SweepOrchestrator:
                         if lines:
                             last_line = lines[-1]
                             if "finalized" in last_line:
-                                already_done = True
-                                skipped += 1
+                                # Check if output is newer than binary
+                                output_mtime = outfile.stat().st_mtime
+                                if output_mtime > exec_mtime:
+                                    # Output is newer - skip this job
+                                    already_done = True
+                                    skipped += 1
+                                else:
+                                    # Binary is newer - need to re-run
+                                    outdated += 1
                 except Exception:
                     pass
 
@@ -481,13 +497,16 @@ class SweepOrchestrator:
         total_runs = len(run_dirs)
 
         print(f"\nFound {total_runs} run directories")
-        print(f"  Already completed: {skipped}")
+        print(f"  Already completed (up-to-date): {skipped}")
+        if outdated > 0:
+            print(f"  Outdated (binary newer): {outdated}")
         print(f"  To run: {total_jobs}")
+        print(f"\nExaEpi executable: {exec_path}")
         print(f"Batch mode: {batch_mode}")
         print(f"Max parallel jobs: {max_parallel if not batch_mode else 'N/A'}")
 
         if total_jobs == 0:
-            print("\n✓ All jobs already completed")
+            print("\n✓ All jobs already completed and up-to-date")
             return True
 
         # Run jobs
@@ -530,7 +549,9 @@ class SweepOrchestrator:
 
         print(f"\n✓ Completed {completed} jobs")
         if skipped > 0:
-            print(f"  Skipped (already completed): {skipped}")
+            print(f"  Skipped (up-to-date): {skipped}")
+        if outdated > 0:
+            print(f"  Re-ran (outdated): {outdated}")
 
         return True
 
