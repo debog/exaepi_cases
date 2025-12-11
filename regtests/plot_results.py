@@ -29,6 +29,7 @@ Column definitions from ExaEpi src/main.cpp and src/AgentDefinitions.H:
 
 import argparse
 import sys
+import re
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 import numpy as np
@@ -118,6 +119,43 @@ class RegtestPlotter:
                 'combine': 'sum'
             }
         }
+
+    def parse_disease_config(self, input_file: Path) -> Tuple[int, List[str]]:
+        """Parse input file to detect number of diseases and disease names
+
+        Returns:
+            Tuple[int, List[str]]: (number_of_diseases, disease_names)
+        """
+        num_diseases = 1  # Default value
+        disease_names = []
+
+        try:
+            with open(input_file, 'r') as f:
+                content = f.read()
+
+            # Look for agent.number_of_diseases
+            match = re.search(r'agent\.number_of_diseases\s*=\s*(\d+)', content)
+            if match:
+                num_diseases = int(match.group(1))
+
+            # Look for agent.disease_names
+            match = re.search(r'agent\.disease_names\s*=\s*(.+)', content)
+            if match:
+                # Extract disease names from quoted strings
+                names_str = match.group(1)
+                disease_names = re.findall(r'"([^"]+)"', names_str)
+
+            # If disease names not specified, generate default names
+            if num_diseases > 1 and not disease_names:
+                disease_names = [f"default{i:02d}" for i in range(num_diseases)]
+            elif num_diseases == 1 and not disease_names:
+                disease_names = []  # Single disease uses output.dat
+
+            return num_diseases, disease_names
+
+        except Exception as e:
+            print(f"  WARNING: Failed to parse input file {input_file}: {str(e)}")
+            return 1, []  # Default to single disease
 
     def load_output_data(self, filepath: Path) -> Tuple[Optional[np.ndarray], str]:
         """Load output.dat file
@@ -279,68 +317,126 @@ class RegtestPlotter:
         test_dirname = f"{case_name}.{machine}"
 
         try:
-            # Construct directory names
-            baseline_output = self.baseline_dir / test_dirname / "output.dat"
-            test_output = self.test_dir / test_dirname / "output.dat"
+            # Find the input file to detect multi-disease configuration
+            baseline_dir_path = self.baseline_dir / test_dirname
+            test_dir_path = self.test_dir / test_dirname
 
-            # Check if files exist
-            if not baseline_output.exists():
-                error_msg = f"Baseline output not found: {baseline_output}"
-                print(f"\nWARNING: {error_msg}")
-                return False, error_msg
+            # Look for input file in test directory (should be symlinked there)
+            input_file = None
+            for candidate in test_dir_path.glob("inputs*"):
+                if candidate.is_file():
+                    input_file = candidate
+                    break
 
-            if not test_output.exists():
-                error_msg = f"Test output not found: {test_output}"
-                print(f"\nWARNING: {error_msg}")
-                return False, error_msg
+            # If not found in test dir, look in common/
+            if input_file is None:
+                # Try to find from config (need to load test_cases.yaml)
+                import yaml
+                config_file = self.root_dir / "config" / "test_cases.yaml"
+                if config_file.exists():
+                    with open(config_file, 'r') as f:
+                        config = yaml.safe_load(f)
+                    if case_name in config.get('test_cases', {}):
+                        input_filename = config['test_cases'][case_name].get('input_file')
+                        if input_filename:
+                            input_file = self.root_dir / "common" / input_filename
 
-            print(f"\nGenerating plot for {case_name}.{machine}...")
+            # Parse disease configuration
+            num_diseases = 1
+            disease_names = []
+            if input_file and input_file.exists():
+                num_diseases, disease_names = self.parse_disease_config(input_file)
 
-            # Load data
-            baseline_data, baseline_error = self.load_output_data(baseline_output)
-            test_data, test_error = self.load_output_data(test_output)
-
-            if baseline_data is None:
-                error_msg = f"Baseline: {baseline_error}"
-                print(f"  ERROR: {error_msg}")
-                return False, error_msg
-
-            if test_data is None:
-                error_msg = f"Test: {test_error}"
-                print(f"  ERROR: {error_msg}")
-                return False, error_msg
-
-            # Validate data shapes match
-            if baseline_data.shape != test_data.shape:
-                error_msg = f"Data shape mismatch (baseline: {baseline_data.shape[0]} rows × {baseline_data.shape[1]} cols, test: {test_data.shape[0]} rows × {test_data.shape[1]} cols). Tests may have run for different durations or with different outputs."
-                print(f"  ERROR: {error_msg}")
-                return False, error_msg
+            # Determine output files to plot
+            if num_diseases == 1:
+                # Single disease case - use output.dat
+                output_files = [("", "output.dat")]  # (suffix for plot name, filename)
+            else:
+                # Multi-disease case - use output_<disease>.dat for each disease
+                output_files = [(f"_{disease}", f"output_{disease}.dat") for disease in disease_names]
+                print(f"\nDetected {num_diseases}-disease simulation: {', '.join(disease_names)}")
 
             # Create plot output directory
             self.plot_dir.mkdir(parents=True, exist_ok=True)
 
-            # Create comparison plot - save directly in plots/ directory
-            output_file = self.plot_dir / f"{test_dirname}.png"
-            try:
-                self.create_comparison_plot(
-                    baseline_data,
-                    test_data,
-                    case_name,
-                    machine,
-                    output_file
-                )
-            except IndexError as e:
-                error_msg = f"Data column access error. Output file may have incorrect format or missing columns. {str(e)}"
-                print(f"  ERROR: {error_msg}")
-                return False, error_msg
-            except Exception as e:
-                error_msg = f"Plot generation failed: {type(e).__name__}: {str(e)}"
-                print(f"  ERROR: {error_msg}")
-                import traceback
-                traceback.print_exc()
-                return False, error_msg
+            # Generate plots for each disease
+            success_count = 0
+            error_messages = []
 
-            return True, ""
+            for suffix, output_filename in output_files:
+                # Construct file paths
+                baseline_output = baseline_dir_path / output_filename
+                test_output = test_dir_path / output_filename
+
+                # Check if files exist
+                if not baseline_output.exists():
+                    error_msg = f"Baseline output not found: {baseline_output}"
+                    print(f"\nWARNING: {error_msg}")
+                    error_messages.append(error_msg)
+                    continue
+
+                if not test_output.exists():
+                    error_msg = f"Test output not found: {test_output}"
+                    print(f"\nWARNING: {error_msg}")
+                    error_messages.append(error_msg)
+                    continue
+
+                disease_label = suffix.replace("_", " ") if suffix else ""
+                print(f"\nGenerating plot for {case_name}.{machine}{disease_label}...")
+
+                # Load data
+                baseline_data, baseline_error = self.load_output_data(baseline_output)
+                test_data, test_error = self.load_output_data(test_output)
+
+                if baseline_data is None:
+                    error_msg = f"Baseline{disease_label}: {baseline_error}"
+                    print(f"  ERROR: {error_msg}")
+                    error_messages.append(error_msg)
+                    continue
+
+                if test_data is None:
+                    error_msg = f"Test{disease_label}: {test_error}"
+                    print(f"  ERROR: {error_msg}")
+                    error_messages.append(error_msg)
+                    continue
+
+                # Validate data shapes match
+                if baseline_data.shape != test_data.shape:
+                    error_msg = f"Data shape mismatch{disease_label} (baseline: {baseline_data.shape[0]} rows × {baseline_data.shape[1]} cols, test: {test_data.shape[0]} rows × {test_data.shape[1]} cols). Tests may have run for different durations or with different outputs."
+                    print(f"  ERROR: {error_msg}")
+                    error_messages.append(error_msg)
+                    continue
+
+                # Create comparison plot - save directly in plots/ directory
+                output_file = self.plot_dir / f"{test_dirname}{suffix}.png"
+                try:
+                    self.create_comparison_plot(
+                        baseline_data,
+                        test_data,
+                        case_name + disease_label,
+                        machine,
+                        output_file
+                    )
+                    success_count += 1
+                except IndexError as e:
+                    error_msg = f"Data column access error{disease_label}. Output file may have incorrect format or missing columns. {str(e)}"
+                    print(f"  ERROR: {error_msg}")
+                    error_messages.append(error_msg)
+                    continue
+                except Exception as e:
+                    error_msg = f"Plot generation failed{disease_label}: {type(e).__name__}: {str(e)}"
+                    print(f"  ERROR: {error_msg}")
+                    import traceback
+                    traceback.print_exc()
+                    error_messages.append(error_msg)
+                    continue
+
+            # Return success if at least one plot was generated
+            if success_count > 0:
+                return True, ""
+            else:
+                combined_error = "; ".join(error_messages) if error_messages else "No plots generated"
+                return False, combined_error
 
         except Exception as e:
             error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
@@ -372,8 +468,13 @@ class RegtestPlotter:
             if machine and dir_machine != machine:
                 continue
 
-            # Check if output.dat exists
-            if (test_dir / "output.dat").exists():
+            # Check if output.dat exists OR any output_*.dat files exist (multi-disease)
+            has_output = (test_dir / "output.dat").exists()
+            if not has_output:
+                # Check for multi-disease output files
+                has_output = len(list(test_dir.glob("output_*.dat"))) > 0
+
+            if has_output:
                 test_cases.append((case_name, dir_machine))
 
         return test_cases
