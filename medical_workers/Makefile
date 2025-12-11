@@ -4,7 +4,7 @@
 STUDY ?= recovery
 CASE ?= CA
 MACHINE ?= current
-MAX_PARALLEL ?= 4
+MAX_PARALLEL ?= 8
 
 .PHONY: help validate list-studies list-machines create run parse-hospital-data status plot clean
 
@@ -26,7 +26,7 @@ help:
 	@echo "  STUDY        - Study name (recovery, hosp_interactions)"
 	@echo "  CASE         - Case name (CA, Bay)"
 	@echo "  MACHINE      - Machine name (current=auto-detect)"
-	@echo "  MAX_PARALLEL - Max parallel jobs (default: 4)"
+	@echo "  MAX_PARALLEL - Max parallel jobs (default: 8)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make create STUDY=recovery CASE=CA"
