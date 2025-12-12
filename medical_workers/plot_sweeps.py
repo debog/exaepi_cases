@@ -96,26 +96,50 @@ class SweepPlotter:
             return {}
 
     def load_output_data(self, filepath: Path) -> Tuple[Optional[np.ndarray], str]:
-        """Load output.dat file
+        """Load output.dat file or combine multi-disease output files
+
+        For multi-disease cases, loads output_*.dat files and sums compartments.
 
         Returns:
             Tuple[Optional[np.ndarray], str]: (data, error_message)
         """
         try:
-            if not filepath.exists():
-                return None, f"File not found: {filepath}"
+            # Check if it's a directory or file path
+            if filepath.is_dir():
+                run_dir = filepath
+            else:
+                run_dir = filepath.parent
 
-            # Skip header row if present
-            data = np.loadtxt(filepath, skiprows=1)
+            # Try single disease file first
+            single_file = run_dir / "output.dat"
+            if single_file.exists():
+                data = np.loadtxt(single_file, skiprows=1)
+                if data.shape[1] < 18:
+                    return None, f"Insufficient columns (found {data.shape[1]}, need 18)"
+                if data.shape[0] == 0:
+                    return None, "Empty data file"
+                return data, ""
 
-            # Validate minimum column count
-            if data.shape[1] < 18:
-                return None, f"Insufficient columns (found {data.shape[1]}, need 18)"
+            # Try multi-disease files
+            disease_files = sorted(run_dir.glob("output_*.dat"))
+            if not disease_files:
+                return None, f"No output files found in {run_dir}"
 
-            if data.shape[0] == 0:
-                return None, "Empty data file"
+            # Load first disease file to get structure
+            first_data = np.loadtxt(disease_files[0], skiprows=1)
+            if first_data.shape[1] < 18:
+                return None, f"Insufficient columns in {disease_files[0].name}"
 
-            return data, ""
+            # Initialize combined data with first disease
+            combined_data = first_data.copy()
+
+            # Add data from other diseases (sum compartments, but keep time column)
+            for disease_file in disease_files[1:]:
+                disease_data = np.loadtxt(disease_file, skiprows=1)
+                # Sum all columns except time (column 0)
+                combined_data[:, 1:] += disease_data[:, 1:]
+
+            return combined_data, ""
 
         except Exception as e:
             return None, f"Error loading file: {str(e)}"
@@ -183,10 +207,13 @@ class SweepPlotter:
             if not run_dir.is_dir():
                 continue
 
-            # Check if output.dat exists
+            # Check if output.dat exists (single disease) or output_*.dat (multi-disease)
             output_file = run_dir / "output.dat"
             if not output_file.exists():
-                continue
+                # Check for multi-disease output files
+                multi_disease_files = list(run_dir.glob("output_*.dat"))
+                if not multi_disease_files:
+                    continue
 
             # Parse parameters from directory name
             params = self.parse_dirname(run_dir.name, study_name)
