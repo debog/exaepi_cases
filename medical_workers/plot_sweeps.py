@@ -95,10 +95,54 @@ class SweepPlotter:
             print(f"WARNING: Failed to load {filepath}: {str(e)}")
             return {}
 
+    def parse_inputs_file(self, inputs_file: Path) -> Dict[str, any]:
+        """Parse inputs file to determine disease configuration
+
+        Returns:
+            Dict with 'num_diseases' (int) and 'disease_names' (list of str)
+        """
+        num_diseases = 1  # Default
+        disease_names = []
+
+        if not inputs_file.exists():
+            return {'num_diseases': num_diseases, 'disease_names': disease_names}
+
+        try:
+            with open(inputs_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('#') or not line:
+                        continue
+
+                    # Parse number of diseases
+                    if 'agent.number_of_diseases' in line:
+                        parts = line.split('=')
+                        if len(parts) == 2:
+                            num_diseases = int(parts[1].strip())
+
+                    # Parse disease names
+                    elif 'agent.disease_names' in line:
+                        parts = line.split('=', 1)
+                        if len(parts) == 2:
+                            # Extract disease names from quotes
+                            names_str = parts[1].strip()
+                            # Match quoted strings
+                            import re
+                            disease_names = re.findall(r'"([^"]+)"', names_str)
+        except Exception as e:
+            print(f"WARNING: Failed to parse {inputs_file}: {str(e)}")
+
+        # Generate default names if not specified
+        if num_diseases > 1 and not disease_names:
+            disease_names = [f"default{i:02d}" for i in range(num_diseases)]
+
+        return {'num_diseases': num_diseases, 'disease_names': disease_names}
+
     def load_output_data(self, filepath: Path) -> Tuple[Optional[np.ndarray], str]:
         """Load output.dat file or combine multi-disease output files
 
-        For multi-disease cases, loads output_*.dat files and sums compartments.
+        For multi-disease cases, reads inputs file to determine disease names,
+        then loads output_<disease_name>.dat files and sums compartments.
 
         Returns:
             Tuple[Optional[np.ndarray], str]: (data, error_message)
@@ -110,9 +154,18 @@ class SweepPlotter:
             else:
                 run_dir = filepath.parent
 
-            # Try single disease file first
-            single_file = run_dir / "output.dat"
-            if single_file.exists():
+            # Find and parse inputs file to determine disease configuration
+            inputs_files = list(run_dir.glob("inputs.*"))
+            disease_config = {'num_diseases': 1, 'disease_names': []}
+            if inputs_files:
+                disease_config = self.parse_inputs_file(inputs_files[0])
+
+            # Single disease case
+            if disease_config['num_diseases'] == 1:
+                single_file = run_dir / "output.dat"
+                if not single_file.exists():
+                    return None, f"Output file not found: {single_file}"
+
                 data = np.loadtxt(single_file, skiprows=1)
                 if data.shape[1] < 18:
                     return None, f"Insufficient columns (found {data.shape[1]}, need 18)"
@@ -120,10 +173,16 @@ class SweepPlotter:
                     return None, "Empty data file"
                 return data, ""
 
-            # Try multi-disease files
-            disease_files = sorted(run_dir.glob("output_*.dat"))
+            # Multi-disease case - load files based on disease names
+            disease_names = disease_config['disease_names']
+            disease_files = []
+            for disease_name in disease_names:
+                disease_file = run_dir / f"output_{disease_name}.dat"
+                if disease_file.exists():
+                    disease_files.append(disease_file)
+
             if not disease_files:
-                return None, f"No output files found in {run_dir}"
+                return None, f"No multi-disease output files found for diseases: {disease_names}"
 
             # Load first disease file to get structure
             first_data = np.loadtxt(disease_files[0], skiprows=1)
@@ -207,13 +266,29 @@ class SweepPlotter:
             if not run_dir.is_dir():
                 continue
 
-            # Check if output.dat exists (single disease) or output_*.dat (multi-disease)
-            output_file = run_dir / "output.dat"
-            if not output_file.exists():
-                # Check for multi-disease output files
-                multi_disease_files = list(run_dir.glob("output_*.dat"))
-                if not multi_disease_files:
-                    continue
+            # Parse inputs file to determine disease configuration
+            inputs_files = list(run_dir.glob("inputs.*"))
+            disease_config = {'num_diseases': 1, 'disease_names': []}
+            if inputs_files:
+                disease_config = self.parse_inputs_file(inputs_files[0])
+
+            # Check for appropriate output files based on disease configuration
+            has_output = False
+
+            if disease_config['num_diseases'] == 1:
+                # Single disease - check for output.dat
+                if (run_dir / "output.dat").exists():
+                    has_output = True
+            else:
+                # Multi-disease - check for output_<disease_name>.dat files
+                disease_names = disease_config['disease_names']
+                for disease_name in disease_names:
+                    if (run_dir / f"output_{disease_name}.dat").exists():
+                        has_output = True
+                        break
+
+            if not has_output:
+                continue
 
             # Parse parameters from directory name
             params = self.parse_dirname(run_dir.name, study_name)
