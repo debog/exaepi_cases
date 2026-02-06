@@ -22,9 +22,6 @@ agent.random_travel_prob = 0.0001
 ## Air travel (disabled)
 agent.air_travel_int = -1
 
-## Restart
-agent.restart = ""
-
 ## Shelter-in-place
 agent.shelter_start = -1
 agent.shelter_length = 0
