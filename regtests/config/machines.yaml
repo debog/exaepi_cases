@@ -76,10 +76,13 @@ machines:
     batch_mode: false
     mpi_launcher: auto  # Will try mpirun, mpiexec in order
     nodes: 1
-    tasks: 4  # Default to 4 MPI ranks, can be overridden
+    tasks: 4  # Default to 4 MPI ranks
     run_script_template: run.linux.sh.j2
     env_setup:
       OMP_NUM_THREADS: 1
+    # Default to quick tests (bay, ma) on Linux workstations
+    # Other tests (ca, nm) require more resources/time
+    default_cases: quick
     # Optional: specify MPI implementation if needed
     # mpi_impl: mpich  # or openmpi
     # Optional: additional MPI flags

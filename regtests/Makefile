@@ -2,11 +2,16 @@
 # Convenience wrapper around regtest.py
 
 # Default variables
-MACHINE ?= current
-CASES ?= standard
+# MACHINE: auto-detected (falls back to 'linux' on standard Linux PCs)
+# CASES: uses machine-specific defaults (linux defaults to 'quick' = bay, ma)
+MACHINE ?=
+CASES ?=
 PYTHON ?= python3
 
-# Detect machine if not specified
+# Build command line arguments conditionally
+MACHINE_ARG = $(if $(MACHINE),--machine $(MACHINE),)
+CASES_ARG = $(if $(CASES),--cases $(CASES),)
+
 .PHONY: help
 help:
 	@echo "ExaEpi Regression Test Makefile"
@@ -23,15 +28,23 @@ help:
 	@echo "  make list-machines                                  - List available machines"
 	@echo "  make validate                                       - Validate environment setup"
 	@echo ""
+	@echo "Machines:"
+	@echo "  HPC systems (auto-detected): perlmutter, dane, matrix, tuolumne"
+	@echo "  Linux PC (auto-fallback):    linux (4 MPI ranks, no GPU)"
+	@echo ""
+	@echo "  On Linux PCs, CASES defaults to 'quick' (bay, ma tests only)."
+	@echo "  Override with CASES=standard to run all tests."
+	@echo ""
 	@echo "Examples:"
+	@echo "  make baseline                          # Auto-detect machine, use defaults"
 	@echo "  make baseline CASES=ca,bay MACHINE=perlmutter"
-	@echo "  make test CASES=all"
+	@echo "  make test CASES=standard               # Run all standard tests"
 	@echo "  make compare"
 	@echo ""
 	@echo "Common test case groups:"
 	@echo "  standard    - ca, bay, ma, nm"
 	@echo "  all_ca      - All California variants"
-	@echo "  quick       - bay, ma"
+	@echo "  quick       - bay, ma (default on linux)"
 	@echo "  full        - All test cases"
 	@echo ""
 
@@ -49,39 +62,39 @@ list-machines:
 
 .PHONY: create-baseline
 create-baseline:
-	@$(PYTHON) regtest.py create-baseline --cases $(CASES) --machine $(MACHINE)
+	@$(PYTHON) regtest.py create-baseline $(CASES_ARG) $(MACHINE_ARG)
 
 .PHONY: run-baseline
 run-baseline:
-	@$(PYTHON) regtest.py run-baseline --cases $(CASES) --machine $(MACHINE)
+	@$(PYTHON) regtest.py run-baseline $(CASES_ARG) $(MACHINE_ARG)
 
 .PHONY: baseline
 baseline: create-baseline run-baseline
 	@echo ""
 	@echo "Baseline tests created and launched."
-	@echo "Monitor job status with 'squeue' or check baselines/ directory for logs."
+	@echo "Check baselines/ directory for output logs (out.*.log, run.log)."
 
 .PHONY: create-test
 create-test:
-	@$(PYTHON) regtest.py create-test --cases $(CASES) --machine $(MACHINE)
+	@$(PYTHON) regtest.py create-test $(CASES_ARG) $(MACHINE_ARG)
 
 .PHONY: run-test
 run-test:
-	@$(PYTHON) regtest.py run-test --cases $(CASES) --machine $(MACHINE)
+	@$(PYTHON) regtest.py run-test $(CASES_ARG) $(MACHINE_ARG)
 
 .PHONY: test
 test: create-test run-test
 	@echo ""
 	@echo "Tests created and launched."
-	@echo "Monitor job status with 'squeue' or check tests/ directory for logs."
+	@echo "Check tests/ directory for output logs (out.*.log, run.log)."
 
 .PHONY: compare
 compare:
-	@$(PYTHON) regtest.py compare --machine $(MACHINE)
+	@$(PYTHON) regtest.py compare $(MACHINE_ARG)
 
 .PHONY: plot
 plot:
-	@$(PYTHON) regtest.py plot --cases $(CASES) --machine $(MACHINE)
+	@$(PYTHON) regtest.py plot $(CASES_ARG) $(MACHINE_ARG)
 
 .PHONY: clean
 clean:

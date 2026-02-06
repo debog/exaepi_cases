@@ -48,12 +48,19 @@ class RegtestOrchestrator:
 
     def _detect_machine(self) -> Optional[str]:
         """Auto-detect which machine we're running on"""
+        # First, check for HPC systems with specific env vars
         for machine, config in self.machines['machines'].items():
             env_var = config.get('env_var')
             if env_var and env_var in os.environ:
                 env_value = os.environ[env_var]
                 if env_value == machine or machine in env_value.lower():
                     return machine
+
+        # Fall back to 'linux' for generic Linux workstations/PCs
+        # This enables running tests on standard Linux systems with MPI
+        if 'linux' in self.machines['machines']:
+            return 'linux'
+
         return None
 
     def _find_build_dir(self, machine: str = None) -> Optional[Path]:
@@ -968,8 +975,21 @@ Examples:
         print("\nPlease fix environment issues before proceeding.")
         return 1
 
-    # Parse cases
-    cases = args.cases.split(',') if args.cases else ['all']
+    # Determine effective machine for getting default cases
+    effective_machine = machine if machine else orch.current_machine
+
+    # Parse cases, using machine-specific defaults if not specified
+    if args.cases:
+        cases = args.cases.split(',')
+    else:
+        # Check for machine-specific default_cases
+        default_cases = 'all'
+        if effective_machine and effective_machine in orch.machines['machines']:
+            machine_config = orch.machines['machines'][effective_machine]
+            default_cases = machine_config.get('default_cases', 'all')
+            if default_cases != 'all':
+                print(f"Using default test cases for {effective_machine}: {default_cases}")
+        cases = [default_cases]
 
     if args.action == 'create-baseline':
         orch.create_baselines(cases, machine)
