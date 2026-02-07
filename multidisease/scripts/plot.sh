@@ -285,7 +285,7 @@ create_plotting_script() {
 ExaEpi Output Plotter
 
 Reads output.dat or output_<disease>.dat files and creates plots of:
-- New infections over time
+- Total infections and infection states over time
 - Cumulative deaths over time
 - Hospitalizations (total hospital and ICU) over time
 """
@@ -297,15 +297,37 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-# Column indices in output.dat based on IO.cpp
-# Day, Su, PS/PI, S/PI/NH, S/PI/H, PS/I, S/I/NH, S/I/H, A/PI, A/I, H/NI, H/I, ICU, V, R, D, NewI, NewS, NewH, NewA, NewP
-COL_DAY = 0
-COL_H_NI = 10     # Hospital/Not in ICU
-COL_H_I = 11      # Hospital/In ICU
-COL_ICU = 12      # ICU
-COL_D = 15        # Deaths (cumulative)
-COL_NEWI = 16     # New Infections
-COL_NEWH = 18     # New Hospitalizations
+# Column indices in output.dat based on main.cpp line 192-194
+# Headers: Day, Su, PS/PI, S/PI/NH, S/PI/H, PS/I, S/I/NH, S/I/H, A/PI, A/I, H/NI, H/I, ICU, V, R, D, NewI, NewS, NewH, NewA, NewP
+COL_DAY = 0           # Day
+COL_SU = 1            # Susceptible
+COL_PS_PI = 2         # Presymptomatic/Pre-Infectious
+COL_S_PI_NH = 3       # Symptomatic/Pre-Infectious/Not Hospitalized
+COL_S_PI_H = 4        # Symptomatic/Pre-Infectious/Hospitalized
+COL_PS_I = 5          # Presymptomatic/Infectious
+COL_S_I_NH = 6        # Symptomatic/Infectious/Not Hospitalized
+COL_S_I_H = 7         # Symptomatic/Infectious/Hospitalized
+COL_A_PI = 8          # Asymptomatic/Pre-Infectious
+COL_A_I = 9           # Asymptomatic/Infectious
+COL_H_NI = 10         # Hospital/Not in ICU
+COL_H_I = 11          # Hospital/In ICU
+COL_ICU = 12          # ICU
+COL_V = 13            # Vaccinated
+COL_R = 14            # Recovered
+COL_D = 15            # Deaths (cumulative)
+COL_NEWI = 16         # New Infections
+COL_NEWS = 17         # New Symptomatic
+COL_NEWH = 18         # New Hospitalizations
+COL_NEWA = 19         # New Asymptomatic
+COL_NEWP = 20         # New Presymptomatic
+
+# Primary colors for plotting (prioritize these)
+COLOR_RED = '#D62728'      # Red
+COLOR_BLUE = '#1F77B4'     # Blue
+COLOR_GREEN = '#2CA02C'    # Green
+COLOR_ORANGE = '#FF7F0E'   # Orange
+COLOR_PURPLE = '#9467BD'   # Purple
+COLOR_BROWN = '#8C564B'    # Brown
 
 def read_output_file(filename):
     """Read ExaEpi output file, skipping header"""
@@ -317,23 +339,46 @@ def read_output_file(filename):
         return None
 
 def create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name=None):
-    """Create plot of new infections over time"""
+    """Create plot of total infections and infection states over time"""
     fig, ax = plt.subplots(figsize=(10, 6))
 
     days = data[:, COL_DAY]
-    new_infections = data[:, COL_NEWI]
 
-    ax.plot(days, new_infections, 'b-', linewidth=2, label='New Infections')
+    # Calculate infection states
+    # Total infected = sum of all infected compartments
+    total_infected = (data[:, COL_PS_PI] + data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] +
+                     data[:, COL_PS_I] + data[:, COL_S_I_NH] + data[:, COL_S_I_H] +
+                     data[:, COL_A_PI] + data[:, COL_A_I])
+
+    # Exposed (pre-infectious)
+    exposed = data[:, COL_PS_PI] + data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] + data[:, COL_A_PI]
+
+    # Presymptomatic (both pre-infectious and infectious)
+    presymptomatic = data[:, COL_PS_PI] + data[:, COL_PS_I]
+
+    # Asymptomatic (both pre-infectious and infectious)
+    asymptomatic = data[:, COL_A_PI] + data[:, COL_A_I]
+
+    # Symptomatic (both pre-infectious and infectious)
+    symptomatic = data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] + data[:, COL_S_I_NH] + data[:, COL_S_I_H]
+
+    # Plot with primary colors, total infections thicker
+    ax.plot(days, total_infected, color=COLOR_BLUE, linewidth=2.5, label='Total Infected')
+    ax.plot(days, exposed, color=COLOR_ORANGE, linewidth=1.2, label='Exposed', linestyle='--')
+    ax.plot(days, presymptomatic, color=COLOR_GREEN, linewidth=1.2, label='Presymptomatic')
+    ax.plot(days, asymptomatic, color=COLOR_PURPLE, linewidth=1.2, label='Asymptomatic')
+    ax.plot(days, symptomatic, color=COLOR_RED, linewidth=1.2, label='Symptomatic')
+
     ax.set_xlabel('Day', fontsize=12)
-    ax.set_ylabel('Number of New Infections', fontsize=12)
+    ax.set_ylabel('Number of Infected Individuals', fontsize=12)
 
-    title = 'New Infections Over Time'
+    title = 'Infections Over Time'
     if disease_name:
         title += f' ({disease_name})'
     ax.set_title(title, fontsize=14, fontweight='bold')
 
     ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10, loc='best')
 
     plt.tight_layout()
 
@@ -362,9 +407,10 @@ def create_deaths_plot(data, case_name, platform, output_format, plots_dir, dise
     days = data[:, COL_DAY]
     deaths = data[:, COL_D]
 
-    ax.plot(days, deaths, 'r-', linewidth=2, label='Cumulative Deaths')
+    # Use primary red color, no legend since variable is in y-axis label
+    ax.plot(days, deaths, color=COLOR_RED, linewidth=2.5)
     ax.set_xlabel('Day', fontsize=12)
-    ax.set_ylabel('Cumulative Number of Deaths', fontsize=12)
+    ax.set_ylabel('Cumulative Deaths', fontsize=12)
 
     title = 'Cumulative Deaths Over Time'
     if disease_name:
@@ -372,7 +418,7 @@ def create_deaths_plot(data, case_name, platform, output_format, plots_dir, dise
     ax.set_title(title, fontsize=14, fontweight='bold')
 
     ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
+    # No legend - only one variable and it's clear from y-axis
 
     plt.tight_layout()
 
@@ -403,9 +449,10 @@ def create_hospitalizations_plot(data, case_name, platform, output_format, plots
     icu = data[:, COL_ICU]
     total_hosp = data[:, COL_H_NI] + data[:, COL_H_I]
 
-    ax.plot(days, new_hosp, 'g-', linewidth=2, label='New Hospital Admissions')
-    ax.plot(days, total_hosp, 'm-', linewidth=2, label='Total Hospitalized')
-    ax.plot(days, icu, 'orange', linewidth=2, label='ICU Patients')
+    # Use primary colors
+    ax.plot(days, total_hosp, color=COLOR_BLUE, linewidth=2.5, label='Total Hospitalized')
+    ax.plot(days, new_hosp, color=COLOR_GREEN, linewidth=2, label='New Admissions')
+    ax.plot(days, icu, color=COLOR_RED, linewidth=2, label='ICU Patients')
 
     ax.set_xlabel('Day', fontsize=12)
     ax.set_ylabel('Number of Patients', fontsize=12)
@@ -416,7 +463,7 @@ def create_hospitalizations_plot(data, case_name, platform, output_format, plots
     ax.set_title(title, fontsize=14, fontweight='bold')
 
     ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10, loc='best')
 
     plt.tight_layout()
 
