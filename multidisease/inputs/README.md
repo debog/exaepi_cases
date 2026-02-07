@@ -59,6 +59,42 @@ severity profile and age distribution of outcomes.
 | `CHR` (65+) | 1.0 | 0.15 | COVID far more severe in elderly |
 | `hospitalization_days` | 3 3 3 3 8 7 | 2 2 3 3 5 5 | Flu hospital stays shorter [F6] |
 
+## Disease Coupling Matrices
+
+The multi-disease input files use coimmunity and cosusceptibility matrices to model
+cross-disease interactions. Values are derived from published literature.
+
+### Coimmunity (protection from prior infection with one disease against another)
+
+|  | Cov19S1 | Cov19S2 | FluS1 |
+|---|---|---|---|
+| **Cov19S1** | 1.0 | 0.85 | 0.0 |
+| **Cov19S2** | 0.85 | 1.0 | 0.0 |
+| **FluS1** | 0.0 | 0.0 | 1.0 |
+
+- **COVID S1-S2 (0.85)**: Prior wild-type infection provides 85.4% (95% CI: 80.0-89.3%)
+  protection against Delta reinfection [M1]. Neutralization titers are reduced 3-5 fold [M2],
+  but clinical protection against severe disease remains ~90% at 40 weeks [M3].
+- **COVID-Flu (0.0)**: Different virus families; no cross-immunity.
+
+### Cosusceptibility (change in susceptibility during active co-infection)
+
+|  | Cov19S1 | Cov19S2 | FluS1 |
+|---|---|---|---|
+| **Cov19S1** | 1.0 | 1.0 | 1.5 |
+| **Cov19S2** | 1.0 | 1.0 | 1.5 |
+| **FluS1** | 1.5 | 1.5 | 1.0 |
+
+- **COVID S1-S2 (1.0)**: No clear evidence for enhanced susceptibility to one COVID
+  variant during active infection with another. Set to neutral.
+- **COVID-Flu (1.5)**: Meta-analyses show COVID+flu co-infection significantly increases
+  ICU admission (OR = 2.09, 95% CI: 1.64-2.68) and mechanical ventilation
+  (OR = 2.31, 95% CI: 1.10-4.85) [M4]. For influenza A specifically, ventilation
+  OR = 2.73 (1.46-5.10) [M5]. Viral interference through IFN response partially
+  suppresses co-infection, but concurrent infection lowers the IFN response compared
+  to single infection [M6]. The value of 1.5 is a moderate estimate reflecting the
+  net effect of these competing mechanisms.
+
 ---
 
 ## COVID-19 References
@@ -84,3 +120,12 @@ severity profile and age distribution of outcomes.
 - [F8] Koh YS et al. (2023). Inference of age-dependent case-fatality ratios for seasonal influenza virus subtypes A(H3N2) and A(H1N1)pdm09 and B lineages. *Influenza Other Respir Viruses*. [PMC10279999](https://pmc.ncbi.nlm.nih.gov/articles/PMC10279999/)
 - [F9] Writing Committee of the WHO Consultation on Clinical Aspects of Pandemic (H1N1) 2009 Influenza (2010). Clinical aspects of pandemic 2009 influenza A (H1N1) virus infection. *NEJM* 362:1708-1719. [doi:10.1056/NEJMra1000449](https://doi.org/10.1056/NEJMra1000449)
 - [F10] CDC (2019). 2009 H1N1 Pandemic summary. [CDC](https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-h1n1-pandemic.html)
+
+## Disease Coupling References
+
+- [M1] Goldberg Y et al. (2021). Duration of SARS-CoV-2 natural immunity and protection against the Delta variant: a retrospective cohort study. *JAMA Intern Med*. [PMC8690283](https://pmc.ncbi.nlm.nih.gov/articles/PMC8690283/)
+- [M2] Planas D et al. (2021). Reduced sensitivity of SARS-CoV-2 variant Delta to antibody neutralization. *Nature*. [doi:10.1038/s41586-021-03777-9](https://doi.org/10.1038/s41586-021-03777-9)
+- [M3] Bobrovitz N et al. (2023). Past SARS-CoV-2 infection protection against re-infection: a systematic review and meta-analysis. *Lancet*. [doi:10.1016/S0140-6736(22)02465-5](https://doi.org/10.1016/S0140-6736(22)02465-5)
+- [M4] Zheng J et al. (2022). The role of respiratory co-infection with influenza or RSV in the clinical severity of COVID-19 patients: a systematic review and meta-analysis. *J Glob Health*. [doi:10.7189/jogh.12.05040](https://doi.org/10.7189/jogh.12.05040)
+- [M5] Gao YD et al. (2023). Prevalence and associated outcomes of coinfection between SARS-CoV-2 and influenza: a systematic review and meta-analysis. *Int J Infect Dis*. [doi:10.1016/j.ijid.2023.08.009](https://doi.org/10.1016/j.ijid.2023.08.009)
+- [M6] Dee K et al. (2024). Viral interference between SARS-CoV-2 and influenza A viruses. *PLoS Pathog*. [doi:10.1371/journal.ppat.1012017](https://doi.org/10.1371/journal.ppat.1012017)

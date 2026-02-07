@@ -1,0 +1,174 @@
+## 3-disease case: COVID-19 wild-type (Cov19S1) + COVID-19 Delta (Cov19S2)
+##                  + Influenza A/H3N2 (FluS1)
+##
+## disease.* sets Cov19S1 (wild-type) as the default for all diseases.
+## disease_Cov19S2.* overrides parameters that differ for Delta.
+## disease_FluS1.* overrides all parameters for influenza.
+##
+## Coupling matrix references:
+##   [M1] Goldberg et al. (2021), JAMA Intern Med, PMC8690283
+##        - Prior infection protection against Delta reinfection: 85.4% (95% CI: 80.0-89.3)
+##   [M2] Planas et al. (2021), Nature, doi:10.1038/s41586-021-03777-9
+##        - Delta neutralization by convalescent sera reduced 3-5 fold vs wild-type
+##   [M3] Bobrovitz et al. (2023), Lancet, doi:10.1016/S0140-6736(22)02465-5
+##        - Protection against severe disease: 90.2% for ancestral/alpha/delta at 40 weeks
+##   [M4] Zheng et al. (2022), J Glob Health, doi:10.7189/jogh.12.05040
+##        - COVID+flu co-infection: ICU OR=2.09 (1.64-2.68), ventilation OR=2.31 (1.10-4.85)
+##   [M5] Gao et al. (2023), Int J Infect Dis, doi:10.1016/j.ijid.2023.08.009
+##        - COVID+flu A co-infection: ICU OR=2.20 (1.68-2.87), ventilation OR=2.73 (1.46-5.10)
+##   [M6] Dee et al. (2024), PLoS Pathog, doi:10.1371/journal.ppat.1012017
+##        - Influenza A induces IFN response that suppresses SARS-CoV-2 replication;
+##          concurrent infection lowers IFN response vs single infection
+
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "CA.dat"
+agent.workerflow_filename = "CA-wf.bin"
+
+## Simulation control
+agent.nsteps = 70
+agent.max_box_size = 16
+agent.fast = false
+
+## Output control
+agent.plot_int = 10
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output_Cov19S1.dat" "output_Cov19S2.dat" "output_FluS1.dat"
+
+## Random travel
+agent.random_travel_int = 24
+agent.random_travel_prob = 0.0001
+
+## Air travel (disabled)
+agent.air_travel_int = -1
+
+## Shelter-in-place
+agent.shelter_start = -1
+agent.shelter_length = 0
+agent.shelter_compliance = 0.95
+
+## Social structure
+agent.nborhood_size = 500
+agent.workgroup_size = 20
+agent.student_teacher_ratio = 0 15 15 15 15 15
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
+agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
+agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+
+## Multi-disease setup
+agent.number_of_diseases = 3
+agent.disease_names = "Cov19S1" "Cov19S2" "FluS1"
+
+## Disease coupling (3x3 matrices, row-major; Cov19S1, Cov19S2, FluS1)
+## Coimmunity: COVID variants share strong cross-immunity (0.85) based on
+## ~85% protection against Delta reinfection after wild-type infection [M1,M2,M3].
+## COVID and influenza are different virus families with no cross-immunity (0.0).
+disease_coupling.coimmunity_matrix = \
+    1.0   0.85  0.0 \
+    0.85  1.0   0.0 \
+    0.0   0.0   1.0
+## Cosusceptibility: COVID variant co-infection has no clear evidence for
+## enhanced susceptibility (1.0). COVID-flu co-infection significantly worsens
+## outcomes (ICU OR ~2.1, ventilation OR ~2.3) [M4,M5]; using 1.5 as moderate
+## estimate reflecting net effect of enhancement vs viral interference [M6].
+disease_coupling.cosusceptibility_matrix = \
+    1.0  1.0  1.5 \
+    1.0  1.0  1.5 \
+    1.5  1.5  1.0
+
+## ============================================================
+## Default disease parameters (Cov19S1: wild-type COVID-19)
+## ============================================================
+
+## Initial infection
+disease.initial_case_type = "random"
+disease.num_initial_cases = 30
+
+## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.p_trans = 0.20
+disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
+disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
+disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
+disease.xmit_hh_child = 0.6 0.6 0.3 0.3 0.3 0.3
+disease.xmit_nc_adult = 0.0528 0.0528 0.066 0.066 0.066 0.066
+disease.xmit_nc_child = 0.1 0.1 0.0528 0.0528 0.0528 0.0528
+disease.xmit_work = 0.0575
+
+## School transmission (by school type: none, college, high, middle, elementary, daycare)
+disease.xmit_school = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_a2c = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_c2a = 0 0.0315 0.0315 0.0375 0.0435 0.15
+
+## Disease characteristics
+disease.p_asymp = 0.30
+disease.asymp_relative_inf = 0.7
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+
+## Disease period distributions (gamma distribution: alpha, beta)
+disease.latent_length_alpha = 5.2
+disease.latent_length_beta = 0.75
+disease.infectious_length_alpha = 26.2
+disease.infectious_length_beta = 0.23
+disease.incubation_length_alpha = 7.5
+disease.incubation_length_beta = 0.65
+disease.immune_length_alpha = 540.0
+disease.immune_length_beta = 0.33
+
+## Hospitalization delay distribution (gamma distribution: alpha, beta)
+disease.hospital_delay_length_alpha = 1.0
+disease.hospital_delay_length_beta = 1.0
+
+## Hospital stay model
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 3 3 3 3 8 7
+
+## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.CHR = 0.0104 0.0104 0.070 0.28 0.28 1.0
+disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
+disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
+disease.hospCVF = 0 0 0 0 0 0
+disease.icuCVF = 0 0 0 0 0 0.26
+disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
+
+## ============================================================
+## Cov19S2 overrides (Delta variant - only parameters that differ)
+## ============================================================
+disease_Cov19S2.p_trans = 0.35
+disease_Cov19S2.p_asymp = 0.15
+disease_Cov19S2.latent_length_alpha = 4.7
+disease_Cov19S2.infectious_length_beta = 0.27
+disease_Cov19S2.incubation_length_alpha = 4.43
+disease_Cov19S2.incubation_length_beta = 1.01
+disease_Cov19S2.CHR = 0.0201 0.0201 0.135 0.54 0.54 1.0
+disease_Cov19S2.icuCVF = 0 0 0 0 0 0.30
+disease_Cov19S2.ventCVF = 0.25 0.25 0.25 0.55 0.55 1.0
+
+## ============================================================
+## FluS1 overrides (Influenza A/H3N2 - all parameters differ)
+## ============================================================
+disease_FluS1.initial_case_type = "random"
+disease_FluS1.num_initial_cases = 30
+disease_FluS1.p_trans = 0.15
+disease_FluS1.p_asymp = 0.16
+disease_FluS1.asymp_relative_inf = 0.5
+disease_FluS1.latent_length_alpha = 3.0
+disease_FluS1.latent_length_beta = 0.5
+disease_FluS1.infectious_length_alpha = 20.0
+disease_FluS1.infectious_length_beta = 0.225
+disease_FluS1.incubation_length_alpha = 4.0
+disease_FluS1.incubation_length_beta = 0.5
+disease_FluS1.immune_length_alpha = 180.0
+disease_FluS1.immune_length_beta = 1.5
+disease_FluS1.hospitalization_days = 2 2 3 3 5 5
+disease_FluS1.CHR = 0.009 0.004 0.006 0.008 0.023 0.15
+disease_FluS1.CIC = 0.18 0.22 0.16 0.16 0.21 0.15
+disease_FluS1.CVE = 0.28 0.25 0.50 0.50 0.52 0.40
+disease_FluS1.hospCVF = 0 0 0 0 0 0
+disease_FluS1.icuCVF = 0.02 0.02 0.03 0.03 0.05 0.10
+disease_FluS1.ventCVF = 0.05 0.10 0.15 0.25 0.30 0.50
