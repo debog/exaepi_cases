@@ -57,6 +57,7 @@ OVERRIDE_MAX_STEP=""
 OVERRIDE_STOP_TIME=""
 DRY_RUN=false
 VERBOSE=false
+RUN_ALL=false
 
 # Platform-specific defaults (from machines.yaml)
 declare -A PLATFORM_DEFAULTS_TASKS
@@ -151,6 +152,7 @@ Usage:
 
 Options:
   -c, --case=NAME       Input case name (default: ${DEFAULT_CASE})
+  -a, --all             Run or submit jobs for all available cases
   -m, --mode=MODE       Execution mode: interactive (default) or batch
   -n, --ntasks=N        Override number of MPI tasks
   -N, --nnodes=N        Override number of nodes
@@ -179,16 +181,34 @@ Examples:
   # Run in batch mode with custom resources
   ./run_exaepi.sh --case=CA_01D_Cov19S1 --mode=batch --nnodes=2 --ntasks=8
 
-  # Override simulation parameters
-  ./run_exaepi.sh --case=bay_01D_Cov19S1 --max-step=100
+  # Submit batch jobs for all cases
+  ./run_exaepi.sh --all --mode=batch
 
-  # Dry run to see what would be executed
-  ./run_exaepi.sh --case=CA_01D_Cov19S1 --dry-run
+  # Override simulation parameters for all cases
+  ./run_exaepi.sh --all --max-step=100 --mode=batch
+
+  # Dry run to see what would be executed for all cases
+  ./run_exaepi.sh --all --dry-run
 
   # List available cases
   ./run_exaepi.sh --list-cases
 
 EOF
+}
+
+get_all_cases() {
+    # Return list of all available case names
+    if [[ ! -d "${INPUTS_DIR}" ]]; then
+        return 1
+    fi
+
+    for input_file in "${INPUTS_DIR}"/inputs_*; do
+        if [[ -f "$input_file" ]]; then
+            local basename=$(basename "$input_file")
+            local case_name="${basename#inputs_}"
+            echo "$case_name"
+        fi
+    done
 }
 
 list_cases() {
@@ -858,6 +878,10 @@ parse_args() {
                 CASE_NAME="${1#*=}"
                 shift
                 ;;
+            -a|--all)
+                RUN_ALL=true
+                shift
+                ;;
             -m|--mode)
                 MODE="$2"
                 shift 2
@@ -935,11 +959,134 @@ parse_args() {
 # Main execution
 #------------------------------------------------------------------------------
 
+process_single_case() {
+    local case_name="$1"
+    local platform="$2"
+    local agent_exe="$3"
+    local mode="$4"
+    local dry_run="$5"
+
+    # Find input file
+    print_verbose "Looking for input file for case: ${case_name}"
+    local input_file=$(find_input_file "${case_name}")
+    if [[ $? -ne 0 ]]; then
+        print_error "Input file not found for case: ${case_name}"
+        return 1
+    fi
+    print_success "Found input file: ${input_file}"
+
+    # Get platform defaults, with case-specific overrides
+    local case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
+    local ntasks nnodes queue walltime
+
+    if [[ -z "$OVERRIDE_NTASKS" ]]; then
+        if [[ -n "$case_tasks" ]]; then
+            ntasks="$case_tasks"
+        else
+            ntasks="${PLATFORM_DEFAULTS_TASKS[$platform]:-4}"
+        fi
+    else
+        ntasks="$OVERRIDE_NTASKS"
+    fi
+
+    nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
+    queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
+    walltime="${OVERRIDE_WALLTIME:-${PLATFORM_DEFAULTS_WALLTIME[$platform]:-01:00:00}}"
+
+    # Setup run directory and copy data files
+    print_verbose "Setting up run directory..."
+    print_info "Copying data files to run directory..."
+    setup_run_directory "${case_name}" "${platform}" "${input_file}"
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to setup run directory for case: ${case_name}"
+        return 1
+    fi
+    # RUN_DIR is set by setup_run_directory function
+    local run_dir="$RUN_DIR"
+    print_success "Run directory: ${run_dir}"
+
+    # Copy/create input file in run directory
+    local run_input="${run_dir}/inputs_${case_name}"
+    if [[ -n "$OVERRIDE_MAX_STEP" ]] || [[ -n "$OVERRIDE_STOP_TIME" ]]; then
+        create_modified_input "$input_file" "$run_input"
+        print_verbose "Created modified input file in run directory"
+    else
+        cp "$input_file" "$run_input"
+        print_verbose "Copied input file to run directory"
+    fi
+
+    # Create run.sh and erf.job scripts in run directory
+    print_verbose "Creating helper scripts in run directory..."
+    create_run_script "$platform" "$ntasks" "$nnodes" "$queue" \
+                      "$agent_exe" "inputs_${case_name}" "$run_dir"
+    create_job_script "$platform" "$ntasks" "$nnodes" "$queue" "$walltime" \
+                      "$agent_exe" "inputs_${case_name}" "$run_dir" "$case_name"
+    print_success "Created run.sh and erf.job in run directory"
+
+    # Display configuration
+    echo ""
+    echo "=========================================="
+    echo "ExaEpi Run Configuration"
+    echo "=========================================="
+    echo "Case:        ${case_name}"
+    echo "Mode:        ${mode}"
+    echo "Platform:    ${platform}"
+    echo "Run dir:     ${run_dir}"
+    echo "Input file:  ${input_file}"
+    echo "Agent exe:   ${agent_exe}"
+    echo "MPI tasks:   ${ntasks}"
+    echo "Nodes:       ${nnodes}"
+    [[ -n "$queue" ]] && echo "Queue:       ${queue}"
+    [[ -n "$walltime" ]] && echo "Walltime:    ${walltime}"
+    [[ -n "$OVERRIDE_MAX_STEP" ]] && echo "Max steps:   ${OVERRIDE_MAX_STEP} (overridden)"
+    [[ -n "$OVERRIDE_STOP_TIME" ]] && echo "Stop time:   ${OVERRIDE_STOP_TIME} (overridden)"
+    echo "=========================================="
+    echo ""
+    print_info "Helper scripts created:"
+    echo "  ${run_dir}/run.sh    - Interactive execution"
+    echo "  ${run_dir}/erf.job   - Batch submission"
+    echo ""
+
+    # Execute based on mode
+    if [[ "$mode" == "batch" ]]; then
+        if [[ "$dry_run" == "true" ]]; then
+            print_info "Dry run - would submit:"
+            echo "  cd ${run_dir} && sbatch erf.job"
+        else
+            print_info "Submitting batch job for case: ${case_name}"
+            (cd "$run_dir" && sbatch erf.job)
+            print_success "Job submitted for ${case_name}!"
+        fi
+    else
+        # Interactive mode - run from run directory
+        if [[ "$dry_run" == "true" ]]; then
+            print_info "Dry run - would execute:"
+            echo "  cd ${run_dir} && ./run.sh"
+        else
+            print_info "Starting ExaEpi simulation for case: ${case_name}..."
+            echo ""
+            (cd "$run_dir" && ./run.sh)
+            local exit_code=$?
+            echo ""
+
+            if [[ $exit_code -eq 0 ]]; then
+                print_success "Simulation completed successfully for ${case_name}!"
+                print_info "Output files in: ${run_dir}"
+            else
+                print_error "Simulation failed for ${case_name} with exit code: $exit_code"
+                print_info "Check logs in: ${run_dir}"
+                return $exit_code
+            fi
+        fi
+    fi
+
+    return 0
+}
+
 main() {
     parse_args "$@"
 
     # Set defaults
-    CASE_NAME="${CASE_NAME:-$DEFAULT_CASE}"
     MODE="${MODE:-$DEFAULT_MODE}"
 
     # Detect platform
@@ -954,135 +1101,62 @@ main() {
     fi
     print_success "Found ExaEpi agent: ${AGENT_EXE}"
 
-    # Find input file
-    print_verbose "Looking for input file for case: ${CASE_NAME}"
-    INPUT_FILE=$(find_input_file "${CASE_NAME}")
-    if [[ $? -ne 0 ]]; then
-        print_error "Input file not found for case: ${CASE_NAME}"
-        echo "Available cases:"
-        list_cases
-        exit 1
-    fi
-    print_success "Found input file: ${INPUT_FILE}"
+    # Handle --all flag
+    if [[ "$RUN_ALL" == "true" ]]; then
+        # Get all available cases
+        local all_cases=($(get_all_cases))
 
-    # Get platform defaults, with case-specific overrides
-    local case_tasks=$(get_case_specific_resources "${CASE_NAME}" "${PLATFORM}" "tasks")
-    if [[ -z "$OVERRIDE_NTASKS" ]]; then
-        if [[ -n "$case_tasks" ]]; then
-            NTASKS="$case_tasks"
-        else
-            NTASKS="${PLATFORM_DEFAULTS_TASKS[$PLATFORM]:-4}"
+        if [[ ${#all_cases[@]} -eq 0 ]]; then
+            print_error "No input cases found in ${INPUTS_DIR}"
+            exit 1
         fi
-    else
-        NTASKS="$OVERRIDE_NTASKS"
-    fi
 
-    NNODES="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$PLATFORM]:-1}}"
-    QUEUE="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$PLATFORM]:-}}"
-    WALLTIME="${OVERRIDE_WALLTIME:-${PLATFORM_DEFAULTS_WALLTIME[$PLATFORM]:-01:00:00}}"
+        print_info "Processing ${#all_cases[@]} case(s)..."
+        echo ""
 
-    # Setup run directory and copy data files
-    print_verbose "Setting up run directory..."
-    print_info "Copying data files to run directory..."
-    setup_run_directory "${CASE_NAME}" "${PLATFORM}" "${INPUT_FILE}"
-    if [[ $? -ne 0 ]]; then
-        print_error "Failed to setup run directory"
-        exit 1
-    fi
-    # RUN_DIR is set by setup_run_directory function
-    print_success "Run directory: ${RUN_DIR}"
+        local success_count=0
+        local fail_count=0
+        local failed_cases=()
 
-    # Copy/create input file in run directory
-    RUN_INPUT="${RUN_DIR}/inputs_${CASE_NAME}"
-    if [[ -n "$OVERRIDE_MAX_STEP" ]] || [[ -n "$OVERRIDE_STOP_TIME" ]]; then
-        create_modified_input "$INPUT_FILE" "$RUN_INPUT"
-        print_verbose "Created modified input file in run directory"
-    else
-        cp "$INPUT_FILE" "$RUN_INPUT"
-        print_verbose "Copied input file to run directory"
-    fi
+        for case_name in "${all_cases[@]}"; do
+            print_info "=========================================="
+            print_info "Processing case: ${case_name}"
+            print_info "=========================================="
 
-    # Create run.sh and erf.job scripts in run directory
-    print_verbose "Creating helper scripts in run directory..."
-    create_run_script "$PLATFORM" "$NTASKS" "$NNODES" "$QUEUE" \
-                      "$AGENT_EXE" "inputs_${CASE_NAME}" "$RUN_DIR"
-    create_job_script "$PLATFORM" "$NTASKS" "$NNODES" "$QUEUE" "$WALLTIME" \
-                      "$AGENT_EXE" "inputs_${CASE_NAME}" "$RUN_DIR" "$CASE_NAME"
-    print_success "Created run.sh and erf.job in run directory"
-
-    # Display configuration
-    echo ""
-    echo "=========================================="
-    echo "ExaEpi Run Configuration"
-    echo "=========================================="
-    echo "Case:        ${CASE_NAME}"
-    echo "Mode:        ${MODE}"
-    echo "Platform:    ${PLATFORM}"
-    echo "Run dir:     ${RUN_DIR}"
-    echo "Input file:  ${INPUT_FILE}"
-    echo "Agent exe:   ${AGENT_EXE}"
-    echo "MPI tasks:   ${NTASKS}"
-    echo "Nodes:       ${NNODES}"
-    [[ -n "$QUEUE" ]] && echo "Queue:       ${QUEUE}"
-    [[ -n "$WALLTIME" ]] && echo "Walltime:    ${WALLTIME}"
-    [[ -n "$OVERRIDE_MAX_STEP" ]] && echo "Max steps:   ${OVERRIDE_MAX_STEP} (overridden)"
-    [[ -n "$OVERRIDE_STOP_TIME" ]] && echo "Stop time:   ${OVERRIDE_STOP_TIME} (overridden)"
-    echo "=========================================="
-    echo ""
-    print_info "Helper scripts created:"
-    echo "  ${RUN_DIR}/run.sh    - Interactive execution"
-    echo "  ${RUN_DIR}/erf.job   - Batch submission"
-    echo ""
-
-    # Execute based on mode
-    if [[ "$MODE" == "batch" ]]; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            print_info "Dry run - would submit:"
-            echo "  cd ${RUN_DIR} && sbatch erf.job"
-            echo ""
-            echo "Or alternatively:"
-            echo "  cd ${RUN_DIR}"
-            echo "  sbatch erf.job"
-            echo ""
-            echo "Job script contents (erf.job):"
-            cat "${RUN_DIR}/erf.job"
-        else
-            print_info "Submitting batch job..."
-            cd "$RUN_DIR" && sbatch erf.job
-            print_success "Job submitted!"
-            print_info "To monitor: cd ${RUN_DIR} && tail -f exaepi_*.out"
-            cd "$PROJECT_DIR"
-        fi
-    else
-        # Interactive mode - run from run directory
-        if [[ "$DRY_RUN" == "true" ]]; then
-            print_info "Dry run - would execute:"
-            echo "  cd ${RUN_DIR} && ./run.sh"
-            echo ""
-            echo "Or alternatively:"
-            echo "  cd ${RUN_DIR}"
-            echo "  ./run.sh"
-            echo ""
-            echo "Run script contents (run.sh):"
-            cat "${RUN_DIR}/run.sh"
-        else
-            print_info "Starting ExaEpi simulation..."
-            echo ""
-            cd "$RUN_DIR"
-            ./run.sh
-            EXIT_CODE=$?
-            cd "$PROJECT_DIR"
-            echo ""
-
-            if [[ $EXIT_CODE -eq 0 ]]; then
-                print_success "Simulation completed successfully!"
-                print_info "Output files in: ${RUN_DIR}"
+            process_single_case "$case_name" "$PLATFORM" "$AGENT_EXE" "$MODE" "$DRY_RUN"
+            if [[ $? -eq 0 ]]; then
+                success_count=$((success_count + 1))
             else
-                print_error "Simulation failed with exit code: $EXIT_CODE"
-                print_info "Check logs in: ${RUN_DIR}"
-                exit $EXIT_CODE
+                fail_count=$((fail_count + 1))
+                failed_cases+=("$case_name")
             fi
+            echo ""
+        done
+
+        # Summary
+        echo "=========================================="
+        echo "All Cases Summary"
+        echo "=========================================="
+        echo "Total cases:     ${#all_cases[@]}"
+        echo "Successful:      ${success_count}"
+        echo "Failed:          ${fail_count}"
+        if [[ $fail_count -gt 0 ]]; then
+            echo ""
+            echo "Failed cases:"
+            for failed_case in "${failed_cases[@]}"; do
+                echo "  - ${failed_case}"
+            done
         fi
+        echo "=========================================="
+
+        if [[ $fail_count -gt 0 ]]; then
+            exit 1
+        fi
+    else
+        # Single case mode
+        CASE_NAME="${CASE_NAME:-$DEFAULT_CASE}"
+        process_single_case "$CASE_NAME" "$PLATFORM" "$AGENT_EXE" "$MODE" "$DRY_RUN"
+        exit $?
     fi
 }
 
