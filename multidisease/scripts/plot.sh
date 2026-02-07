@@ -1,0 +1,723 @@
+#!/bin/bash
+#
+# plot.sh - ExaEpi plotting script for multidisease simulations
+#
+# This script creates plots from ExaEpi output.dat files showing infections,
+# deaths, and hospitalizations over time.
+#
+
+set -e  # Exit on error
+
+# Color output for terminal
+if [[ -t 1 ]]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+else
+    RED=''
+    GREEN=''
+    YELLOW=''
+    BLUE=''
+    NC=''
+fi
+
+# Script directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PLOTS_DIR="${PROJECT_DIR}/plots"
+
+# Default values
+CASE_NAME=""
+PLOT_ALL=false
+VERBOSE=false
+OUTPUT_FORMAT="both"  # eps, png, or both
+PLATFORM=""
+
+#------------------------------------------------------------------------------
+# Helper functions
+#------------------------------------------------------------------------------
+
+print_error() {
+    echo -e "${RED}ERROR:${NC} $*" >&2
+}
+
+print_warning() {
+    echo -e "${YELLOW}WARNING:${NC} $*" >&2
+}
+
+print_info() {
+    echo -e "${BLUE}INFO:${NC} $*"
+}
+
+print_success() {
+    echo -e "${GREEN}SUCCESS:${NC} $*"
+}
+
+print_verbose() {
+    if [[ "$VERBOSE" == "true" ]]; then
+        echo -e "${BLUE}[VERBOSE]${NC} $*" >&2
+    fi
+}
+
+show_help() {
+    cat << EOF
+ExaEpi Plotting Script
+
+Usage:
+  ./plot.sh [OPTIONS]
+
+Options:
+  -c, --case=NAME       Plot specific case (run directory name without .run_ prefix)
+  -a, --all             Plot all available cases for the current/specified platform
+  -P, --platform=NAME   Specify platform (default: auto-detect)
+  -f, --format=FMT      Output format: eps, png, or both (default: both)
+  -l, --list-cases      List available cases with output data
+  -v, --verbose         Enable verbose output
+  -h, --help            Show this help message
+
+Environment:
+  LCHOST               Platform identifier (auto-detected)
+
+Examples:
+  # Plot specific case
+  ./plot.sh --case=bay_01D_Cov19S1_dane
+
+  # Plot all cases
+  ./plot.sh --all
+
+  # Generate only PNG files
+  ./plot.sh --case=CA_01D_Cov19S1_dane --format=png
+
+  # List available cases
+  ./plot.sh --list-cases
+
+Output:
+  For each case, generates plots in the plots/ directory with naming:
+    <case>_infections_<platform>.png/eps      : New infections over time
+    <case>_deaths_<platform>.png/eps          : Cumulative deaths over time
+    <case>_hospitalizations_<platform>.png/eps : Hospital admissions and ICU
+
+  For multi-disease cases:
+    <case>_<disease>_infections_<platform>.png/eps
+    <case>_<disease>_deaths_<platform>.png/eps
+    <case>_<disease>_hospitalizations_<platform>.png/eps
+
+EOF
+}
+
+detect_platform() {
+    # Check for LLNL systems (LCHOST environment variable)
+    if [[ -n "${LCHOST}" ]]; then
+        local lchost_lower=$(echo "${LCHOST}" | tr '[:upper:]' '[:lower:]')
+        echo "${lchost_lower}"
+        return 0
+    fi
+
+    # Check for NERSC systems
+    if [[ -n "${NERSC_HOST}" ]]; then
+        echo "perlmutter"
+        return 0
+    fi
+
+    # Check for GPU availability on Linux
+    if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null; then
+        echo "linux-gpu"
+        return 0
+    fi
+
+    # Default to generic Linux or desktop
+    if command -v mpirun &> /dev/null || command -v mpiexec &> /dev/null; then
+        echo "linux"
+    else
+        echo "desktop"
+    fi
+}
+
+get_all_run_dirs() {
+    # Return list of all run directories for specified platform
+    local platform="$1"
+
+    if [[ ! -d "${PROJECT_DIR}" ]]; then
+        return 1
+    fi
+
+    for run_dir in "${PROJECT_DIR}"/.run_*; do
+        if [[ -d "$run_dir" ]]; then
+            local basename=$(basename "$run_dir")
+            # Check if this run dir matches the platform
+            if [[ -n "$platform" ]]; then
+                # Extract platform from directory name: .run_<case>_<platform>
+                local dir_platform="${basename##*_}"
+                if [[ "$dir_platform" == "$platform" ]]; then
+                    echo "$basename"
+                fi
+            else
+                echo "$basename"
+            fi
+        fi
+    done
+}
+
+list_cases() {
+    local platform="$1"
+
+    if [[ -n "$platform" ]]; then
+        echo "Available cases with output data for platform: ${platform}"
+    else
+        echo "Available cases with output data (all platforms):"
+    fi
+    echo ""
+
+    local count=0
+    for run_dir in "${PROJECT_DIR}"/.run_*; do
+        if [[ -d "$run_dir" ]]; then
+            local basename=$(basename "$run_dir")
+            local case_display="${basename#.run_}"
+
+            # Filter by platform if specified
+            if [[ -n "$platform" ]]; then
+                local dir_platform="${basename##*_}"
+                if [[ "$dir_platform" != "$platform" ]]; then
+                    continue
+                fi
+            fi
+
+            # Check for output files
+            local output_files=()
+            if [[ -f "${run_dir}/output.dat" ]]; then
+                output_files+=("output.dat")
+            fi
+            for f in "${run_dir}"/output_*.dat; do
+                if [[ -f "$f" ]]; then
+                    output_files+=("$(basename "$f")")
+                fi
+            done
+
+            if [[ ${#output_files[@]} -gt 0 ]]; then
+                echo "  ${case_display}"
+                echo "    Directory: ${run_dir}"
+                echo "    Output files: ${output_files[@]}"
+
+                # Try to get line count (timesteps)
+                local nlines=$(wc -l < "${run_dir}/${output_files[0]}" 2>/dev/null || echo "0")
+                local nsteps=$((nlines - 1))  # Subtract header
+                if [[ $nsteps -gt 0 ]]; then
+                    echo "    Timesteps: ${nsteps}"
+                fi
+                echo ""
+                count=$((count + 1))
+            fi
+        fi
+    done
+
+    if [[ $count -eq 0 ]]; then
+        if [[ -n "$platform" ]]; then
+            print_warning "No cases with output data found for platform: ${platform}"
+        else
+            print_warning "No cases with output data found"
+        fi
+        echo "Run simulations first using run_exaepi.sh"
+        return 1
+    fi
+
+    echo "Total: ${count} case(s) with output data"
+}
+
+find_run_directory() {
+    local case_name="$1"
+    local platform="$2"
+
+    # If case_name already includes platform, use it directly
+    if [[ "$case_name" == *_* ]]; then
+        # Check if it ends with a platform name
+        local possible_platform="${case_name##*_}"
+        if [[ -d "${PROJECT_DIR}/.run_${case_name}" ]]; then
+            # Verify it matches the requested platform
+            if [[ -z "$platform" ]] || [[ "$possible_platform" == "$platform" ]]; then
+                echo "${PROJECT_DIR}/.run_${case_name}"
+                return 0
+            fi
+        fi
+    fi
+
+    # Try with platform suffix
+    if [[ -n "$platform" ]]; then
+        if [[ -d "${PROJECT_DIR}/.run_${case_name}_${platform}" ]]; then
+            echo "${PROJECT_DIR}/.run_${case_name}_${platform}"
+            return 0
+        fi
+    fi
+
+    # Try exact match first
+    if [[ -d "${PROJECT_DIR}/.run_${case_name}" ]]; then
+        echo "${PROJECT_DIR}/.run_${case_name}"
+        return 0
+    fi
+
+    # Try without .run_ prefix if provided
+    if [[ "$case_name" == .run_* ]]; then
+        local stripped="${case_name#.run_}"
+        if [[ -d "${PROJECT_DIR}/.run_${stripped}" ]]; then
+            echo "${PROJECT_DIR}/.run_${stripped}"
+            return 0
+        fi
+    fi
+
+    # Try with .run_ prefix if not provided
+    if [[ "$case_name" != .run_* ]]; then
+        if [[ -d "${PROJECT_DIR}/${case_name}" ]]; then
+            echo "${PROJECT_DIR}/${case_name}"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+create_plotting_script() {
+    local python_script="${PLOTS_DIR}/plot_output.py"
+
+    cat > "$python_script" << 'PYTHON_EOF'
+#!/usr/bin/env python3
+"""
+ExaEpi Output Plotter
+
+Reads output.dat or output_<disease>.dat files and creates plots of:
+- New infections over time
+- Cumulative deaths over time
+- Hospitalizations (total hospital and ICU) over time
+"""
+
+import sys
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+# Column indices in output.dat based on IO.cpp
+# Day, Su, PS/PI, S/PI/NH, S/PI/H, PS/I, S/I/NH, S/I/H, A/PI, A/I, H/NI, H/I, ICU, V, R, D, NewI, NewS, NewH, NewA, NewP
+COL_DAY = 0
+COL_H_NI = 10     # Hospital/Not in ICU
+COL_H_I = 11      # Hospital/In ICU
+COL_ICU = 12      # ICU
+COL_D = 15        # Deaths (cumulative)
+COL_NEWI = 16     # New Infections
+COL_NEWH = 18     # New Hospitalizations
+
+def read_output_file(filename):
+    """Read ExaEpi output file, skipping header"""
+    try:
+        data = np.loadtxt(filename, skiprows=1)
+        return data
+    except Exception as e:
+        print(f"ERROR: Failed to read {filename}: {e}", file=sys.stderr)
+        return None
+
+def create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name=None):
+    """Create plot of new infections over time"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    days = data[:, COL_DAY]
+    new_infections = data[:, COL_NEWI]
+
+    ax.plot(days, new_infections, 'b-', linewidth=2, label='New Infections')
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Number of New Infections', fontsize=12)
+
+    title = 'New Infections Over Time'
+    if disease_name:
+        title += f' ({disease_name})'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+
+    plt.tight_layout()
+
+    # Create filename: <case>_infections_<platform>.<ext>
+    base_name = f"{case_name}_infections_{platform}"
+    if disease_name:
+        base_name = f"{case_name}_{disease_name}_infections_{platform}"
+
+    # Save in requested formats
+    if output_format in ['png', 'both']:
+        png_file = str(Path(plots_dir) / f"{base_name}.png")
+        plt.savefig(png_file, dpi=300, bbox_inches='tight')
+        print(f"Created: {png_file}")
+
+    if output_format in ['eps', 'both']:
+        eps_file = str(Path(plots_dir) / f"{base_name}.eps")
+        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        print(f"Created: {eps_file}")
+
+    plt.close()
+
+def create_deaths_plot(data, case_name, platform, output_format, plots_dir, disease_name=None):
+    """Create plot of cumulative deaths over time"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    days = data[:, COL_DAY]
+    deaths = data[:, COL_D]
+
+    ax.plot(days, deaths, 'r-', linewidth=2, label='Cumulative Deaths')
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Cumulative Number of Deaths', fontsize=12)
+
+    title = 'Cumulative Deaths Over Time'
+    if disease_name:
+        title += f' ({disease_name})'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+
+    plt.tight_layout()
+
+    # Create filename: <case>_deaths_<platform>.<ext>
+    base_name = f"{case_name}_deaths_{platform}"
+    if disease_name:
+        base_name = f"{case_name}_{disease_name}_deaths_{platform}"
+
+    # Save in requested formats
+    if output_format in ['png', 'both']:
+        png_file = str(Path(plots_dir) / f"{base_name}.png")
+        plt.savefig(png_file, dpi=300, bbox_inches='tight')
+        print(f"Created: {png_file}")
+
+    if output_format in ['eps', 'both']:
+        eps_file = str(Path(plots_dir) / f"{base_name}.eps")
+        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        print(f"Created: {eps_file}")
+
+    plt.close()
+
+def create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, disease_name=None):
+    """Create plot of hospitalizations over time"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    days = data[:, COL_DAY]
+    new_hosp = data[:, COL_NEWH]
+    icu = data[:, COL_ICU]
+    total_hosp = data[:, COL_H_NI] + data[:, COL_H_I]
+
+    ax.plot(days, new_hosp, 'g-', linewidth=2, label='New Hospital Admissions')
+    ax.plot(days, total_hosp, 'm-', linewidth=2, label='Total Hospitalized')
+    ax.plot(days, icu, 'orange', linewidth=2, label='ICU Patients')
+
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Number of Patients', fontsize=12)
+
+    title = 'Hospitalizations Over Time'
+    if disease_name:
+        title += f' ({disease_name})'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10)
+
+    plt.tight_layout()
+
+    # Create filename: <case>_hospitalizations_<platform>.<ext>
+    base_name = f"{case_name}_hospitalizations_{platform}"
+    if disease_name:
+        base_name = f"{case_name}_{disease_name}_hospitalizations_{platform}"
+
+    # Save in requested formats
+    if output_format in ['png', 'both']:
+        png_file = str(Path(plots_dir) / f"{base_name}.png")
+        plt.savefig(png_file, dpi=300, bbox_inches='tight')
+        print(f"Created: {png_file}")
+
+    if output_format in ['eps', 'both']:
+        eps_file = str(Path(plots_dir) / f"{base_name}.eps")
+        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        print(f"Created: {eps_file}")
+
+    plt.close()
+
+def main():
+    if len(sys.argv) < 5:
+        print("Usage: plot_output.py <output_file> <case_name> <platform> <output_format> <plots_dir>", file=sys.stderr)
+        sys.exit(1)
+
+    output_file = sys.argv[1]
+    case_name = sys.argv[2]
+    platform = sys.argv[3]
+    output_format = sys.argv[4] if len(sys.argv) > 4 else 'both'
+    plots_dir = sys.argv[5] if len(sys.argv) > 5 else '.'
+
+    if not Path(output_file).exists():
+        print(f"ERROR: Output file not found: {output_file}", file=sys.stderr)
+        sys.exit(1)
+
+    # Create plots directory if it doesn't exist
+    Path(plots_dir).mkdir(parents=True, exist_ok=True)
+
+    # Read data
+    data = read_output_file(output_file)
+    if data is None:
+        sys.exit(1)
+
+    # Determine disease name from filename
+    disease_name = None
+    filename = Path(output_file).name
+    if filename.startswith('output_') and filename.endswith('.dat'):
+        disease_name = filename[7:-4]  # Remove 'output_' and '.dat'
+
+    print(f"Processing: {output_file}")
+    print(f"Case: {case_name}, Platform: {platform}")
+    if disease_name:
+        print(f"Disease: {disease_name}")
+    print(f"Timesteps: {len(data)}")
+
+    # Create plots
+    create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+    create_deaths_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+    create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+
+    print("Plotting complete!")
+
+if __name__ == '__main__':
+    main()
+PYTHON_EOF
+
+    chmod +x "$python_script"
+    echo "$python_script"
+}
+
+plot_case() {
+    local run_dir="$1"
+    local output_format="$2"
+    local dir_basename=$(basename "$run_dir")
+
+    # Parse case name and platform from directory name: .run_<case>_<platform>
+    # Remove .run_ prefix
+    local case_platform="${dir_basename#.run_}"
+
+    # Split by last underscore to get platform
+    local platform="${case_platform##*_}"
+    local case_name="${case_platform%_*}"
+
+    print_info "=========================================="
+    print_info "Plotting case: ${case_name} (${platform})"
+    print_info "=========================================="
+    print_verbose "Run directory: ${run_dir}"
+
+    # Find output files
+    local output_files=()
+    if [[ -f "${run_dir}/output.dat" ]]; then
+        output_files+=("${run_dir}/output.dat")
+    fi
+    for f in "${run_dir}"/output_*.dat; do
+        if [[ -f "$f" ]]; then
+            output_files+=("$f")
+        fi
+    done
+
+    if [[ ${#output_files[@]} -eq 0 ]]; then
+        print_error "No output.dat files found in ${run_dir}"
+        print_info "Run the simulation first using run_exaepi.sh"
+        return 1
+    fi
+
+    print_success "Found ${#output_files[@]} output file(s)"
+
+    # Create plots directory if it doesn't exist
+    mkdir -p "${PLOTS_DIR}"
+    print_verbose "Plots directory: ${PLOTS_DIR}"
+
+    # Create plotting script
+    local python_script=$(create_plotting_script)
+    print_verbose "Created plotting script: ${python_script}"
+
+    # Plot each output file
+    local plot_count=0
+    for output_file in "${output_files[@]}"; do
+        print_info "Plotting: $(basename "$output_file")"
+
+        if python3 "$python_script" "$output_file" "$case_name" "$platform" "$output_format" "$PLOTS_DIR"; then
+            plot_count=$((plot_count + 1))
+        else
+            print_error "Failed to create plots for $(basename "$output_file")"
+        fi
+    done
+
+    if [[ $plot_count -gt 0 ]]; then
+        print_success "Created plots for ${plot_count} disease(s) in ${PLOTS_DIR}"
+        echo ""
+        return 0
+    else
+        return 1
+    fi
+}
+
+#------------------------------------------------------------------------------
+# Parse command line arguments
+#------------------------------------------------------------------------------
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -l|--list-cases)
+                # Will be handled in main after platform detection
+                LIST_CASES=true
+                shift
+                ;;
+            -c|--case)
+                CASE_NAME="$2"
+                shift 2
+                ;;
+            --case=*)
+                CASE_NAME="${1#*=}"
+                shift
+                ;;
+            -a|--all)
+                PLOT_ALL=true
+                shift
+                ;;
+            -P|--platform)
+                PLATFORM="$2"
+                shift 2
+                ;;
+            --platform=*)
+                PLATFORM="${1#*=}"
+                shift
+                ;;
+            -f|--format)
+                OUTPUT_FORMAT="$2"
+                shift 2
+                ;;
+            --format=*)
+                OUTPUT_FORMAT="${1#*=}"
+                shift
+                ;;
+            -v|--verbose)
+                VERBOSE=true
+                shift
+                ;;
+            *)
+                print_error "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+#------------------------------------------------------------------------------
+# Main execution
+#------------------------------------------------------------------------------
+
+main() {
+    parse_args "$@"
+
+    # Detect or validate platform
+    if [[ -z "$PLATFORM" ]]; then
+        PLATFORM=$(detect_platform)
+        print_info "Detected platform: ${PLATFORM}"
+    else
+        print_info "Using specified platform: ${PLATFORM}"
+    fi
+    print_verbose "Filtering cases for platform: ${PLATFORM}"
+
+    # Handle list cases
+    if [[ "${LIST_CASES:-false}" == "true" ]]; then
+        list_cases "$PLATFORM"
+        exit 0
+    fi
+
+    # Validate output format
+    if [[ ! "$OUTPUT_FORMAT" =~ ^(eps|png|both)$ ]]; then
+        print_error "Invalid output format: ${OUTPUT_FORMAT}"
+        echo "Valid formats: eps, png, both"
+        exit 1
+    fi
+
+    # Check for Python and matplotlib
+    if ! command -v python3 &> /dev/null; then
+        print_error "Python 3 is required but not found"
+        exit 1
+    fi
+
+    if ! python3 -c "import matplotlib" &> /dev/null; then
+        print_error "Python matplotlib is required but not found"
+        echo "Install with: pip install matplotlib"
+        exit 1
+    fi
+
+    if [[ "$PLOT_ALL" == "true" ]]; then
+        # Plot all cases for this platform
+        local all_dirs=($(get_all_run_dirs "$PLATFORM"))
+
+        if [[ ${#all_dirs[@]} -eq 0 ]]; then
+            print_error "No run directories found"
+            echo "Run simulations first using run_exaepi.sh"
+            exit 1
+        fi
+
+        print_info "Plotting ${#all_dirs[@]} case(s)..."
+        echo ""
+
+        local success_count=0
+        local fail_count=0
+        local failed_cases=()
+
+        for dir_name in "${all_dirs[@]}"; do
+            local full_path="${PROJECT_DIR}/${dir_name}"
+            if plot_case "$full_path" "$OUTPUT_FORMAT"; then
+                success_count=$((success_count + 1))
+            else
+                fail_count=$((fail_count + 1))
+                failed_cases+=("$dir_name")
+            fi
+        done
+
+        # Summary
+        echo "=========================================="
+        echo "Plotting Summary"
+        echo "=========================================="
+        echo "Total cases:     ${#all_dirs[@]}"
+        echo "Successful:      ${success_count}"
+        echo "Failed:          ${fail_count}"
+        if [[ $fail_count -gt 0 ]]; then
+            echo ""
+            echo "Failed cases:"
+            for failed_case in "${failed_cases[@]}"; do
+                echo "  - ${failed_case}"
+            done
+        fi
+        echo "=========================================="
+
+        if [[ $fail_count -gt 0 ]]; then
+            exit 1
+        fi
+    else
+        # Plot single case
+        if [[ -z "$CASE_NAME" ]]; then
+            print_error "No case specified"
+            echo "Use --case=NAME or --all"
+            echo "Use --list-cases to see available cases"
+            exit 1
+        fi
+
+        RUN_DIR=$(find_run_directory "${CASE_NAME}" "$PLATFORM")
+        if [[ $? -ne 0 ]]; then
+            print_error "Run directory not found for case: ${CASE_NAME} (platform: ${PLATFORM})"
+            echo "Use --list-cases to see available cases"
+            exit 1
+        fi
+
+        plot_case "$RUN_DIR" "$OUTPUT_FORMAT"
+        exit $?
+    fi
+}
+
+# Run main function
+main "$@"
