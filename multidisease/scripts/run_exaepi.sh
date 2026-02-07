@@ -30,6 +30,20 @@ INPUTS_DIR="${PROJECT_DIR}/inputs"
 REGTEST_DIR="${PROJECT_DIR}/../regtests"
 CONFIG_DIR="${REGTEST_DIR}/config"
 
+# Check for EXAEPI_DIR (data files location)
+if [[ -z "${EXAEPI_DIR}" ]]; then
+    # Try to find it relative to ExaEpi build
+    if [[ -n "${EXAEPI_BUILD}" ]]; then
+        # Try common locations
+        for possible_dir in "${EXAEPI_BUILD}/../" "${EXAEPI_BUILD}/../../" ~/Codes/ExaEpi; do
+            if [[ -d "${possible_dir}/data" ]] || [[ -d "${possible_dir}/Data" ]]; then
+                EXAEPI_DIR="${possible_dir}"
+                break
+            fi
+        done
+    fi
+fi
+
 # Default values
 DEFAULT_CASE="sdm_amsu"
 DEFAULT_MODE="interactive"
@@ -153,6 +167,7 @@ Options:
 Environment:
   LCHOST               Platform identifier (auto-detected, or 'desktop' if unset)
   EXAEPI_BUILD         Path to ExaEpi build directory (required)
+  EXAEPI_DIR           Path to ExaEpi source directory with data files (optional, auto-detected)
 
 Examples:
   # Run with default settings (interactive mode)
@@ -321,6 +336,152 @@ check_exaepi_build() {
     return 0
 }
 
+get_case_specific_resources() {
+    local case_name="$1"
+    local platform="$2"
+    local resource_type="$3"  # "tasks" or "gpus"
+
+    # Extract base case name (e.g., "bay_01D_Cov19S1" -> "bay")
+    local base_case=$(echo "$case_name" | cut -d'_' -f1 | tr '[:upper:]' '[:lower:]')
+
+    # Bay case-specific overrides (from regtests/config/test_cases.yaml)
+    if [[ "$base_case" == "bay" ]]; then
+        case "$platform" in
+            dane)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "25"
+                else
+                    echo "1"
+                fi
+                ;;
+            perlmutter|matrix|tuolumne|linux-gpu)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "1"
+                else
+                    echo "1"
+                fi
+                ;;
+            linux)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "4"
+                else
+                    echo "1"
+                fi
+                ;;
+            *)
+                echo ""
+                ;;
+        esac
+    else
+        echo ""
+    fi
+}
+
+extract_data_files() {
+    local input_file="$1"
+
+    # Extract filenames from the input file
+    # Look for lines with "filename" and extract the value
+    grep -E "filename.*=" "$input_file" | \
+        awk -F'=' '{print $2}' | \
+        tr -d ' "'"'"'' | \
+        grep -v "^output" | \
+        sort -u
+}
+
+find_data_file() {
+    local filename="$1"
+    local search_dirs=()
+
+    # Build list of directories to search
+    if [[ -n "${EXAEPI_DIR}" ]]; then
+        search_dirs+=("${EXAEPI_DIR}/data" "${EXAEPI_DIR}/Data" "${EXAEPI_DIR}")
+    fi
+
+    # Also check relative to ExaEpi source
+    if [[ -n "${EXAEPI_BUILD}" ]]; then
+        search_dirs+=("${EXAEPI_BUILD}/../data" "${EXAEPI_BUILD}/../Data")
+        search_dirs+=("${EXAEPI_BUILD}/../../data" "${EXAEPI_BUILD}/../../Data")
+    fi
+
+    # Search for the file
+    for dir in "${search_dirs[@]}"; do
+        if [[ -d "$dir" ]]; then
+            local found=$(find "$dir" -name "$filename" -type f 2>/dev/null | head -n 1)
+            if [[ -n "$found" ]]; then
+                echo "$found"
+                return 0
+            fi
+        fi
+    done
+
+    return 1
+}
+
+setup_run_directory() {
+    local case_name="$1"
+    local platform="$2"
+    local input_file="$3"
+
+    # Create run directory name (set global variable)
+    RUN_DIR="${PROJECT_DIR}/.run_${case_name}_${platform}"
+
+    print_verbose "Creating run directory: ${RUN_DIR}"
+    mkdir -p "$RUN_DIR"
+
+    # Extract and copy data files
+    local data_files=$(extract_data_files "$input_file")
+    local copied_count=0
+    local missing_files=()
+
+    while IFS= read -r data_file; do
+        if [[ -z "$data_file" ]]; then
+            continue
+        fi
+
+        print_verbose "  Looking for: ${data_file}"
+
+        # Check if file already exists in run directory
+        if [[ -f "${RUN_DIR}/${data_file}" ]]; then
+            print_verbose "    Already exists in run directory"
+            copied_count=$((copied_count + 1))
+            continue
+        fi
+
+        # Find the data file
+        local source_file=$(find_data_file "$data_file")
+        if [[ $? -eq 0 ]] && [[ -n "$source_file" ]]; then
+            print_verbose "    Found: ${source_file}"
+            cp "$source_file" "${RUN_DIR}/"
+            if [[ $? -eq 0 ]]; then
+                copied_count=$((copied_count + 1))
+            else
+                print_warning "Failed to copy: ${data_file}"
+                missing_files+=("$data_file")
+            fi
+        else
+            print_warning "Data file not found: ${data_file}"
+            missing_files+=("$data_file")
+        fi
+    done <<< "$data_files"
+
+    if [[ $copied_count -gt 0 ]]; then
+        print_success "Copied ${copied_count} data file(s)"
+    fi
+
+    if [[ ${#missing_files[@]} -gt 0 ]]; then
+        print_warning "Missing ${#missing_files[@]} data file(s):"
+        for file in "${missing_files[@]}"; do
+            echo "    - $file" >&2
+        done
+        print_warning "Set EXAEPI_DIR to the ExaEpi source directory containing data files"
+        echo "Example: export EXAEPI_DIR=~/Codes/ExaEpi" >&2
+        return 1
+    fi
+
+    return 0
+}
+
 create_modified_input() {
     local input_file="$1"
     local temp_input="$2"
@@ -402,7 +563,127 @@ build_run_command() {
     echo "$run_cmd"
 }
 
-create_batch_script() {
+create_run_script() {
+    local platform="$1"
+    local ntasks="$2"
+    local nnodes="$3"
+    local queue="$4"
+    local agent_exe="$5"
+    local input_file="$6"
+    local run_dir="$7"
+    local run_script="${run_dir}/run.sh"
+
+    cat > "$run_script" << 'EOF_HEADER'
+#!/bin/bash
+#
+# Interactive run script for ExaEpi simulation
+# Run this script from within the run directory: ./run.sh
+#
+EOF_HEADER
+
+    case "$platform" in
+        perlmutter)
+            cat >> "$run_script" << EOF
+
+export MPICH_OFI_NIC_POLICY=GPU
+export OMP_NUM_THREADS=1
+
+echo "Running ExaEpi on Perlmutter..."
+echo "Command: srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}"
+echo ""
+
+srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}
+EOF
+            ;;
+        dane)
+            cat >> "$run_script" << EOF
+
+export OMP_NUM_THREADS=1
+
+echo "Running ExaEpi on Dane..."
+echo "Command: srun -N ${nnodes} -n ${ntasks} -p ${queue} ${agent_exe} ${input_file}"
+echo ""
+
+srun -N ${nnodes} -n ${ntasks} -p ${queue} ${agent_exe} ${input_file}
+EOF
+            ;;
+        matrix)
+            cat >> "$run_script" << EOF
+
+export OMP_NUM_THREADS=1
+
+echo "Running ExaEpi on Matrix..."
+echo "Command: srun -n ${ntasks} -G ${ntasks} -N ${nnodes} -p ${queue} ${agent_exe} ${input_file}"
+echo ""
+
+srun -n ${ntasks} -G ${ntasks} -N ${nnodes} -p ${queue} ${agent_exe} ${input_file}
+EOF
+            ;;
+        tuolumne)
+            cat >> "$run_script" << EOF
+
+export OMP_NUM_THREADS=1
+export MPICH_GPU_SUPPORT_ENABLED=1
+
+echo "Running ExaEpi on Tuolumne..."
+echo "Command: flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 -q=${queue} ${agent_exe} ${input_file}"
+echo ""
+
+flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 -q=${queue} ${agent_exe} ${input_file}
+EOF
+            ;;
+        linux|linux-gpu|desktop)
+            # Try to find MPI launcher
+            local mpi_cmd=""
+            if command -v mpirun &> /dev/null; then
+                mpi_cmd="mpirun -n ${ntasks}"
+            elif command -v mpiexec &> /dev/null; then
+                mpi_cmd="mpiexec -n ${ntasks}"
+            else
+                mpi_cmd=""
+            fi
+
+            cat >> "$run_script" << EOF
+
+export OMP_NUM_THREADS=1
+
+echo "Running ExaEpi on ${platform}..."
+EOF
+            if [[ -n "$mpi_cmd" ]]; then
+                cat >> "$run_script" << EOF
+echo "Command: ${mpi_cmd} ${agent_exe} ${input_file}"
+echo ""
+
+${mpi_cmd} ${agent_exe} ${input_file}
+EOF
+            else
+                cat >> "$run_script" << EOF
+echo "Command: ${agent_exe} ${input_file}"
+echo ""
+
+${agent_exe} ${input_file}
+EOF
+            fi
+            ;;
+        *)
+            cat >> "$run_script" << EOF
+
+export OMP_NUM_THREADS=1
+
+echo "Running ExaEpi..."
+echo "Command: mpirun -n ${ntasks} ${agent_exe} ${input_file}"
+echo ""
+
+mpirun -n ${ntasks} ${agent_exe} ${input_file}
+EOF
+            ;;
+    esac
+
+    chmod +x "$run_script"
+    print_verbose "Created run script: ${run_script}"
+}
+
+create_job_script() {
     local platform="$1"
     local ntasks="$2"
     local nnodes="$3"
@@ -410,13 +691,15 @@ create_batch_script() {
     local walltime="$5"
     local agent_exe="$6"
     local input_file="$7"
-    local batch_script="$8"
+    local run_dir="$8"
+    local case_name="$9"
+    local job_script="${run_dir}/erf.job"
 
     case "$platform" in
         perlmutter)
-            cat > "$batch_script" << EOF
+            cat > "$job_script" << EOF
 #!/bin/bash
-#SBATCH --job-name=exaepi_${CASE_NAME}
+#SBATCH --job-name=exaepi_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks-per-node=${ntasks}
 #SBATCH --cpus-per-task=32
@@ -428,36 +711,58 @@ create_batch_script() {
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
 
+echo "Job started at: \$(date)"
+echo "Running on host: \$(hostname)"
+echo "Working directory: \$(pwd)"
+echo ""
+
 export MPICH_OFI_NIC_POLICY=GPU
 export OMP_NUM_THREADS=1
 
 srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}
+
+echo ""
+echo "Job finished at: \$(date)"
 EOF
             ;;
         dane|matrix)
-            cat > "$batch_script" << EOF
+            cat > "$job_script" << EOF
 #!/bin/bash
-#SBATCH --job-name=exaepi_${CASE_NAME}
+#SBATCH --job-name=exaepi_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks=${ntasks}
 #SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
+
+echo "Job started at: \$(date)"
+echo "Running on host: \$(hostname)"
+echo "Working directory: \$(pwd)"
+echo ""
 
 export OMP_NUM_THREADS=1
 
 EOF
             if [[ "$platform" == "matrix" ]]; then
-                echo "srun -n ${ntasks} -G ${ntasks} -N ${nnodes} ${agent_exe} ${input_file}" >> "$batch_script"
+                cat >> "$job_script" << EOF
+srun -n ${ntasks} -G ${ntasks} -N ${nnodes} ${agent_exe} ${input_file}
+EOF
             else
-                echo "srun -N ${nnodes} -n ${ntasks} ${agent_exe} ${input_file}" >> "$batch_script"
+                cat >> "$job_script" << EOF
+srun -N ${nnodes} -n ${ntasks} ${agent_exe} ${input_file}
+EOF
             fi
+            cat >> "$job_script" << 'EOF'
+
+echo ""
+echo "Job finished at: $(date)"
+EOF
             ;;
         tuolumne)
-            cat > "$batch_script" << EOF
+            cat > "$job_script" << EOF
 #!/bin/bash
-#SBATCH --job-name=exaepi_${CASE_NAME}
+#SBATCH --job-name=exaepi_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks=${ntasks}
 #SBATCH --partition=${queue}
@@ -465,19 +770,65 @@ EOF
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
 
+echo "Job started at: \$(date)"
+echo "Running on host: \$(hostname)"
+echo "Working directory: \$(pwd)"
+echo ""
+
 export OMP_NUM_THREADS=1
 export MPICH_GPU_SUPPORT_ENABLED=1
 
 flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 ${agent_exe} ${input_file}
+
+echo ""
+echo "Job finished at: \$(date)"
+EOF
+            ;;
+        linux|linux-gpu|desktop)
+            # Create a generic batch script even for non-SLURM systems
+            cat > "$job_script" << EOF
+#!/bin/bash
+#
+# Generic batch job script for ${platform}
+# Note: This system may not have a batch scheduler
+#
+
+echo "Job started at: \$(date)"
+echo "Running on host: \$(hostname)"
+echo "Working directory: \$(pwd)"
+echo ""
+
+export OMP_NUM_THREADS=1
+
+EOF
+            if command -v mpirun &> /dev/null; then
+                echo "mpirun -n ${ntasks} ${agent_exe} ${input_file}" >> "$job_script"
+            elif command -v mpiexec &> /dev/null; then
+                echo "mpiexec -n ${ntasks} ${agent_exe} ${input_file}" >> "$job_script"
+            else
+                echo "${agent_exe} ${input_file}" >> "$job_script"
+            fi
+            cat >> "$job_script" << 'EOF'
+
+echo ""
+echo "Job finished at: $(date)"
 EOF
             ;;
         *)
-            print_error "Batch mode not supported for platform: $platform"
-            return 1
+            print_warning "Batch script creation not fully supported for platform: $platform"
+            cat > "$job_script" << EOF
+#!/bin/bash
+# Generic job script - may need customization
+
+export OMP_NUM_THREADS=1
+
+mpirun -n ${ntasks} ${agent_exe} ${input_file}
+EOF
             ;;
     esac
 
-    chmod +x "$batch_script"
+    chmod +x "$job_script"
+    print_verbose "Created job script: ${job_script}"
 }
 
 #------------------------------------------------------------------------------
@@ -614,20 +965,50 @@ main() {
     fi
     print_success "Found input file: ${INPUT_FILE}"
 
-    # Get platform defaults
-    NTASKS="${OVERRIDE_NTASKS:-${PLATFORM_DEFAULTS_TASKS[$PLATFORM]:-4}}"
+    # Get platform defaults, with case-specific overrides
+    local case_tasks=$(get_case_specific_resources "${CASE_NAME}" "${PLATFORM}" "tasks")
+    if [[ -z "$OVERRIDE_NTASKS" ]]; then
+        if [[ -n "$case_tasks" ]]; then
+            NTASKS="$case_tasks"
+        else
+            NTASKS="${PLATFORM_DEFAULTS_TASKS[$PLATFORM]:-4}"
+        fi
+    else
+        NTASKS="$OVERRIDE_NTASKS"
+    fi
+
     NNODES="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$PLATFORM]:-1}}"
     QUEUE="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$PLATFORM]:-}}"
     WALLTIME="${OVERRIDE_WALLTIME:-${PLATFORM_DEFAULTS_WALLTIME[$PLATFORM]:-01:00:00}}"
 
-    # Create modified input file if needed
-    WORK_INPUT="${INPUT_FILE}"
-    if [[ -n "$OVERRIDE_MAX_STEP" ]] || [[ -n "$OVERRIDE_STOP_TIME" ]]; then
-        TEMP_INPUT="/tmp/exaepi_input_${CASE_NAME}_$$.tmp"
-        create_modified_input "$INPUT_FILE" "$TEMP_INPUT"
-        WORK_INPUT="$TEMP_INPUT"
-        print_verbose "Created temporary input file: $TEMP_INPUT"
+    # Setup run directory and copy data files
+    print_verbose "Setting up run directory..."
+    print_info "Copying data files to run directory..."
+    setup_run_directory "${CASE_NAME}" "${PLATFORM}" "${INPUT_FILE}"
+    if [[ $? -ne 0 ]]; then
+        print_error "Failed to setup run directory"
+        exit 1
     fi
+    # RUN_DIR is set by setup_run_directory function
+    print_success "Run directory: ${RUN_DIR}"
+
+    # Copy/create input file in run directory
+    RUN_INPUT="${RUN_DIR}/inputs_${CASE_NAME}"
+    if [[ -n "$OVERRIDE_MAX_STEP" ]] || [[ -n "$OVERRIDE_STOP_TIME" ]]; then
+        create_modified_input "$INPUT_FILE" "$RUN_INPUT"
+        print_verbose "Created modified input file in run directory"
+    else
+        cp "$INPUT_FILE" "$RUN_INPUT"
+        print_verbose "Copied input file to run directory"
+    fi
+
+    # Create run.sh and erf.job scripts in run directory
+    print_verbose "Creating helper scripts in run directory..."
+    create_run_script "$PLATFORM" "$NTASKS" "$NNODES" "$QUEUE" \
+                      "$AGENT_EXE" "inputs_${CASE_NAME}" "$RUN_DIR"
+    create_job_script "$PLATFORM" "$NTASKS" "$NNODES" "$QUEUE" "$WALLTIME" \
+                      "$AGENT_EXE" "inputs_${CASE_NAME}" "$RUN_DIR" "$CASE_NAME"
+    print_success "Created run.sh and erf.job in run directory"
 
     # Display configuration
     echo ""
@@ -637,6 +1018,7 @@ main() {
     echo "Case:        ${CASE_NAME}"
     echo "Mode:        ${MODE}"
     echo "Platform:    ${PLATFORM}"
+    echo "Run dir:     ${RUN_DIR}"
     echo "Input file:  ${INPUT_FILE}"
     echo "Agent exe:   ${AGENT_EXE}"
     echo "MPI tasks:   ${NTASKS}"
@@ -647,64 +1029,60 @@ main() {
     [[ -n "$OVERRIDE_STOP_TIME" ]] && echo "Stop time:   ${OVERRIDE_STOP_TIME} (overridden)"
     echo "=========================================="
     echo ""
+    print_info "Helper scripts created:"
+    echo "  ${RUN_DIR}/run.sh    - Interactive execution"
+    echo "  ${RUN_DIR}/erf.job   - Batch submission"
+    echo ""
 
     # Execute based on mode
     if [[ "$MODE" == "batch" ]]; then
-        # Create batch script
-        BATCH_SCRIPT="submit_exaepi_${CASE_NAME}.sh"
-        print_info "Creating batch script: ${BATCH_SCRIPT}"
-
-        create_batch_script "$PLATFORM" "$NTASKS" "$NNODES" "$QUEUE" "$WALLTIME" \
-                           "$AGENT_EXE" "$WORK_INPUT" "$BATCH_SCRIPT"
-
-        if [[ $? -ne 0 ]]; then
-            exit 1
-        fi
-
-        print_success "Batch script created: ${BATCH_SCRIPT}"
-
         if [[ "$DRY_RUN" == "true" ]]; then
             print_info "Dry run - would submit:"
-            echo "  sbatch ${BATCH_SCRIPT}"
+            echo "  cd ${RUN_DIR} && sbatch erf.job"
             echo ""
-            echo "Batch script contents:"
-            cat "$BATCH_SCRIPT"
+            echo "Or alternatively:"
+            echo "  cd ${RUN_DIR}"
+            echo "  sbatch erf.job"
+            echo ""
+            echo "Job script contents (erf.job):"
+            cat "${RUN_DIR}/erf.job"
         else
             print_info "Submitting batch job..."
-            sbatch "$BATCH_SCRIPT"
+            cd "$RUN_DIR" && sbatch erf.job
             print_success "Job submitted!"
+            print_info "To monitor: cd ${RUN_DIR} && tail -f exaepi_*.out"
+            cd "$PROJECT_DIR"
         fi
     else
-        # Interactive mode
-        RUN_CMD=$(build_run_command "$PLATFORM" "$NTASKS" "$NNODES" "$QUEUE" \
-                                    "$AGENT_EXE" "$WORK_INPUT")
-
-        print_info "Run command:"
-        echo "  ${RUN_CMD}"
-        echo ""
-
+        # Interactive mode - run from run directory
         if [[ "$DRY_RUN" == "true" ]]; then
-            print_info "Dry run - not executing"
+            print_info "Dry run - would execute:"
+            echo "  cd ${RUN_DIR} && ./run.sh"
+            echo ""
+            echo "Or alternatively:"
+            echo "  cd ${RUN_DIR}"
+            echo "  ./run.sh"
+            echo ""
+            echo "Run script contents (run.sh):"
+            cat "${RUN_DIR}/run.sh"
         else
             print_info "Starting ExaEpi simulation..."
             echo ""
-            eval "$RUN_CMD"
+            cd "$RUN_DIR"
+            ./run.sh
             EXIT_CODE=$?
+            cd "$PROJECT_DIR"
             echo ""
 
             if [[ $EXIT_CODE -eq 0 ]]; then
                 print_success "Simulation completed successfully!"
+                print_info "Output files in: ${RUN_DIR}"
             else
                 print_error "Simulation failed with exit code: $EXIT_CODE"
+                print_info "Check logs in: ${RUN_DIR}"
                 exit $EXIT_CODE
             fi
         fi
-    fi
-
-    # Clean up temporary input file
-    if [[ -f "$TEMP_INPUT" ]]; then
-        rm -f "$TEMP_INPUT"
-        print_verbose "Cleaned up temporary input file"
     fi
 }
 
