@@ -751,10 +751,21 @@ EOF
 #SBATCH --job-name=exaepi_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks=${ntasks}
+EOF
+            if [[ "$platform" == "matrix" ]]; then
+                cat >> "$job_script" << EOF
+#SBATCH --exclusive
+EOF
+            fi
+            cat >> "$job_script" << EOF
 #SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
+EOF
+            if [[ "$platform" == "matrix" ]]; then
+                cat >> "$job_script" << EOF
+#SBATCH --gpus-per-task=1
 
 echo "Job started at: \$(date)"
 echo "Running on host: \$(hostname)"
@@ -763,21 +774,27 @@ echo ""
 
 export OMP_NUM_THREADS=1
 
-EOF
-            if [[ "$platform" == "matrix" ]]; then
-                cat >> "$job_script" << EOF
-srun -n ${ntasks} -G ${ntasks} -N ${nnodes} ${agent_exe} ${input_file}
+srun --exclusive -n ${ntasks} -G ${ntasks} -N ${nnodes} ${agent_exe} ${input_file}
+
+echo ""
+echo "Job finished at: \$(date)"
 EOF
             else
                 cat >> "$job_script" << EOF
+
+echo "Job started at: \$(date)"
+echo "Running on host: \$(hostname)"
+echo "Working directory: \$(pwd)"
+echo ""
+
+export OMP_NUM_THREADS=1
+
 srun -N ${nnodes} -n ${ntasks} ${agent_exe} ${input_file}
-EOF
-            fi
-            cat >> "$job_script" << 'EOF'
 
 echo ""
-echo "Job finished at: $(date)"
+echo "Job finished at: \$(date)"
 EOF
+            fi
             ;;
         tuolumne)
             cat > "$job_script" << EOF
