@@ -14,17 +14,17 @@
 
 ## COVID-19: Parameter Differences S1 (Wild-Type) vs S2 (Delta)
 
-| Parameter | S1 (wild-type) | S2 (Delta) | Rationale |
-|---|---|---|---|
-| `p_trans` | 0.20 | 0.35 | ~2x higher R0, driven by higher viral loads [C1,C8] |
-| `p_asymp` | 0.30 | 0.15 | Lower asymptomatic fraction observed for Delta [C5] |
-| `latent_length_alpha` | 5.2 | 4.7 | Shorter latent period, proportional to shorter incubation [C3] |
-| `infectious_length_beta` | 0.23 | 0.27 | Longer culture-positive duration: ~7 vs ~4 days [C4] |
-| `incubation_length_alpha` | 7.5 | 4.43 | Gamma fit from contact tracing data [C2] |
-| `incubation_length_beta` | 0.65 | 1.01 | Gamma fit from contact tracing data [C2] |
-| `CHR` | 0.0104 0.0104 0.070 0.28 0.28 1.0 | 0.0201 0.0201 0.135 0.54 0.54 1.0 | HR ~1.93 for hospitalization [C6] |
-| `icuCVF` | 0 0 0 0 0 0.26 | 0 0 0 0 0 0.30 | Modestly higher mortality [C6,C7] |
-| `ventCVF` | 0.20 0.20 0.20 0.45 0.45 1.0 | 0.25 0.25 0.25 0.55 0.55 1.0 | Modestly higher mortality [C6,C7] |
+| Parameter                  | S1 (wild-type)                       | S2 (Delta)                           | Rationale                                                |
+|----------------------------|--------------------------------------|--------------------------------------|----------------------------------------------------------|
+| `p_trans`                  | 0.20                                 | 0.35                                 | ~2x higher R0, driven by higher viral loads [C1,C8]      |
+| `p_asymp`                  | 0.30                                 | 0.15                                 | Lower asymptomatic fraction observed for Delta [C5]      |
+| `latent_length_alpha`      | 5.2                                  | 4.7                                  | Shorter latent period, proportional to shorter incub [C3] |
+| `infectious_length_beta`   | 0.23                                 | 0.27                                 | Longer culture-positive duration: ~7 vs ~4 days [C4]     |
+| `incubation_length_alpha`  | 7.5                                  | 4.43                                 | Gamma fit from contact tracing data [C2]                  |
+| `incubation_length_beta`   | 0.65                                 | 1.01                                 | Gamma fit from contact tracing data [C2]                  |
+| `CHR`                      | 0.0104 0.0104 0.070 0.28 0.28 1.0   | 0.0201 0.0201 0.135 0.54 0.54 1.0   | HR ~1.93 for hospitalization [C6]                         |
+| `icuCVF`                   | 0 0 0 0 0 0.26                       | 0 0 0 0 0 0.30                       | Modestly higher mortality [C6,C7]                         |
+| `ventCVF`                  | 0.20 0.20 0.20 0.45 0.45 1.0        | 0.25 0.25 0.25 0.55 0.55 1.0        | Modestly higher mortality [C6,C7]                         |
 
 All other parameters (contact structure, immune period, CIC, CVE, etc.) are kept the same
 due to insufficient variant-specific data or no statistically significant difference
@@ -36,28 +36,28 @@ Both strains share the same transmission and disease period parameters (similar 
 similar incubation ~2 days, similar infectious period ~4.5 days). They differ primarily in
 severity profile and age distribution of outcomes.
 
-| Parameter | S1 (H3N2) | S2 (H1N1pdm09) | Rationale |
-|---|---|---|---|
-| `p_asymp` | 0.16 | 0.12 | H1N1pdm09 slightly lower asymptomatic fraction [F4] |
-| `CHR` | 0.009 0.004 0.006 0.008 0.023 0.15 | 0.012 0.008 0.012 0.015 0.020 0.06 | H1N1pdm09 more severe in young, less in elderly [F9,F10] |
-| `CIC` | 0.18 0.22 0.16 0.16 0.21 0.15 | 0.25 0.30 0.23 0.23 0.30 0.20 | Higher ICU admission (OR 1.42 vs H3N2) [F9] |
-| `CVE` | 0.28 0.25 0.50 0.50 0.52 0.40 | 0.35 0.30 0.55 0.55 0.55 0.45 | Higher ventilation (OR 1.79 vs H3N2) [F9] |
-| `icuCVF` | 0.02 0.02 0.03 0.03 0.05 0.10 | 0.02 0.03 0.04 0.04 0.06 0.08 | More deaths in younger groups [F8,F9] |
-| `ventCVF` | 0.05 0.10 0.15 0.25 0.30 0.50 | 0.06 0.12 0.18 0.28 0.35 0.45 | CFR ~50% lower than H3N2 overall [F8] |
+| Parameter | S1 (H3N2)                            | S2 (H1N1pdm09)                      | Rationale                                                |
+|-----------|--------------------------------------|--------------------------------------|----------------------------------------------------------|
+| `p_asymp` | 0.16                                 | 0.12                                 | H1N1pdm09 slightly lower asymptomatic fraction [F4]      |
+| `CHR`     | 0.009 0.004 0.006 0.008 0.023 0.15  | 0.012 0.008 0.012 0.015 0.020 0.06  | H1N1pdm09 more severe in young, less in elderly [F9,F10] |
+| `CIC`     | 0.18 0.22 0.16 0.16 0.21 0.15       | 0.25 0.30 0.23 0.23 0.30 0.20       | Higher ICU admission (OR 1.42 vs H3N2) [F9]              |
+| `CVE`     | 0.28 0.25 0.50 0.50 0.52 0.40       | 0.35 0.30 0.55 0.55 0.55 0.45       | Higher ventilation (OR 1.79 vs H3N2) [F9]                |
+| `icuCVF`  | 0.02 0.02 0.03 0.03 0.05 0.10       | 0.02 0.03 0.04 0.04 0.06 0.08       | More deaths in younger groups [F8,F9]                     |
+| `ventCVF` | 0.05 0.10 0.15 0.25 0.30 0.50       | 0.06 0.12 0.18 0.28 0.35 0.45       | CFR ~50% lower than H3N2 overall [F8]                     |
 
 ## Influenza vs COVID-19: Key Parameter Differences
 
-| Parameter | COVID-19 S1 | Influenza S1 (H3N2) | Notes |
-|---|---|---|---|
-| `p_trans` | 0.20 | 0.15 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1] |
-| `p_asymp` | 0.30 | 0.16 | COVID has higher asymptomatic fraction [C5,F4] |
-| `asymp_relative_inf` | 0.7 | 0.5 | COVID asymptomatics relatively more infectious [F5] |
-| `latent_length` (mean) | 3.9 days | 1.5 days | Flu has much shorter latent period [C3,F3] |
-| `infectious_length` (mean) | 6.0 days | 4.5 days | Flu has shorter infectious period [C4,F3] |
-| `incubation_length` (mean) | 4.9 days | 2.0 days | Flu incubation roughly half of COVID [C2,F2] |
-| `immune_length` (mean) | 178 days | 270 days | Flu immunity somewhat longer [C7,F7] |
-| `CHR` (65+) | 1.0 | 0.15 | COVID far more severe in elderly |
-| `hospitalization_days` | 3 3 3 3 8 7 | 2 2 3 3 5 5 | Flu hospital stays shorter [F6] |
+| Parameter                | COVID-19 S1   | Influenza S1 (H3N2) | Notes                                                |
+|--------------------------|---------------|----------------------|------------------------------------------------------|
+| `p_trans`                | 0.20          | 0.15                 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1]                |
+| `p_asymp`                | 0.30          | 0.16                 | COVID has higher asymptomatic fraction [C5,F4]       |
+| `asymp_relative_inf`     | 0.7           | 0.5                  | COVID asymptomatics relatively more infectious [F5]  |
+| `latent_length` (mean)   | 3.9 days      | 1.5 days             | Flu has much shorter latent period [C3,F3]           |
+| `infectious_length` (mn) | 6.0 days      | 4.5 days             | Flu has shorter infectious period [C4,F3]            |
+| `incubation_length` (mn) | 4.9 days      | 2.0 days             | Flu incubation roughly half of COVID [C2,F2]         |
+| `immune_length` (mean)   | 178 days      | 270 days             | Flu immunity somewhat longer [C7,F7]                 |
+| `CHR` (65+)              | 1.0           | 0.15                 | COVID far more severe in elderly                     |
+| `hospitalization_days`   | 3 3 3 3 8 7   | 2 2 3 3 5 5          | Flu hospital stays shorter [F6]                      |
 
 ## Disease Coupling Matrices
 
@@ -66,11 +66,11 @@ cross-disease interactions. Values are derived from published literature.
 
 ### Coimmunity (protection from prior infection with one disease against another)
 
-|  | Cov19S1 | Cov19S2 | FluS1 |
-|---|---|---|---|
-| **Cov19S1** | 1.0 | 0.85 | 0.0 |
-| **Cov19S2** | 0.85 | 1.0 | 0.0 |
-| **FluS1** | 0.0 | 0.0 | 1.0 |
+|              | Cov19S1 | Cov19S2 | FluS1 |
+|--------------|---------|---------|-------|
+| **Cov19S1**  | 1.0     | 0.85    | 0.0   |
+| **Cov19S2**  | 0.85    | 1.0     | 0.0   |
+| **FluS1**    | 0.0     | 0.0     | 1.0   |
 
 - **COVID S1-S2 (0.85)**: Prior wild-type infection provides 85.4% (95% CI: 80.0-89.3%)
   protection against Delta reinfection [M1]. Neutralization titers are reduced 3-5 fold [M2],
@@ -79,11 +79,11 @@ cross-disease interactions. Values are derived from published literature.
 
 ### Cosusceptibility (change in susceptibility during active co-infection)
 
-|  | Cov19S1 | Cov19S2 | FluS1 |
-|---|---|---|---|
-| **Cov19S1** | 1.0 | 1.0 | 1.5 |
-| **Cov19S2** | 1.0 | 1.0 | 1.5 |
-| **FluS1** | 1.5 | 1.5 | 1.0 |
+|              | Cov19S1 | Cov19S2 | FluS1 |
+|--------------|---------|---------|-------|
+| **Cov19S1**  | 1.0     | 1.0     | 1.5   |
+| **Cov19S2**  | 1.0     | 1.0     | 1.5   |
+| **FluS1**    | 1.5     | 1.5     | 1.0   |
 
 - **COVID S1-S2 (1.0)**: No clear evidence for enhanced susceptibility to one COVID
   variant during active infection with another. Set to neutral.
