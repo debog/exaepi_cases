@@ -41,8 +41,12 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 agent.number_of_diseases = 1
 
 ## Initial infection
+## ~3 per million (Bay Area pop 6.78M); matches ~100 confirmed cases in CA
+## at community-spread onset, scaled by population [S1,S2]. Single-case
+## extinction prob ~0.10 for R0≈2.5 (Poisson branching); 20 seeds give
+## P(epidemic) > 0.9999 [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 20
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 disease.p_trans = 0.20

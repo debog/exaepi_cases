@@ -75,9 +75,9 @@ disease_coupling.cosusceptibility_matrix = \
 ## Default disease parameters (Cov19S1: wild-type COVID-19)
 ## ============================================================
 
-## Initial infection
+## Initial infection (Cov19S1: ~3/million; R0≈2.5, extinction prob ~0.10/case [S3])
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 20
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 disease.p_trans = 0.20
@@ -130,6 +130,8 @@ disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
 ## ============================================================
 ## Cov19S2 overrides (Delta variant - only parameters that differ)
 ## ============================================================
+## Cov19S2: ~0.7/million; Delta emerged as small fraction of cases [S5,S6]
+disease_Cov19S2.num_initial_cases = 5
 disease_Cov19S2.p_trans = 0.35
 disease_Cov19S2.p_asymp = 0.15
 disease_Cov19S2.latent_length_alpha = 4.7

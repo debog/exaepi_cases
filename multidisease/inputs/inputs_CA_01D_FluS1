@@ -62,8 +62,11 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 agent.number_of_diseases = 1
 
 ## Initial infection
+## ~4.4 per million (CA pop 33.9M); seasonal flu seeds via multiple
+## independent introductions [S4,S7]. R0≈1.3 gives high single-case extinction
+## prob ~0.73; 150 seeds ensure reliable epidemic [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 150
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 ## p_trans calibrated for R0 ~1.3 given shorter infectious period [1]

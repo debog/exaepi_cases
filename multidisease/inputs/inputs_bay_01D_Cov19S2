@@ -63,8 +63,11 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 agent.number_of_diseases = 1
 
 ## Initial infection
+## ~0.7 per million (Bay Area pop 6.78M); Delta emerged as small fraction
+## (~1-5%) of sequenced cases [S5,S6]. High R0≈4.4 gives single-case
+## extinction prob ~0.02; even 5 seeds give P(epidemic) > 0.9999 [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 5
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 ## p_trans increased from 0.20 to 0.35 to reflect ~2x higher R0 [1],

@@ -76,9 +76,9 @@ disease_coupling.cosusceptibility_matrix = \
 ## Default disease parameters (Cov19S1: wild-type COVID-19)
 ## ============================================================
 
-## Initial infection
+## Initial infection (Cov19S1: ~3/million; ~100 confirmed CA cases at onset [S1,S2])
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 100
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 disease.p_trans = 0.20
@@ -131,8 +131,9 @@ disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
 ## ============================================================
 ## FluS1 overrides (Influenza A/H3N2 - all parameters differ)
 ## ============================================================
+## FluS1: ~4.4/million; R0≈1.3, needs more seeds (extinction prob ~0.73/case [S3])
 disease_FluS1.initial_case_type = "random"
-disease_FluS1.num_initial_cases = 30
+disease_FluS1.num_initial_cases = 150
 disease_FluS1.p_trans = 0.15
 disease_FluS1.p_asymp = 0.16
 disease_FluS1.asymp_relative_inf = 0.5

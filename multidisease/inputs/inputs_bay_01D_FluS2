@@ -69,8 +69,11 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 agent.number_of_diseases = 1
 
 ## Initial infection
+## ~3 per million (Bay Area pop 6.78M); H1N1pdm09 had fewer introduction
+## points than seasonal flu (first 2 CA cases Apr 17, 2009) [S8,S9]. R0≈1.3
+## gives single-case extinction prob ~0.73; 20 seeds give P(epidemic)=0.998 [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 20
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 ## Similar R0 to H3N2 (~1.25) [1]

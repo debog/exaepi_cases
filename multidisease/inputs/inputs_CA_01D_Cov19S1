@@ -41,8 +41,11 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 agent.number_of_diseases = 1
 
 ## Initial infection
+## ~3 per million (CA pop 33.9M); ~100 confirmed cases in CA at community-
+## spread onset (March 4-10 2020) [S1,S2]. Single-case extinction prob ~0.10
+## for R0≈2.5 (Poisson branching); 100 seeds ensure reliable epidemic [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 30
+disease.num_initial_cases = 100
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 disease.p_trans = 0.20

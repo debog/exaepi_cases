@@ -95,6 +95,107 @@ cross-disease interactions. Values are derived from published literature.
   to single infection [M6]. The value of 1.5 is a moderate estimate reflecting the
   net effect of these competing mechanisms.
 
+## Initial Case Numbers
+
+Initial case numbers are chosen based on three factors: (1) early surveillance data for
+each disease in California, (2) population scaling between Bay Area and California, and
+(3) stochastic extinction probability from branching process theory.
+
+### Simulation Populations
+
+Populations are derived from U.S. Census data encoded in the ExaEpi binary census files:
+
+- **Bay Area** (`BayArea.dat`): 1,405 communities, **6,783,760** agents
+- **California** (`CA.dat`): 7,046 communities, **33,871,648** agents
+- Population ratio CA:Bay = **5.0:1**
+
+### Summary Table
+
+| Disease          | Bay Area | California | Per million | P(epidemic) Bay | P(epidemic) CA |
+|------------------|----------|------------|-------------|-----------------|----------------|
+| Cov19S1 (WT)     | 20       | 100        | 2.9         | > 0.9999        | ~1.0           |
+| Cov19S2 (Delta)  | 5        | 25         | 0.7         | > 0.9999        | ~1.0           |
+| FluS1 (H3N2)     | 30       | 150        | 4.4         | 0.9999          | ~1.0           |
+| FluS2 (H1N1pdm)  | 20       | 100        | 2.9         | 0.998           | ~1.0           |
+
+### Stochastic Extinction and Branching Process Theory
+
+For an agent-based stochastic epidemic model, each initial infected individual
+independently starts a transmission chain that either dies out or triggers a major
+outbreak. The extinction probability *q* for a single case satisfies *q = E(q^Y)* where
+*Y* is the offspring distribution [S3]. For Poisson offspring with mean R0, *q* is the
+smallest solution of *q = exp(-R0(1-q))*. With *I0* initial cases, the probability that
+**all** chains die out is *q^I0*, so P(major epidemic) = 1 - *q^I0* [S3, Section 5.3].
+
+Computed extinction probabilities per initial case:
+
+| Disease         | R0   | *q* (single case) | Source              |
+|-----------------|------|--------------------|---------------------|
+| Cov19S1 (WT)    | ~2.5 | ~0.10              | Poisson(2.5) model  |
+| Cov19S2 (Delta) | ~4.4 | ~0.02              | Poisson(4.4) model  |
+| FluS1 (H3N2)    | ~1.3 | ~0.73              | Poisson(1.3) model  |
+| FluS2 (H1N1pdm) | ~1.3 | ~0.73              | Poisson(1.3) model  |
+
+For influenza (R0 ~ 1.3), the high single-case extinction probability (~73%) requires
+substantially more initial seeds than COVID-19 to reliably start an epidemic. Germann
+et al. [S4] found that for large-scale agent-based models, "the extent or duration of the
+pandemic is insensitive to details of the amount and location(s) of introductions of
+pandemic influenza virus" (Results and Discussion), but sufficient seeds are still
+needed to avoid stochastic fade-out. A comparable flu agent-based model used 50 initial
+cases for a 1.2 million population (~42 per million) [S7, Methods: "The influenza season
+was started in the simulations by inserting 50 cases on November 15"].
+
+### COVID-19 Wild-Type (Cov19S1): Rationale for ~3 per Million
+
+California's first confirmed COVID-19 case was reported on January 31, 2020 in Santa
+Clara County [S2, Case Description: "Among the first cases identified during January
+31-February 2, travel accounted for the largest reported source of exposure"]. Community
+transmission was detected on February 26 in Solano County. On March 4, Governor Newsom
+declared a state of emergency. By March 10, California had 157 confirmed cases statewide.
+
+The first 200 cases in Santa Clara County alone spanned January 31 to March 20, with
+"probable infection sources includ[ing] community transmission (104 cases), known close
+contact with a confirmed case-patient (66 cases), and travel (30 cases)" [S2, Abstract].
+
+Using ~100 for California (3 per million) reflects the order of magnitude of confirmed
+cases at the onset of community spread. This is consistent with the ExaEpi example
+`inputs_2disease_covid1_covid2.ca` which uses 117 initial cases for CA.
+
+### COVID-19 Delta (Cov19S2): Rationale for ~0.7 per Million
+
+The Delta variant emerged as a small fraction of circulating SARS-CoV-2 in California.
+In a large integrated health care system study, "During April 15-July 21, 2021, the
+weekly percentage of Delta variant infections increased from 0% to 95%" [S5, Results].
+Nationally, "Delta rose from 1% of circulating SARS-CoV-2 viruses nationally during
+the week ending May 1, to >50% by the week ending June 26, and to >95% by the week
+ending July 31" [S6, Results]. The very high R0 (~4.4 in our parameterization based on
+p_trans = 0.35) means that even a small number of initial introductions reliably
+establishes an epidemic (single-case extinction probability ~2%).
+
+### Influenza A/H3N2 (FluS1): Rationale for ~4.4 per Million
+
+Seasonal influenza arrives through multiple independent importation events (travelers,
+community introductions) rather than a single-point introduction. Germann et al. [S4]
+modeled influenza introductions as a continuous process: "a small random number of
+incubating individuals, equivalent to 0.04% of arriving international passengers, is
+introduced each day at each of 14 major international airports" (Simulation Model
+Design). Since ExaEpi uses a single random-seeding event rather than continuous
+importation, a larger initial count compensates. The lower R0 (~1.3) gives a high
+single-case extinction probability (~73%), requiring more seeds to ensure at least one
+chain persists. With 30 seeds (Bay Area) or 150 seeds (CA), P(epidemic) > 0.999.
+
+### Influenza A/H1N1pdm09 (FluS2): Rationale for ~3 per Million
+
+The 2009 H1N1 pandemic was first detected in California: "The first two laboratory-
+confirmed cases of 2009 pandemic influenza A (H1N1) virus (H1N1pdm09) infection were
+detected in San Diego (SD) and Imperial County (IC) in southern California, April 2009"
+[S9, Background]. The initial report on April 21, 2009 documented 2 cases [S8]; by
+April 24, California had 4 confirmed cases (of 8 total US cases) [S10, Results]. The
+pandemic strain had fewer introduction points than seasonal H3N2 (novel virus, single
+geographic origin), so we use a lower per-capita rate (3 vs 4.4 per million). The R0
+is similar to seasonal flu (~1.3), so sufficient seeds (20 Bay Area, 100 CA) are still
+needed to overcome stochastic extinction.
+
 ---
 
 ## COVID-19 References
@@ -129,3 +230,40 @@ cross-disease interactions. Values are derived from published literature.
 - [M4] Zheng J et al. (2022). The role of respiratory co-infection with influenza or RSV in the clinical severity of COVID-19 patients: a systematic review and meta-analysis. *J Glob Health*. [doi:10.7189/jogh.12.05040](https://doi.org/10.7189/jogh.12.05040)
 - [M5] Gao YD et al. (2023). Prevalence and associated outcomes of coinfection between SARS-CoV-2 and influenza: a systematic review and meta-analysis. *Int J Infect Dis*. [doi:10.1016/j.ijid.2023.08.009](https://doi.org/10.1016/j.ijid.2023.08.009)
 - [M6] Dee K et al. (2024). Viral interference between SARS-CoV-2 and influenza A viruses. *PLoS Pathog*. [doi:10.1371/journal.ppat.1012017](https://doi.org/10.1371/journal.ppat.1012017)
+
+## Initial Case Seeding References
+
+- [S1] U.S. Census Bureau. American Community Survey 5-Year Estimates, encoded in ExaEpi binary census files `BayArea.dat` (6,783,760 agents, 1,405 communities) and `CA.dat` (33,871,648 agents, 7,046 communities).
+- [S2] Reingold AL et al. (2021). Epidemiologic findings from case investigations and contact tracing for first 200 cases of coronavirus disease, Santa Clara County, California, USA. *Emerg Infect Dis* 27(5):1301-1308. [PMC8084524](https://pmc.ncbi.nlm.nih.gov/articles/PMC8084524/)
+  - Abstract: "Probable infection sources included community transmission (104 cases), known close contact with a confirmed case-patient (66 cases), and travel (30 cases)."
+  - Case Description: "Among the first cases identified during January 31-February 2, travel accounted for the largest reported source of exposure."
+  - Study period: January 31 to March 20, 2020, encompassing 200 laboratory-confirmed cases.
+- [S3] Allen LJS (2008). Branching processes: their role in epidemiology. *Int J Environ Res Public Health* 5(5):335-350. [PMC2872325](https://pmc.ncbi.nlm.nih.gov/articles/PMC2872325/)
+  - Section 2: Extinction probability *q* satisfies *q = f(q) := E(q^Y)* where *Y* is the offspring distribution.
+  - Section 5.3: With *I0* initial cases, total extinction probability is *q^I0*.
+  - Key result: When R0 > 1, *q* < 1 and P(major epidemic) = 1 - *q^I0* increases with *I0*.
+- [S4] Germann TC et al. (2006). Mitigation strategies for pandemic influenza in the United States. *PNAS* 103(15):5935-5940. [PMC1458676](https://pmc.ncbi.nlm.nih.gov/articles/PMC1458676/)
+  - Simulation Model Design: "a small random number of incubating individuals, equivalent to 0.04% of arriving international passengers, is introduced each day at each of 14 major international airports."
+  - Results and Discussion: "Regardless of R0, unless drastic travel restrictions are imposed, the extent or duration of the pandemic is insensitive to details of the amount and location(s) of introductions of pandemic influenza virus in our simulations."
+  - Population: 281 million individuals (entire continental U.S.).
+- [S5] Paden CR et al. (2021). Distribution of SARS-CoV-2 variants in a large integrated health care system - California, March-July 2021. *MMWR* 70(40):1415-1419. [CDC](https://www.cdc.gov/mmwr/volumes/70/wr/mm7040a4.htm)
+  - Results: "During April 15-July 21, 2021, the weekly percentage of Delta variant infections increased from 0% to 95%."
+  - Total sequenced: 6,798 specimens, of which 2,156 (31.7%) were Delta.
+- [S6] Paul P et al. (2022). Genomic surveillance for SARS-CoV-2 variants: predominance of the Delta and Omicron variants - United States, June 2021-January 2022. *MMWR* 71(6):206-211. [CDC](https://www.cdc.gov/mmwr/volumes/71/wr/mm7106a4.htm)
+  - Results: "Delta rose from 1% of circulating SARS-CoV-2 viruses nationally during the week ending May 1, to >50% by the week ending June 26, and to >95% by the week ending July 31."
+- [S7] Rao S et al. (2022). Agent-based model of the impact of higher influenza vaccine efficacy on seasonal influenza burden. *Vaccine: X* 12:100228. [PMC9753457](https://pmc.ncbi.nlm.nih.gov/articles/PMC9753457/)
+  - Methods: "The influenza season was started in the simulations by inserting 50 cases on November 15."
+  - Methods: "Simulations used a population created from the 2010 Allegheny County Pennsylvania census population. The population consists of ~1.2 million agents."
+  - Seeding rate: 50 / 1,200,000 = ~42 per million.
+- [S8] CDC (2009). Swine influenza A (H1N1) infection in two children - Southern California, March-April 2009. *MMWR* 58(15):400-402. [CDC](https://www.cdc.gov/mmwr/preview/mmwrhtml/mm5815a5.htm)
+  - Patient A: 10-year-old, San Diego County, symptom onset March 30, 2009.
+  - Patient B: 9-year-old, Imperial County, symptom onset March 28, 2009.
+  - Both reported April 17, 2009; "no additional cases of infection with the identified strain of swine influenza A (H1N1) had been identified" as of April 21, 2009.
+- [S9] Myers KP et al. (2012). The first cases of 2009 pandemic influenza A (H1N1) virus infection in the United States: a serologic investigation demonstrating early transmission. *J Infect Dis*. [PMC4941679](https://pmc.ncbi.nlm.nih.gov/articles/PMC4941679/)
+  - Background: "The first two laboratory-confirmed cases of 2009 pandemic influenza A (H1N1) virus (H1N1pdm09) infection were detected in San Diego (SD) and Imperial County (IC) in southern California, April 2009."
+  - Discussion: "We provide serological evidence of early community transmission of H1N1pdm09 in southern California in March 2009."
+  - 19 PCR-confirmed case-patients identified April 17 - May 6, 2009.
+- [S10] CDC (2009). Update: swine influenza A (H1N1) infections - California and Texas, April 2009. *MMWR* 58(16):435-437. [CDC](https://www.cdc.gov/mmwr/preview/mmwrhtml/mm5816a7.htm)
+  - Results: 8 total confirmed US cases as of April 24, 2009.
+  - California: 4 confirmed cases (San Diego County 3, Imperial County 1).
+  - Texas: 2 confirmed cases (Guadalupe County).
