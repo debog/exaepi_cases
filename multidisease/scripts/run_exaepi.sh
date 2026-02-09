@@ -1245,28 +1245,33 @@ for output_name in output_files:
     infected_idx = [headers.index(c) for c in infected_cols if c in headers]
     hosp_idx     = [headers.index(c) for c in hosp_cols     if c in headers]
     death_idx    = headers.index('D') if 'D' in headers else None
+    recov_idx    = headers.index('R') if 'R' in headers else None
 
-    if infected_idx and hosp_idx and death_idx is not None:
+    if infected_idx and hosp_idx and death_idx is not None and recov_idx is not None:
         # stacked shape: (num_runs, num_timesteps, num_cols)
         total_infected = np.sum(stacked[:, :, infected_idx], axis=2)
         total_hosp     = np.sum(stacked[:, :, hosp_idx],     axis=2)
         deaths         = stacked[:, :, death_idx]
+        recovered      = stacked[:, :, recov_idx]
         days           = stacked[0, :, 0]  # Day column (same for all runs)
 
-        # Stack derived quantities: (num_runs, num_timesteps, 3)
-        derived = np.stack([total_infected, total_hosp, deaths], axis=2)
+        # Stack derived quantities: (num_runs, num_timesteps, 4)
+        derived = np.stack([total_infected, total_hosp, deaths, recovered], axis=2)
         derived_mean = np.mean(derived, axis=0)
         derived_std  = np.std(derived, axis=0)
         derived_min  = np.min(derived, axis=0)
         derived_max  = np.max(derived, axis=0)
 
-        summary_header = '%5s %16s %16s %16s' % ('Day', 'TotalInfected', 'TotalHospitalized', 'Deaths')
+        summary_header = '%5s %16s %16s %16s %16s' % ('Day', 'TotalInfected', 'TotalHospitalized', 'Deaths', 'Recovered')
 
         def write_summary_file(filepath, header, days, data):
             with open(filepath, 'w') as f:
                 f.write(header + '\n')
                 for k in range(len(days)):
-                    f.write('%5d %16.2f %16.2f %16.2f\n' % (int(round(days[k])), data[k,0], data[k,1], data[k,2]))
+                    f.write('%5d' % int(round(days[k])))
+                    for j in range(data.shape[1]):
+                        f.write(' %16.2f' % data[k, j])
+                    f.write('\n')
 
         write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_mean.dat'), summary_header, days, derived_mean)
         write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_std.dat'),  summary_header, days, derived_std)

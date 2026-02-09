@@ -319,11 +319,11 @@ COL_S_I_NH = 6        # Symptomatic/Infectious/Not Hospitalized
 COL_S_I_H = 7         # Symptomatic/Infectious/Hospitalized
 COL_A_PI = 8          # Asymptomatic/Pre-Infectious
 COL_A_I = 9           # Asymptomatic/Infectious
-COL_H_NI = 10         # Hospital/Not in ICU
-COL_H_I = 11          # Hospital/In ICU
+COL_H_NI = 10         # Hospitalized/Non-infectious
+COL_H_I = 11          # Hospitalized/Infectious
 COL_ICU = 12          # ICU
-COL_V = 13            # Vaccinated
-COL_R = 14            # Recovered
+COL_V = 13            # Ventilator
+COL_R = 14            # Immune (Status::immune, wanes over time)
 COL_D = 15            # Deaths (cumulative)
 COL_NEWI = 16         # New Infections
 COL_NEWS = 17         # New Symptomatic
@@ -495,6 +495,42 @@ def create_hospitalizations_plot(data, case_name, platform, output_format, plots
 
     plt.close()
 
+def create_immune_plot(data, case_name, platform, output_format, plots_dir, disease_name=None):
+    """Create plot of currently immune agents over time"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    days = data[:, COL_DAY]
+    immune = data[:, COL_R]
+
+    ax.plot(days, immune, color=COLOR_GREEN, linewidth=2.5)
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Currently Immune', fontsize=12)
+
+    title = 'Immune Over Time'
+    if disease_name:
+        title += f' ({disease_name})'
+    ax.set_title(title, fontsize=14, fontweight='bold')
+
+    ax.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+
+    base_name = f"{case_name}_immune_{platform}"
+    if disease_name:
+        base_name = f"{case_name}_{disease_name}_immune_{platform}"
+
+    if output_format in ['png', 'both']:
+        png_file = str(Path(plots_dir) / f"{base_name}.png")
+        plt.savefig(png_file, dpi=300, bbox_inches='tight')
+        print(f"Created: {png_file}")
+
+    if output_format in ['eps', 'both']:
+        eps_file = str(Path(plots_dir) / f"{base_name}.eps")
+        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        print(f"Created: {eps_file}")
+
+    plt.close()
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: plot_output.py <output_file> <case_name> <platform> <output_format> <plots_dir>", file=sys.stderr)
@@ -534,6 +570,7 @@ def main():
     create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name)
     create_deaths_plot(data, case_name, platform, output_format, plots_dir, disease_name)
     create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+    create_immune_plot(data, case_name, platform, output_format, plots_dir, disease_name)
 
     print("Plotting complete!")
 
@@ -655,7 +692,7 @@ def main():
         if any(d is None for d in [mean_data, std_data]):
             continue
 
-        # Columns: Day(0), TotalInfected(1), TotalHospitalized(2), Deaths(3)
+        # Columns: Day(0), TotalInfected(1), TotalHospitalized(2), Deaths(3), Recovered(4)
         days = mean_data[:, 0]
 
         # Determine disease name for titles
@@ -692,6 +729,14 @@ def main():
             'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
             COLOR_RED, f"{prefix}_deaths_{platform}",
             output_format, plots_dir)
+
+        # 4. Immune (Recovered)
+        if mean_data.shape[1] > 4:
+            plot_ensemble_quantity(
+                days, mean_data[:, 4], std_data[:, 4],
+                'Currently Immune', f'Immune Over Time{disease_suffix}',
+                COLOR_GREEN, f"{prefix}_immune_{platform}",
+                output_format, plots_dir)
 
     print("Ensemble plotting complete!")
 
