@@ -47,11 +47,11 @@ agent.number_of_diseases = 1
 agent.disease_names = "FluS1"
 
 ## Initial infection
-## ~0.6 per million (CA pop 33.9M); reduced from 150; seasonal flu seeds via multiple
+## ~1.5 per million (CA pop 33.9M); seasonal flu seeds via multiple
 ## independent introductions [S4,S7]. R0≈1.3 gives high single-case extinction
-## prob ~0.73; 20 seeds give P(epidemic)>99% [S3].
+## prob ~0.73; 50 seeds give P(epidemic)>99.99% [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 20
+disease.num_initial_cases = 50
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 ## p_trans lowered from 0.15 to 0.09 (with longer infectious period) to preserve R0~1.3 [1]

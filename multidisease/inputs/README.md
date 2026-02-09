@@ -182,8 +182,8 @@ Populations are derived from U.S. Census data encoded in the ExaEpi binary censu
 |------------------|----------|------------|-------------|-----------------|----------------|
 | Cov19S1 (WT)     | 20       | 100        | 2.9         | > 0.9999        | ~1.0           |
 | Cov19S2 (Delta)  | 5        | 25         | 0.7         | > 0.9999        | ~1.0           |
-| FluS1 (H3N2)     | 10       | 20         | 0.6-1.5     | 0.93            | 0.99           |
-| FluS2 (H1N1pdm)  | 10       | 20         | 0.6-1.5     | 0.93            | 0.99           |
+| FluS1 (H3N2)     | 15       | 50         | 1.5-2.2     | 0.98            | ~1.0           |
+| FluS2 (H1N1pdm)  | 15       | 50         | 1.5-2.2     | 0.98            | ~1.0           |
 | PneuS1 (Pneumo)  | 40       | 200        | 5.9         | ~1.0            | ~1.0           |
 
 ### Stochastic Extinction and Branching Process Theory
@@ -251,8 +251,8 @@ introduced each day at each of 14 major international airports" (Simulation Mode
 Design). Since ExaEpi uses a single random-seeding event rather than continuous
 importation, a larger initial count compensates. The lower R0 (~1.3) gives a high
 single-case extinction probability (~73%), requiring more seeds to ensure at least one
-chain persists. Seeds were reduced from 150/30 to 20/10 (CA/Bay) to produce more
-realistic epidemic peak timing; with 10 seeds P(epidemic) ≈ 93%, with 20 seeds ≈ 99%.
+chain persists. Seeds were reduced from 150/30 to 50/15 (CA/Bay) to balance
+epidemic peak timing; with 15 seeds P(epidemic) ≈ 98%, with 50 seeds ≈ 99.99%.
 
 ### Influenza A/H1N1pdm09 (FluS2): Rationale for ~3 per Million
 
