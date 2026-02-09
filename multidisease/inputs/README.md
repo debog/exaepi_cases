@@ -107,24 +107,30 @@ cross-disease interactions. Values are derived from published literature.
 
 ### Coimmunity (protection from prior infection with one disease against another)
 
-|              | Cov19S1 | Cov19S2 | FluS1 |
-|--------------|---------|---------|-------|
-| **Cov19S1**  | 1.0     | 0.85    | 0.0   |
-| **Cov19S2**  | 0.85    | 1.0     | 0.0   |
-| **FluS1**    | 0.0     | 0.0     | 1.0   |
+|              | Cov19S1 | Cov19S2 | FluS1 | PneuS1 |
+|--------------|---------|---------|-------|--------|
+| **Cov19S1**  | 1.0     | 0.85    | 0.0   | 0.0    |
+| **Cov19S2**  | 0.85    | 1.0     | 0.0   | 0.0    |
+| **FluS1**    | 0.0     | 0.0     | 1.0   | 0.0    |
+| **PneuS1**   | 0.0     | 0.0     | 0.0   | 1.0    |
 
 - **COVID S1-S2 (0.85)**: Prior wild-type infection provides 85.4% (95% CI: 80.0-89.3%)
   protection against Delta reinfection [M1]. Neutralization titers are reduced 3-5 fold [M2],
   but clinical protection against severe disease remains ~90% at 40 weeks [M3].
 - **COVID-Flu (0.0)**: Different virus families; no cross-immunity.
+- **Flu-Pneumococcus (0.0)**: Influenza (virus) and *S. pneumoniae* (bacterium) are entirely
+  different pathogen types with no shared epitopes or cross-reactive immunity [I4,I5].
+  SimFI uses μ = 1 (neutral) as the default cross-immunity parameter [I1, Table 2].
+- **COVID-Pneumococcus (0.0)**: Different pathogen types; no cross-immunity.
 
 ### Cosusceptibility (change in susceptibility during active co-infection)
 
-|              | Cov19S1 | Cov19S2 | FluS1 |
-|--------------|---------|---------|-------|
-| **Cov19S1**  | 1.0     | 1.0     | 1.5   |
-| **Cov19S2**  | 1.0     | 1.0     | 1.5   |
-| **FluS1**    | 1.5     | 1.5     | 1.0   |
+|              | Cov19S1 | Cov19S2 | FluS1 | PneuS1 |
+|--------------|---------|---------|-------|--------|
+| **Cov19S1**  | 1.0     | 1.0     | 1.5   | 1.0    |
+| **Cov19S2**  | 1.0     | 1.0     | 1.5   | 1.0    |
+| **FluS1**    | 1.5     | 1.5     | 1.0   | 1.0    |
+| **PneuS1**   | 1.0     | 1.0     | 5.0   | 1.0    |
 
 - **COVID S1-S2 (1.0)**: No clear evidence for enhanced susceptibility to one COVID
   variant during active infection with another. Set to neutral.
@@ -135,6 +141,24 @@ cross-disease interactions. Values are derived from published literature.
   suppresses co-infection, but concurrent infection lowers the IFN response compared
   to single infection [M6]. The value of 1.5 is a moderate estimate reflecting the
   net effect of these competing mechanisms.
+- **Flu→Pneumococcus (5.0)**: Influenza infection dramatically enhances pneumococcal
+  acquisition and disease. The SimFI model [I1] formalizes this through multiplicative
+  interaction parameters (Figure 2). Opatowski et al. [I2] estimated individual-level
+  transmission enhancement ξ = 8.7 [4.6–14.4] 95% CI from French meningitis surveillance.
+  Shrestha et al. [I3] estimated susceptibility φ = 85–115x, but this combines acquisition
+  and pathogenicity (progression to invasive disease). Biological mechanisms include:
+  influenza neuraminidase exposing pneumococcal receptors (3–4x adherence increase [I4]),
+  disruption of mucociliary clearance, and suppression of innate immunity [I5]. The value
+  of 5.0 reflects the lower range of the Opatowski transmission estimate and the fact that
+  ExaEpi's cosusceptibility modifies only acquisition probability (analogous to SimFI's α),
+  not pathogenicity (π). Co-infected patients show markedly worse outcomes: in-hospital
+  mortality aOR = 3.00 [2.17–4.16], ICU transfer aOR = 2.83 [1.98–4.04] [I6].
+- **Pneumococcus→Flu (1.0)**: No established evidence that pneumococcal carriage enhances
+  influenza virus acquisition [I1,I4]. While Short & Habets [I4] describe a "mutually
+  beneficial relationship," the evidence for bacterial enhancement of viral infection is
+  weak and primarily limited to *in vitro* models. Set to neutral.
+- **COVID-Pneumococcus (1.0)**: No published interaction data for SARS-CoV-2 and
+  *S. pneumoniae* co-acquisition. Set to neutral pending future studies.
 
 ## Initial Case Numbers
 
@@ -462,6 +486,49 @@ bootstrap endemic circulation.
   - Results: "Age > 64 years old was a high risk for overall mortality (OR 3.04, 95% CI 2.50-3.68)."
   - Results: "The case fatality rate of IPD may reach 15-20% in adults and 30-40% in the elderly."
   - Used for: ventCVF and icuCVF age gradient — elderly mortality substantially higher.
+
+## Influenza-Pneumococcus Interaction References
+
+- [I1] Arduin H, Opatowski L (2018). SimFI: A Transmission Agent-Based Model of Two Interacting Pathogens. *PAAMS 2018, LNAI 10978*, pp. 72-83. [doi:10.1007/978-3-319-94580-4_6](https://doi.org/10.1007/978-3-319-94580-4_6)
+  - Figure 2: Interaction mechanisms — acquisition (α), transmission (θ), cross-immunity (μ), pathogenicity (π). Each is a multiplicative parameter modulating transmission or infection probabilities.
+  - Table 2: Default interaction parameters — acquisition α = 1, transmission θ = 1, cross-immunity μ = 1, pathogenicity π = 1 (all "to be varied").
+  - Discussion: "respiratory viruses increased bacterial transmission by a 8.7 factor [4.6–14.4]₉₅% CI in co-infected individuals, and increased the risk of developing a bacterial disease by a 92 factor [28–361]₉₅% CI" (citing [I2]).
+  - Discussion: Shrestha et al. "analyzed two bacterial pneumonia datasets and found an increased susceptibility to pneumonia caused by the influenza infection by a 85 factor [27–160]₉₅% CI or 115 factor [70–230]₉₅% CI depending on the dataset" (citing [I3]).
+  - Results: "pneumococcal infections incidence series (in black) differ depending on the activated interaction mechanism" (Figure 3A-D). Acquisition and transmission interactions produced correlated pneumococcal-influenza dynamics; pathogenicity produced distinct incidence peaks.
+  - Used for: conceptual framework for coupling matrices; mapping SimFI α to ExaEpi cosusceptibility, μ to coimmunity.
+- [I2] Opatowski L, Varon E, Dupont C, Temime L, van der Werf S et al. (2013). Assessing pneumococcal meningitis association with viral respiratory infections and antibiotics: insights from statistical and mathematical models. *Proc Biol Sci* 280(1764):20130519. [PMC3712413](https://pmc.ncbi.nlm.nih.gov/articles/PMC3712413/)
+  - Methods: Bayesian inference on weekly French pneumococcal meningitis incidence (2001-2004), fitting transmission and pathogenicity interaction parameters simultaneously.
+  - Results: Individual-level transmission enhancement ξ = 8.7 [4.6–14.4] 95% CI.
+  - Results: Individual-level pathogenicity enhancement π = 92 [28–361] 95% CI.
+  - Results: Population-level transmission increase ~1.3-fold (from 0.36 to 0.47 per week per person).
+  - Results: "Model simulations require BOTH transmissibility and pathogenicity increases to accurately reproduce observed data."
+  - Used for: cosusceptibility matrix — flu→pneumococcus value of 5.0 derived from lower range of ξ estimate.
+- [I3] Shrestha S, Foxman B, Weinberger DM, Steiner C, Viboud C et al. (2013). Identifying the interaction between influenza and pneumococcal pneumonia using incidence data. *Sci Transl Med* 5(191):191ra84. [PMC4178309](https://pmc.ncbi.nlm.nih.gov/articles/PMC4178309/)
+  - Results: Susceptibility parameter φ — Dataset I (1990-1997, pre-PCV): 115 [70–230] 95% CI.
+  - Results: Susceptibility parameter φ — Dataset II (2000-2009, post-PCV): 85 [27–160] 95% CI.
+  - Results: "Interaction does not extend beyond 1 week post-influenza infection."
+  - Results: Peak etiologic fraction — "up to 40% of pneumococcal cases during influenza peaks are attributable to influenza."
+  - Results: Annual average etiologic fraction — "2-10% of pneumococcal pneumonia cases attributable to influenza."
+  - Used for: cosusceptibility context — φ estimates combine acquisition + pathogenicity; ExaEpi cosusceptibility (acquisition only) uses a lower value of 5.0.
+- [I4] Short KR, Habets MN (2012). Interactions between *Streptococcus pneumoniae* and influenza virus: a mutually beneficial relationship? *Future Microbiol* 7(5):609-624.
+  - Review: Influenza neuraminidase cleaves sialic acid residues, exposing pneumococcal receptors on respiratory epithelium.
+  - Results: Viral neuraminidase increased bacterial adherence 2.9–3.8 fold (strain-dependent).
+  - Results: Co-infected hosts show higher bacterial load and longer carriage duration.
+  - Results: Evidence for bacterial enhancement of viral infection is "weak" and "limited to *in vitro* models."
+  - Used for: cosusceptibility asymmetry — flu→pneumococcus = 5.0, pneumococcus→flu = 1.0.
+- [I5] Bosch AATM, Biesbroek G, Trzcinski K, Sanders EAM, Bogaert D (2013). Viral and bacterial interactions in the upper respiratory tract. *PLoS Pathog* 9(1):e1003057.
+  - Review: Influenza disrupts epithelial barrier integrity, impairs mucociliary clearance, and suppresses innate immune responses (neutrophil recruitment, macrophage phagocytosis).
+  - Results: "non-neutral interactions affecting co-infected hosts" — viral infection creates a window of vulnerability for bacterial superinfection lasting 4-7 days.
+  - Results: 15-fold competitive advantage for sialic acid-catabolizing bacteria during viral infection.
+  - Results: No cross-reactive adaptive immunity between influenza virus and pneumococcus.
+  - Used for: coimmunity = 0 (no cross-immunity); biological mechanism for cosusceptibility enhancement.
+- [I6] Liaquat A et al. (2022). Influenza and pneumococcal co-infection: clinical outcomes in hospitalized patients. *Infect Control Hosp Epidemiol*. [PMC9116507](https://pmc.ncbi.nlm.nih.gov/articles/PMC9116507/)
+  - Results: In-hospital mortality adjusted OR = 3.00 [2.17–4.16].
+  - Results: Late ICU transfer adjusted OR = 2.83 [1.98–4.04].
+  - Results: Mechanical ventilation adjusted OR = 3.23 [2.29–4.57].
+  - Results: Vasopressor use adjusted OR = 3.63 [2.53–5.19].
+  - Results: Risk-adjusted hospital cost multiplier = 1.77 [1.59–1.96]; LOS multiplier = 1.48 [1.37–1.61].
+  - Used for: clinical outcome context — co-infection severity supports strong cosusceptibility interaction.
 
 ## Initial Case Seeding References
 

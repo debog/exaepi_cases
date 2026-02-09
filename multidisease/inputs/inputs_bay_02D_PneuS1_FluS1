@@ -1,0 +1,207 @@
+## 2-disease case: Pneumococcus (PneuS1) + Influenza A/H3N2 (FluS1)
+##
+## disease.* sets PneuS1 (pneumococcal carriage/disease) as the default.
+## disease_FluS1.* overrides all parameters for influenza (since the two
+## diseases differ in nearly every parameter).
+##
+## Coupling matrix references:
+##   [I1] Arduin & Opatowski (2018), PAAMS, LNAI 10978:72-83
+##        - SimFI interaction mechanisms: acquisition (alpha), transmission (theta),
+##          cross-immunity (mu), pathogenicity (pi) — multiplicative parameters
+##          modulating co-infection dynamics (Figure 2, Table 2)
+##        - Results: "respiratory viruses increased bacterial transmission by a
+##          8.7 factor [4.6-14.4]_{95% CI} in co-infected individuals, and increased
+##          the risk of developing a bacterial disease by a 92 factor [28-361]_{95% CI}"
+##   [I2] Opatowski et al. (2013), Proc Biol Sci 280(1764):20130519, PMC3712413
+##        - Bayesian inference on French pneumococcal meningitis time series (2001-2004)
+##        - Individual-level transmission enhancement (xi): 8.7x [4.6-14.4] 95% CI
+##        - Individual-level pathogenicity enhancement (pi): 92x [28-361] 95% CI
+##        - Population-level transmission increase: ~1.3-fold
+##   [I3] Shrestha et al. (2013), Sci Transl Med 5(191):191ra84, PMC4178309
+##        - Individual-level susceptibility to pneumococcal pneumonia during flu:
+##          phi = 115 [70-230] 95% CI (pre-vaccination dataset 1990-1997)
+##          phi = 85 [27-160] 95% CI (post-vaccination dataset 2000-2009)
+##        - "Interaction does not extend beyond 1 week post-influenza infection"
+##        - Peak etiologic fraction: up to 40% of pneumococcal cases during flu peaks
+##   [I4] Short & Habets (2012), Future Microbiol 7(5):609-624
+##        - Influenza increases pneumococcal adherence to respiratory epithelium
+##          via viral neuraminidase exposing bacterial receptors (3-4 fold)
+##        - Longer carriage duration and higher bacterial load in co-infected hosts
+##        - "Mutually beneficial relationship" — but evidence for bacterial
+##          enhancement of viral infection is weak
+##   [I5] Bosch et al. (2013), PLoS Pathog 9(1):e1003057
+##        - Viral and bacterial interactions in upper respiratory tract
+##        - Influenza disrupts epithelial barrier, impairs mucociliary clearance,
+##          and suppresses innate immune responses (neutrophil/macrophage function)
+##        - These mechanisms collectively enhance bacterial colonization and invasion
+##   [I6] Liaquat et al. (2022), Infect Control Hosp Epidemiol, PMC9116507
+##        - Flu+pneumococcus co-infection outcomes: in-hospital mortality aOR = 3.00
+##          [2.17-4.16]; ICU transfer aOR = 2.83 [1.98-4.04]; mechanical ventilation
+##          aOR = 3.23 [2.29-4.57]
+
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "BayArea.dat"
+agent.workerflow_filename = "BayArea-wf.bin"
+
+## Simulation control
+agent.nsteps = 70
+agent.max_box_size = 16
+agent.fast = false
+
+## Output control
+agent.plot_int = 10
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output_PneuS1.dat" "output_FluS1.dat"
+
+## Random travel
+agent.random_travel_int = 24
+agent.random_travel_prob = 0.0001
+
+## Air travel (disabled)
+agent.air_travel_int = -1
+
+## Shelter-in-place
+agent.shelter_start = -1
+agent.shelter_length = 0
+agent.shelter_compliance = 0.95
+
+## Social structure
+agent.nborhood_size = 500
+agent.workgroup_size = 20
+agent.student_teacher_ratio = 0 15 15 15 15 15
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
+agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
+agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+
+## Multi-disease setup
+agent.number_of_diseases = 2
+agent.disease_names = "PneuS1" "FluS1"
+
+## Disease coupling (2x2 matrices, row-major: PneuS1=row0, FluS1=row1)
+## Coimmunity: Influenza (virus) and S. pneumoniae (bacterium) are entirely
+## different pathogen types with no cross-reactive immunity. Unlike two
+## variants of the same virus, no shared epitopes exist [I4,I5]. SimFI uses
+## mu = 1 (neutral) as the default for cross-immunity [I1, Table 2].
+disease_coupling.coimmunity_matrix = \
+    1.0  0.0 \
+    0.0  1.0
+## Cosusceptibility: Influenza infection dramatically enhances susceptibility
+## to pneumococcal acquisition and disease. The SimFI model [I1] formalizes
+## this through the acquisition interaction parameter alpha (Figure 2).
+## Opatowski et al. [I2] estimated individual-level transmission enhancement
+## xi = 8.7 [4.6-14.4] from French meningitis surveillance data. Shrestha
+## et al. [I3] estimated susceptibility phi = 85-115x, but this includes
+## pathogenicity (progression to invasive disease), not just acquisition.
+## Biological mechanisms: influenza neuraminidase exposes pneumococcal
+## receptors (3-4x adherence increase [I4]), disrupts mucociliary clearance,
+## and impairs innate immunity [I5]. Using 5.0 for flu→pneumococcus,
+## reflecting the lower range of the Opatowski transmission estimate [I2]
+## and the fact that ExaEpi's cosusceptibility modifies only acquisition
+## probability (analogous to SimFI's alpha), not pathogenicity (pi).
+## Reverse direction: no established evidence that pneumococcal carriage
+## enhances influenza virus acquisition [I1,I4]. Set to 1.0 (neutral).
+disease_coupling.cosusceptibility_matrix = \
+    1.0  5.0 \
+    1.0  1.0
+
+## ============================================================
+## Default disease parameters (PneuS1: Pneumococcal carriage/disease)
+## ============================================================
+
+## Initial infection
+## Pneumococcus is endemic with ~20% carriage prevalence [P1,P2,P5].
+## For Bay Area (6.78M), seed with 40 cases (~5.9/million). R0~2.0 [P3],
+## single-case extinction prob ~0.20. With 40 seeds: P(epidemic) ≈ 1.0.
+disease.initial_case_type = "random"
+disease.num_initial_cases = 40
+
+## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+## SimFI infection rate: 4.2e-5 per contact-day [P1,P2].
+## p_trans calibrated for endemic R0~2.0 [P3]; transmission primarily
+## respiratory droplet/contact, concentrated in household/daycare [P3,P4,P5].
+disease.p_trans = 0.06
+disease.xmit_comm = 0.00001 0.00004 0.00008 0.00008 0.00008 0.00015
+disease.xmit_hood = 0.00006 0.00018 0.00035 0.00035 0.00035 0.00060
+disease.xmit_hh_adult = 0.20 0.20 0.25 0.25 0.25 0.25
+disease.xmit_hh_child = 0.50 0.50 0.20 0.20 0.20 0.20
+disease.xmit_nc_adult = 0.035 0.035 0.044 0.044 0.044 0.044
+disease.xmit_nc_child = 0.07 0.07 0.035 0.035 0.035 0.035
+disease.xmit_work = 0.035
+
+## School transmission (by school type: none, college, high, middle, elementary, daycare)
+## Daycare is a major transmission setting for pneumococcus [P3,P5].
+disease.xmit_school = 0 0.020 0.020 0.025 0.030 0.12
+disease.xmit_school_a2c = 0 0.020 0.020 0.025 0.030 0.12
+disease.xmit_school_c2a = 0 0.020 0.020 0.025 0.030 0.12
+
+## Disease characteristics
+## p_asymp: ~80% of colonizations resolve asymptomatically [P1,P5].
+disease.p_asymp = 0.80
+## Asymptomatic carriers shed effectively from day 0 [P1,P2].
+disease.asymp_relative_inf = 0.8
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+
+## Disease period distributions (gamma distribution: alpha, beta; mean = alpha*beta)
+## Latent period: ~1 day. Shedding begins day 0 of colonization [P2].
+disease.latent_length_alpha = 2.0
+disease.latent_length_beta = 0.5
+## Infectious period: ~23 days. Weighted carriage duration across ages [P1,P4].
+disease.infectious_length_alpha = 23.0
+disease.infectious_length_beta = 1.0
+## Incubation period: ~21 days. Asymptomatic carriage phase [P1, Table 1].
+disease.incubation_length_alpha = 17.6
+disease.incubation_length_beta = 1.19
+## Immune period: ~300 days. Serotype-specific immunity [P1,P2, Table 2].
+disease.immune_length_alpha = 300.0
+disease.immune_length_beta = 1.0
+
+## Hospitalization delay distribution (gamma distribution: alpha, beta)
+disease.hospital_delay_length_alpha = 2.0
+disease.hospital_delay_length_beta = 1.0
+
+## Hospital stay model
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 3 3 4 5 6 7
+
+## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.CHR = 0.015 0.005 0.008 0.012 0.035 0.20
+disease.CIC = 0.25 0.20 0.20 0.22 0.25 0.28
+disease.CVE = 0.20 0.18 0.22 0.24 0.26 0.30
+disease.hospCVF = 0 0 0 0 0.01 0.02
+disease.icuCVF = 0.03 0.03 0.05 0.08 0.12 0.18
+disease.ventCVF = 0.08 0.08 0.15 0.25 0.35 0.50
+
+## ============================================================
+## FluS1 overrides (Influenza A/H3N2 - all parameters differ)
+## ============================================================
+## FluS1: ~4.4/million; R0~1.3, extinction prob ~0.73/case [S3].
+## With 30 seeds (Bay Area): P(epidemic) > 0.999.
+disease_FluS1.initial_case_type = "random"
+disease_FluS1.num_initial_cases = 30
+disease_FluS1.p_trans = 0.15
+disease_FluS1.p_asymp = 0.16
+disease_FluS1.asymp_relative_inf = 0.5
+disease_FluS1.latent_length_alpha = 3.0
+disease_FluS1.latent_length_beta = 0.5
+disease_FluS1.infectious_length_alpha = 20.0
+disease_FluS1.infectious_length_beta = 0.225
+disease_FluS1.incubation_length_alpha = 4.0
+disease_FluS1.incubation_length_beta = 0.5
+disease_FluS1.immune_length_alpha = 180.0
+disease_FluS1.immune_length_beta = 1.5
+disease_FluS1.hospital_delay_length_alpha = 1.0
+disease_FluS1.hospital_delay_length_beta = 1.0
+disease_FluS1.hospitalization_days = 2 2 3 3 5 5
+disease_FluS1.CHR = 0.009 0.004 0.006 0.008 0.023 0.15
+disease_FluS1.CIC = 0.18 0.22 0.16 0.16 0.21 0.15
+disease_FluS1.CVE = 0.28 0.25 0.50 0.50 0.52 0.40
+disease_FluS1.hospCVF = 0 0 0 0 0 0
+disease_FluS1.icuCVF = 0.02 0.02 0.03 0.03 0.05 0.10
+disease_FluS1.ventCVF = 0.05 0.10 0.15 0.25 0.30 0.50
