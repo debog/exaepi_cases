@@ -600,10 +600,12 @@ Reads ensemble summary statistics files (*_summary_mean.dat, *_summary_std.dat,
 """
 
 import sys
+import warnings
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+warnings.filterwarnings('ignore', message='.*PostScript backend does not support transparency.*')
 from pathlib import Path
 
 # Colors
