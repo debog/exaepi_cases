@@ -58,6 +58,8 @@ OVERRIDE_STOP_TIME=""
 DRY_RUN=false
 VERBOSE=false
 RUN_ALL=false
+ENSEMBLE=false
+ENSEMBLE_SIZE=100
 
 # Platform-specific defaults (from machines.yaml)
 declare -A PLATFORM_DEFAULTS_TASKS
@@ -154,6 +156,8 @@ Options:
   -c, --case=NAME       Input case name (default: ${DEFAULT_CASE})
   -a, --all             Run or submit jobs for all available cases
   -m, --mode=MODE       Execution mode: interactive (default) or batch
+  -e, --ensemble        Run ensemble of ${ENSEMBLE_SIZE} simulations with different seeds
+                         (requires batch mode). Computes statistics across runs.
   -n, --ntasks=N        Override number of MPI tasks
   -N, --nnodes=N        Override number of nodes
   -q, --queue=NAME      Override queue/partition name
@@ -186,6 +190,9 @@ Examples:
 
   # Override simulation parameters for all cases
   ./run_exaepi.sh --all --max-step=100 --mode=batch
+
+  # Run ensemble of 100 simulations (batch mode only)
+  ./run_exaepi.sh --case=bay_01D_Cov19S1 --mode=batch --ensemble
 
   # Dry run to see what would be executed for all cases
   ./run_exaepi.sh --all --dry-run
@@ -955,6 +962,10 @@ parse_args() {
                 OVERRIDE_STOP_TIME="${1#*=}"
                 shift
                 ;;
+            -e|--ensemble)
+                ENSEMBLE=true
+                shift
+                ;;
             -d|--dry-run)
                 DRY_RUN=true
                 shift
@@ -972,9 +983,439 @@ parse_args() {
     done
 }
 
+create_ensemble_job_script() {
+    local platform="$1"
+    local ntasks="$2"
+    local nnodes="$3"
+    local queue="$4"
+    local walltime="$5"
+    local agent_exe="$6"
+    local input_file="$7"
+    local ensemble_dir="$8"
+    local case_name="$9"
+    local num_runs="${10}"
+    local job_script="${ensemble_dir}/erf.job"
+
+    # Build the MPI run command based on platform
+    local run_cmd=""
+    case "$platform" in
+        perlmutter)
+            run_cmd="srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe}"
+            ;;
+        dane)
+            run_cmd="srun -N ${nnodes} -n ${ntasks} ${agent_exe}"
+            ;;
+        matrix)
+            run_cmd="srun --exclusive -n ${ntasks} -G ${ntasks} -N ${nnodes} ${agent_exe}"
+            ;;
+        tuolumne)
+            run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 ${agent_exe}"
+            ;;
+        linux|linux-gpu|desktop)
+            if command -v mpirun &> /dev/null; then
+                run_cmd="mpirun -n ${ntasks} ${agent_exe}"
+            elif command -v mpiexec &> /dev/null; then
+                run_cmd="mpiexec -n ${ntasks} ${agent_exe}"
+            else
+                run_cmd="${agent_exe}"
+            fi
+            ;;
+        *)
+            run_cmd="mpirun -n ${ntasks} ${agent_exe}"
+            ;;
+    esac
+
+    # Write SBATCH header based on platform
+    case "$platform" in
+        perlmutter)
+            cat > "$job_script" << EOF
+#!/bin/bash
+#SBATCH --job-name=ens_${case_name}
+#SBATCH --nodes=${nnodes}
+#SBATCH --ntasks-per-node=${ntasks}
+#SBATCH --cpus-per-task=32
+#SBATCH --gpus-per-node=${ntasks}
+#SBATCH --qos=${queue}
+#SBATCH --time=${walltime}
+#SBATCH --constraint=gpu
+#SBATCH --account=m5071_g
+#SBATCH --output=ensemble_%j.out
+#SBATCH --error=ensemble_%j.err
+
+export MPICH_OFI_NIC_POLICY=GPU
+export OMP_NUM_THREADS=1
+EOF
+            ;;
+        dane|matrix)
+            cat > "$job_script" << EOF
+#!/bin/bash
+#SBATCH --job-name=ens_${case_name}
+#SBATCH --nodes=${nnodes}
+#SBATCH --ntasks=${ntasks}
+#SBATCH --partition=${queue}
+#SBATCH --time=${walltime}
+#SBATCH --output=ensemble_%j.out
+#SBATCH --error=ensemble_%j.err
+EOF
+            if [[ "$platform" == "matrix" ]]; then
+                cat >> "$job_script" << EOF
+#SBATCH --exclusive
+#SBATCH --gpus-per-task=1
+EOF
+            fi
+            cat >> "$job_script" << EOF
+
+export OMP_NUM_THREADS=1
+EOF
+            ;;
+        tuolumne)
+            cat > "$job_script" << EOF
+#!/bin/bash
+#SBATCH --job-name=ens_${case_name}
+#SBATCH --nodes=${nnodes}
+#SBATCH --ntasks=${ntasks}
+#SBATCH --partition=${queue}
+#SBATCH --time=${walltime}
+#SBATCH --output=ensemble_%j.out
+#SBATCH --error=ensemble_%j.err
+
+export OMP_NUM_THREADS=1
+export MPICH_GPU_SUPPORT_ENABLED=1
+EOF
+            ;;
+        linux|linux-gpu|desktop)
+            cat > "$job_script" << EOF
+#!/bin/bash
+#
+# Ensemble job script for ${platform}
+#
+
+export OMP_NUM_THREADS=1
+EOF
+            ;;
+        *)
+            cat > "$job_script" << EOF
+#!/bin/bash
+
+export OMP_NUM_THREADS=1
+EOF
+            ;;
+    esac
+
+    # Write the ensemble loop
+    cat >> "$job_script" << EOF
+
+echo "Ensemble job started at: \$(date)"
+echo "Running ${num_runs} simulations for case: ${case_name}"
+echo "Working directory: \$(pwd)"
+echo ""
+
+ENSEMBLE_DIR="\$(pwd)"
+FAILED=0
+
+for i in \$(seq 1 ${num_runs}); do
+    RUN_DIR="\${ENSEMBLE_DIR}/run_\$(printf '%03d' \$i)"
+    mkdir -p "\${RUN_DIR}"
+
+    echo "--- Run \$i/${num_runs} (seed=\$i) started at \$(date) ---"
+
+    cd "\${RUN_DIR}"
+
+    # Copy input file and data files into run directory
+    for f in "\${ENSEMBLE_DIR}"/inputs_* "\${ENSEMBLE_DIR}"/*.dat "\${ENSEMBLE_DIR}"/*.bin; do
+        if [ -f "\$f" ]; then
+            ln -sf "\$f" "\${RUN_DIR}/" 2>/dev/null || cp "\$f" "\${RUN_DIR}/"
+        fi
+    done
+
+    # Run simulation with unique seed
+    ${run_cmd} ${input_file} agent.seed=\$i
+    EXIT_CODE=\$?
+
+    if [ \$EXIT_CODE -ne 0 ]; then
+        echo "WARNING: Run \$i failed with exit code \$EXIT_CODE"
+        FAILED=\$((FAILED + 1))
+    fi
+
+    # Remove plt* directories to save space
+    rm -rf "\${RUN_DIR}"/plt?????
+
+    cd "\${ENSEMBLE_DIR}"
+    echo "--- Run \$i/${num_runs} finished ---"
+    echo ""
+done
+
+echo "All ${num_runs} runs completed at \$(date)"
+echo "Failed runs: \$FAILED"
+
+# Compute ensemble statistics
+echo ""
+echo "Computing ensemble statistics..."
+
+python3 << 'PYEOF'
+import sys, os
+import numpy as np
+
+ensemble_dir = os.environ.get('ENSEMBLE_DIR', '.')
+num_runs = ${num_runs}
+
+# Find output files from first successful run
+first_run = None
+for i in range(1, num_runs + 1):
+    run_dir = os.path.join(ensemble_dir, 'run_%03d' % i)
+    candidates = [f for f in os.listdir(run_dir) if f.startswith('output') and f.endswith('.dat')]
+    if candidates:
+        first_run = run_dir
+        output_files = candidates
+        break
+
+if first_run is None:
+    print('ERROR: No output files found in any run directory', file=sys.stderr)
+    sys.exit(1)
+
+for output_name in output_files:
+    stats_base = output_name.replace('.dat', '')
+    print(f'Processing {output_name}...')
+
+    # Read header
+    with open(os.path.join(first_run, output_name), 'r') as f:
+        header_line = f.readline().strip()
+
+    # Collect data from all runs
+    all_data = []
+    for i in range(1, num_runs + 1):
+        run_file = os.path.join(ensemble_dir, 'run_%03d' % i, output_name)
+        if not os.path.isfile(run_file):
+            continue
+        try:
+            data = np.loadtxt(run_file, skiprows=1)
+            if data.ndim == 1:
+                data = data.reshape(1, -1)
+            all_data.append(data)
+        except Exception as e:
+            print(f'  WARNING: Could not read {run_file}: {e}', file=sys.stderr)
+
+    if len(all_data) == 0:
+        print(f'  ERROR: No valid data for {output_name}', file=sys.stderr)
+        continue
+
+    min_rows = min(d.shape[0] for d in all_data)
+    stacked = np.stack([d[:min_rows, :] for d in all_data], axis=0)
+
+    mean_data = np.mean(stacked, axis=0)
+    std_data  = np.std(stacked, axis=0)
+    min_data  = np.min(stacked, axis=0)
+    max_data  = np.max(stacked, axis=0)
+
+    def write_stats_file(filepath, header, data):
+        with open(filepath, 'w') as f:
+            f.write(header + '\n')
+            for row in data:
+                f.write('%5d' % int(round(row[0])))
+                for j in range(1, len(row)):
+                    f.write('%12.2f' % row[j])
+                f.write('\n')
+
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_mean.dat'), header_line, mean_data)
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_std.dat'),  header_line, std_data)
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_min.dat'),  header_line, min_data)
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_max.dat'),  header_line, max_data)
+    print(f'  Wrote {stats_base}_mean.dat, {stats_base}_std.dat, {stats_base}_min.dat, {stats_base}_max.dat')
+    print(f'  Used {len(all_data)} of {num_runs} runs, {min_rows} timesteps')
+
+    # Compute per-timestep aggregated quantities (matching ExaEpi definitions):
+    #   TotalInfected = PS/PI + S/PI/NH + S/PI/H + PS/I + S/I/NH + S/I/H
+    #                   + A/PI + A/I + H/NI + H/I
+    #                   (matches totalInfected() in AgentDefinitions.H)
+    #   TotalHospitalized = H/NI + H/I + ICU + V (ventilator)
+    #   Deaths = D
+    # Column layout: Day(0) Su(1) PS/PI(2) S/PI/NH(3) S/PI/H(4) PS/I(5)
+    #   S/I/NH(6) S/I/H(7) A/PI(8) A/I(9) H/NI(10) H/I(11) ICU(12)
+    #   V(13) R(14) D(15) ...
+    headers = header_line.split()
+    infected_cols = ['PS/PI', 'S/PI/NH', 'S/PI/H', 'PS/I', 'S/I/NH', 'S/I/H', 'A/PI', 'A/I', 'H/NI', 'H/I']
+    hosp_cols = ['H/NI', 'H/I', 'ICU', 'V']
+
+    infected_idx = [headers.index(c) for c in infected_cols if c in headers]
+    hosp_idx     = [headers.index(c) for c in hosp_cols     if c in headers]
+    death_idx    = headers.index('D') if 'D' in headers else None
+
+    if infected_idx and hosp_idx and death_idx is not None:
+        # stacked shape: (num_runs, num_timesteps, num_cols)
+        total_infected = np.sum(stacked[:, :, infected_idx], axis=2)
+        total_hosp     = np.sum(stacked[:, :, hosp_idx],     axis=2)
+        deaths         = stacked[:, :, death_idx]
+        days           = stacked[0, :, 0]  # Day column (same for all runs)
+
+        # Stack derived quantities: (num_runs, num_timesteps, 3)
+        derived = np.stack([total_infected, total_hosp, deaths], axis=2)
+        derived_mean = np.mean(derived, axis=0)
+        derived_std  = np.std(derived, axis=0)
+        derived_min  = np.min(derived, axis=0)
+        derived_max  = np.max(derived, axis=0)
+
+        summary_header = '%5s %16s %16s %16s' % ('Day', 'TotalInfected', 'TotalHospitalized', 'Deaths')
+
+        def write_summary_file(filepath, header, days, data):
+            with open(filepath, 'w') as f:
+                f.write(header + '\n')
+                for k in range(len(days)):
+                    f.write('%5d %16.2f %16.2f %16.2f\n' % (int(round(days[k])), data[k,0], data[k,1], data[k,2]))
+
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_mean.dat'), summary_header, days, derived_mean)
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_std.dat'),  summary_header, days, derived_std)
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_min.dat'),  summary_header, days, derived_min)
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_max.dat'),  summary_header, days, derived_max)
+        print(f'  Wrote {stats_base}_summary_mean.dat, {stats_base}_summary_std.dat, {stats_base}_summary_min.dat, {stats_base}_summary_max.dat')
+    else:
+        print('  WARNING: Could not find infected/hospitalized/death columns; skipping summary', file=sys.stderr)
+
+PYEOF
+
+echo ""
+echo "Ensemble job finished at: \$(date)"
+EOF
+
+    chmod +x "$job_script"
+    print_verbose "Created ensemble job script: ${job_script}"
+}
+
 #------------------------------------------------------------------------------
 # Main execution
 #------------------------------------------------------------------------------
+
+process_ensemble_case() {
+    local case_name="$1"
+    local platform="$2"
+    local agent_exe="$3"
+    local dry_run="$4"
+    local num_runs="$ENSEMBLE_SIZE"
+
+    # Find input file
+    print_verbose "Looking for input file for case: ${case_name}"
+    local input_file=$(find_input_file "${case_name}")
+    if [[ $? -ne 0 ]]; then
+        print_error "Input file not found for case: ${case_name}"
+        return 1
+    fi
+    print_success "Found input file: ${input_file}"
+
+    # Get platform defaults, with case-specific overrides
+    local case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
+    local ntasks nnodes queue walltime
+
+    if [[ -z "$OVERRIDE_NTASKS" ]]; then
+        if [[ -n "$case_tasks" ]]; then
+            ntasks="$case_tasks"
+        else
+            ntasks="${PLATFORM_DEFAULTS_TASKS[$platform]:-4}"
+        fi
+    else
+        ntasks="$OVERRIDE_NTASKS"
+    fi
+
+    nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
+    queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
+    walltime="${OVERRIDE_WALLTIME:-${PLATFORM_DEFAULTS_WALLTIME[$platform]:-01:00:00}}"
+
+    # Create ensemble directory
+    local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
+    print_verbose "Creating ensemble directory: ${ensemble_dir}"
+    mkdir -p "$ensemble_dir"
+
+    # Copy data files using the existing setup machinery (reuse setup_run_directory logic)
+    # Extract and copy data files
+    local data_files=$(extract_data_files "$input_file")
+    local copied_count=0
+    local missing_files=()
+
+    while IFS= read -r data_file; do
+        if [[ -z "$data_file" ]]; then
+            continue
+        fi
+        if [[ -f "${ensemble_dir}/${data_file}" ]]; then
+            copied_count=$((copied_count + 1))
+            continue
+        fi
+        local source_file=$(find_data_file "$data_file")
+        if [[ $? -eq 0 ]] && [[ -n "$source_file" ]]; then
+            cp "$source_file" "${ensemble_dir}/"
+            copied_count=$((copied_count + 1))
+        else
+            print_warning "Data file not found: ${data_file}"
+            missing_files+=("$data_file")
+        fi
+    done <<< "$data_files"
+
+    if [[ ${#missing_files[@]} -gt 0 ]]; then
+        print_error "Missing data files; set EXAEPI_DIR"
+        return 1
+    fi
+
+    # Copy/create input file in ensemble directory
+    local run_input="${ensemble_dir}/inputs_${case_name}"
+    if [[ -n "$OVERRIDE_MAX_STEP" ]] || [[ -n "$OVERRIDE_STOP_TIME" ]]; then
+        create_modified_input "$input_file" "$run_input"
+    else
+        cp "$input_file" "$run_input"
+    fi
+
+    # Create ensemble job script
+    create_ensemble_job_script "$platform" "$ntasks" "$nnodes" "$queue" "$walltime" \
+                               "$agent_exe" "inputs_${case_name}" "$ensemble_dir" \
+                               "$case_name" "$num_runs"
+
+    # Display configuration
+    echo ""
+    echo "=========================================="
+    echo "ExaEpi Ensemble Configuration"
+    echo "=========================================="
+    echo "Case:        ${case_name}"
+    echo "Mode:        batch (ensemble)"
+    echo "Ensemble:    ${num_runs} runs"
+    echo "Platform:    ${platform}"
+    echo "Ensemble dir: ${ensemble_dir}"
+    echo "Input file:  ${input_file}"
+    echo "Agent exe:   ${agent_exe}"
+    echo "MPI tasks:   ${ntasks}"
+    echo "Nodes:       ${nnodes}"
+    [[ -n "$queue" ]] && echo "Queue:       ${queue}"
+    [[ -n "$walltime" ]] && echo "Walltime:    ${walltime}"
+    [[ -n "$OVERRIDE_MAX_STEP" ]] && echo "Max steps:   ${OVERRIDE_MAX_STEP} (overridden)"
+    [[ -n "$OVERRIDE_STOP_TIME" ]] && echo "Stop time:   ${OVERRIDE_STOP_TIME} (overridden)"
+    echo "=========================================="
+    echo ""
+
+    if [[ "$dry_run" == "true" ]]; then
+        print_info "Dry run - would submit:"
+        echo "  cd ${ensemble_dir} && sbatch erf.job"
+    else
+        print_info "Submitting ensemble job for case: ${case_name}"
+        case "$platform" in
+            linux|linux-gpu|desktop)
+                # No SLURM, run the job script directly in background
+                print_info "No batch scheduler detected; running ensemble script directly..."
+                (cd "$ensemble_dir" && bash erf.job)
+                local exit_code=$?
+                if [[ $exit_code -eq 0 ]]; then
+                    print_success "Ensemble completed for ${case_name}!"
+                else
+                    print_error "Ensemble failed for ${case_name} with exit code: $exit_code"
+                    return $exit_code
+                fi
+                ;;
+            *)
+                (cd "$ensemble_dir" && sbatch erf.job)
+                print_success "Ensemble job submitted for ${case_name}!"
+                ;;
+        esac
+    fi
+
+    print_info "Ensemble output will be in: ${ensemble_dir}"
+    print_info "Statistics files: output_*_mean.dat, output_*_std.dat, output_*_min.dat, output_*_max.dat"
+
+    return 0
+}
 
 process_single_case() {
     local case_name="$1"
@@ -1106,6 +1547,12 @@ main() {
     # Set defaults
     MODE="${MODE:-$DEFAULT_MODE}"
 
+    # Validate ensemble mode requires batch
+    if [[ "$ENSEMBLE" == "true" ]] && [[ "$MODE" != "batch" ]]; then
+        print_error "Ensemble mode (--ensemble) requires batch mode (--mode=batch)"
+        exit 1
+    fi
+
     # Detect platform
     PLATFORM=$(detect_platform)
     print_info "Detected platform: ${PLATFORM} (${PLATFORM_DISPLAY_NAME[$PLATFORM]:-Unknown})"
@@ -1117,6 +1564,38 @@ main() {
         exit 1
     fi
     print_success "Found ExaEpi agent: ${AGENT_EXE}"
+
+    # Handle ensemble mode
+    if [[ "$ENSEMBLE" == "true" ]]; then
+        if [[ "$RUN_ALL" == "true" ]]; then
+            local all_cases=($(get_all_cases))
+            if [[ ${#all_cases[@]} -eq 0 ]]; then
+                print_error "No input cases found in ${INPUTS_DIR}"
+                exit 1
+            fi
+            print_info "Running ensemble for ${#all_cases[@]} case(s)..."
+            local success_count=0
+            local fail_count=0
+            for case_name in "${all_cases[@]}"; do
+                print_info "=========================================="
+                print_info "Ensemble for case: ${case_name}"
+                print_info "=========================================="
+                process_ensemble_case "$case_name" "$PLATFORM" "$AGENT_EXE" "$DRY_RUN"
+                if [[ $? -eq 0 ]]; then
+                    success_count=$((success_count + 1))
+                else
+                    fail_count=$((fail_count + 1))
+                fi
+            done
+            echo "Ensemble summary: ${success_count} succeeded, ${fail_count} failed"
+            [[ $fail_count -gt 0 ]] && exit 1
+        else
+            CASE_NAME="${CASE_NAME:-$DEFAULT_CASE}"
+            process_ensemble_case "$CASE_NAME" "$PLATFORM" "$AGENT_EXE" "$DRY_RUN"
+            exit $?
+        fi
+        exit 0
+    fi
 
     # Handle --all flag
     if [[ "$RUN_ALL" == "true" ]]; then
