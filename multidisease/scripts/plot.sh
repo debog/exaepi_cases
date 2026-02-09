@@ -34,6 +34,7 @@ PLOT_ALL=false
 VERBOSE=false
 OUTPUT_FORMAT="both"  # eps, png, or both
 PLATFORM=""
+ENSEMBLE=false
 
 #------------------------------------------------------------------------------
 # Helper functions
@@ -71,6 +72,7 @@ Usage:
 Options:
   -c, --case=NAME       Plot specific case (run directory name without .run_ prefix)
   -a, --all             Plot all available cases for the current/specified platform
+  -e, --ensemble        Plot ensemble results (from .ensemble_ directories)
   -P, --platform=NAME   Specify platform (default: auto-detect)
   -f, --format=FMT      Output format: eps, png, or both (default: both)
   -l, --list-cases      List available cases with output data
@@ -90,6 +92,9 @@ Examples:
   # Generate only PNG files
   ./plot.sh --case=CA_01D_Cov19S1_dane --format=png
 
+  # Plot ensemble results
+  ./plot.sh --case=bay_01D_Cov19S1 --ensemble
+
   # List available cases
   ./plot.sh --list-cases
 
@@ -103,6 +108,11 @@ Output:
     <case>_<disease>_infections_<platform>.png/eps
     <case>_<disease>_deaths_<platform>.png/eps
     <case>_<disease>_hospitalizations_<platform>.png/eps
+
+  For ensemble results:
+    <case>_ensemble_infections_<platform>.png/eps      : Mean with min/max band
+    <case>_ensemble_deaths_<platform>.png/eps           : Mean with min/max band
+    <case>_ensemble_hospitalizations_<platform>.png/eps : Mean with min/max band
 
 EOF
 }
@@ -535,6 +545,241 @@ PYTHON_EOF
     echo "$python_script"
 }
 
+create_ensemble_plotting_script() {
+    local python_script="${PLOTS_DIR}/plot_ensemble.py"
+
+    cat > "$python_script" << 'PYTHON_EOF'
+#!/usr/bin/env python3
+"""
+ExaEpi Ensemble Plotter
+
+Reads ensemble summary statistics files (*_summary_mean.dat, *_summary_std.dat,
+*_summary_min.dat, *_summary_max.dat) and creates plots of:
+- Total infections over time (mean with min/max and +/- 1 std bands)
+- Total hospitalizations over time (mean with min/max and +/- 1 std bands)
+- Deaths over time (mean with min/max and +/- 1 std bands)
+"""
+
+import sys
+import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from pathlib import Path
+
+# Colors
+COLOR_RED = '#D62728'
+COLOR_BLUE = '#1F77B4'
+COLOR_GREEN = '#2CA02C'
+
+BAND_ALPHA_MINMAX = 0.15
+BAND_ALPHA_STD = 0.3
+
+def read_summary_file(filename):
+    """Read ensemble summary file, skipping header"""
+    try:
+        data = np.loadtxt(filename, skiprows=1)
+        return data
+    except Exception as e:
+        print(f"ERROR: Failed to read {filename}: {e}", file=sys.stderr)
+        return None
+
+def save_figure(fig, base_name, output_format, plots_dir):
+    """Save figure in requested formats"""
+    if output_format in ['png', 'both']:
+        png_file = str(Path(plots_dir) / f"{base_name}.png")
+        fig.savefig(png_file, dpi=300, bbox_inches='tight')
+        print(f"Created: {png_file}")
+    if output_format in ['eps', 'both']:
+        eps_file = str(Path(plots_dir) / f"{base_name}.eps")
+        fig.savefig(eps_file, format='eps', bbox_inches='tight')
+        print(f"Created: {eps_file}")
+
+def plot_ensemble_quantity(days, mean, std, qmin, qmax, ylabel, title,
+                           color, base_name, output_format, plots_dir):
+    """Create a single ensemble plot with mean line and variation bands"""
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Min/max band (lighter)
+    ax.fill_between(days, qmin, qmax, alpha=BAND_ALPHA_MINMAX, color=color, label='Min/Max')
+    # Std band (darker)
+    ax.fill_between(days, mean - std, mean + std, alpha=BAND_ALPHA_STD, color=color, label='Mean +/- 1 Std')
+    # Mean line
+    ax.plot(days, mean, color=color, linewidth=2.5, label='Mean')
+
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+
+    plt.tight_layout()
+    save_figure(fig, base_name, output_format, plots_dir)
+    plt.close()
+
+def main():
+    if len(sys.argv) < 6:
+        print("Usage: plot_ensemble.py <ensemble_dir> <case_name> <platform> <output_format> <plots_dir>",
+              file=sys.stderr)
+        sys.exit(1)
+
+    ensemble_dir = Path(sys.argv[1])
+    case_name = sys.argv[2]
+    platform = sys.argv[3]
+    output_format = sys.argv[4]
+    plots_dir = sys.argv[5]
+
+    Path(plots_dir).mkdir(parents=True, exist_ok=True)
+
+    # Find all summary file sets: <stats_base>_summary_mean.dat
+    summary_mean_files = sorted(ensemble_dir.glob('*_summary_mean.dat'))
+    if not summary_mean_files:
+        print("ERROR: No ensemble summary files found", file=sys.stderr)
+        sys.exit(1)
+
+    for mean_file in summary_mean_files:
+        # Derive stats_base: output_summary_mean.dat -> output
+        # or output_Covid19_summary_mean.dat -> output_Covid19
+        fname = mean_file.name  # e.g. output_summary_mean.dat
+        stats_base = fname.replace('_summary_mean.dat', '')
+
+        std_file  = ensemble_dir / f"{stats_base}_summary_std.dat"
+        min_file  = ensemble_dir / f"{stats_base}_summary_min.dat"
+        max_file  = ensemble_dir / f"{stats_base}_summary_max.dat"
+
+        for f in [std_file, min_file, max_file]:
+            if not f.exists():
+                print(f"WARNING: Missing {f}, skipping {stats_base}", file=sys.stderr)
+                continue
+
+        mean_data = read_summary_file(mean_file)
+        std_data  = read_summary_file(std_file)
+        min_data  = read_summary_file(min_file)
+        max_data  = read_summary_file(max_file)
+
+        if any(d is None for d in [mean_data, std_data, min_data, max_data]):
+            continue
+
+        # Columns: Day(0), TotalInfected(1), TotalHospitalized(2), Deaths(3)
+        days = mean_data[:, 0]
+
+        # Determine disease name for titles
+        disease_name = None
+        if stats_base.startswith('output_'):
+            disease_name = stats_base[7:]  # Remove 'output_'
+        disease_suffix = f" ({disease_name})" if disease_name else ""
+
+        print(f"Processing ensemble plots for {stats_base}...")
+
+        # Filename prefix
+        if disease_name:
+            prefix = f"{case_name}_{disease_name}_ensemble"
+        else:
+            prefix = f"{case_name}_ensemble"
+
+        # 1. Total Infections
+        plot_ensemble_quantity(
+            days,
+            mean_data[:, 1], std_data[:, 1], min_data[:, 1], max_data[:, 1],
+            'Total Infected', f'Total Infections Over Time{disease_suffix}',
+            COLOR_BLUE, f"{prefix}_infections_{platform}",
+            output_format, plots_dir)
+
+        # 2. Total Hospitalizations
+        plot_ensemble_quantity(
+            days,
+            mean_data[:, 2], std_data[:, 2], min_data[:, 2], max_data[:, 2],
+            'Total Hospitalized', f'Total Hospitalizations Over Time{disease_suffix}',
+            COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
+            output_format, plots_dir)
+
+        # 3. Deaths
+        plot_ensemble_quantity(
+            days,
+            mean_data[:, 3], std_data[:, 3], min_data[:, 3], max_data[:, 3],
+            'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
+            COLOR_RED, f"{prefix}_deaths_{platform}",
+            output_format, plots_dir)
+
+    print("Ensemble plotting complete!")
+
+if __name__ == '__main__':
+    main()
+PYTHON_EOF
+
+    chmod +x "$python_script"
+    echo "$python_script"
+}
+
+find_ensemble_directory() {
+    local case_name="$1"
+    local platform="$2"
+
+    local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
+    if [[ -d "$ensemble_dir" ]]; then
+        echo "$ensemble_dir"
+        return 0
+    fi
+
+    return 1
+}
+
+get_all_ensemble_dirs() {
+    local platform="$1"
+    for ens_dir in "${PROJECT_DIR}"/.ensemble_*; do
+        if [[ -d "$ens_dir" ]]; then
+            local basename=$(basename "$ens_dir")
+            if [[ -n "$platform" ]]; then
+                local dir_platform="${basename##*_}"
+                if [[ "$dir_platform" == "$platform" ]]; then
+                    echo "$basename"
+                fi
+            else
+                echo "$basename"
+            fi
+        fi
+    done
+}
+
+plot_ensemble_case() {
+    local ensemble_dir="$1"
+    local output_format="$2"
+    local dir_basename=$(basename "$ensemble_dir")
+
+    # Parse case name and platform: .ensemble_<case>_<platform>
+    local case_platform="${dir_basename#.ensemble_}"
+    local platform="${case_platform##*_}"
+    local case_name="${case_platform%_*}"
+
+    print_info "=========================================="
+    print_info "Plotting ensemble: ${case_name} (${platform})"
+    print_info "=========================================="
+    print_verbose "Ensemble directory: ${ensemble_dir}"
+
+    # Check for summary files
+    local summary_count=$(ls "${ensemble_dir}"/*_summary_mean.dat 2>/dev/null | wc -l)
+    if [[ "$summary_count" -eq 0 ]]; then
+        print_error "No ensemble summary files found in ${ensemble_dir}"
+        print_info "Run ensemble simulations first using: run_exaepi.sh --ensemble --mode=batch"
+        return 1
+    fi
+    print_success "Found ${summary_count} summary file set(s)"
+
+    mkdir -p "${PLOTS_DIR}"
+
+    local python_script=$(create_ensemble_plotting_script)
+    print_verbose "Created ensemble plotting script: ${python_script}"
+
+    if python3 "$python_script" "$ensemble_dir" "$case_name" "$platform" "$output_format" "$PLOTS_DIR"; then
+        print_success "Ensemble plots created in ${PLOTS_DIR}"
+        echo ""
+        return 0
+    else
+        print_error "Failed to create ensemble plots"
+        return 1
+    fi
+}
+
 plot_case() {
     local run_dir="$1"
     local output_format="$2"
@@ -629,6 +874,10 @@ parse_args() {
                 PLOT_ALL=true
                 shift
                 ;;
+            -e|--ensemble)
+                ENSEMBLE=true
+                shift
+                ;;
             -P|--platform)
                 PLATFORM="$2"
                 shift 2
@@ -697,6 +946,44 @@ main() {
         print_error "Python matplotlib is required but not found"
         echo "Install with: pip install matplotlib"
         exit 1
+    fi
+
+    # Handle ensemble mode
+    if [[ "$ENSEMBLE" == "true" ]]; then
+        if [[ "$PLOT_ALL" == "true" ]]; then
+            local all_ens=($(get_all_ensemble_dirs "$PLATFORM"))
+            if [[ ${#all_ens[@]} -eq 0 ]]; then
+                print_error "No ensemble directories found"
+                exit 1
+            fi
+            print_info "Plotting ${#all_ens[@]} ensemble(s)..."
+            local success_count=0
+            local fail_count=0
+            for dir_name in "${all_ens[@]}"; do
+                if plot_ensemble_case "${PROJECT_DIR}/${dir_name}" "$OUTPUT_FORMAT"; then
+                    success_count=$((success_count + 1))
+                else
+                    fail_count=$((fail_count + 1))
+                fi
+            done
+            echo "Ensemble plotting summary: ${success_count} succeeded, ${fail_count} failed"
+            [[ $fail_count -gt 0 ]] && exit 1
+        else
+            if [[ -z "$CASE_NAME" ]]; then
+                print_error "No case specified"
+                echo "Use --case=NAME or --all with --ensemble"
+                exit 1
+            fi
+            local ENS_DIR=$(find_ensemble_directory "${CASE_NAME}" "$PLATFORM")
+            if [[ $? -ne 0 ]]; then
+                print_error "Ensemble directory not found for case: ${CASE_NAME} (platform: ${PLATFORM})"
+                echo "Expected: ${PROJECT_DIR}/.ensemble_${CASE_NAME}_${PLATFORM}"
+                exit 1
+            fi
+            plot_ensemble_case "$ENS_DIR" "$OUTPUT_FORMAT"
+            exit $?
+        fi
+        exit 0
     fi
 
     if [[ "$PLOT_ALL" == "true" ]]; then
