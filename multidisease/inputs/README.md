@@ -10,6 +10,9 @@
 - **FluS1**: Seasonal H3N2 (typically dominant, most severe in elderly)
 - **FluS2**: H1N1pdm09 (more severe in younger adults, less in elderly)
 
+### Streptococcus pneumoniae (Pneumococcus)
+- **PneuS1**: Endemic pneumococcal carriage and invasive disease
+
 ---
 
 ## COVID-19: Parameter Differences S1 (Wild-Type) vs S2 (Delta)
@@ -58,6 +61,44 @@ severity profile and age distribution of outcomes.
 | `immune_length` (mean)   | 178 days      | 270 days             | Flu immunity somewhat longer [C7,F7]                 |
 | `CHR` (65+)              | 1.0           | 0.15                 | COVID far more severe in elderly                     |
 | `hospitalization_days`   | 3 3 3 3 8 7   | 2 2 3 3 5 5          | Flu hospital stays shorter [F6]                      |
+
+## Pneumococcus (PneuS1): Key Parameters
+
+Pneumococcus (*Streptococcus pneumoniae*) differs fundamentally from respiratory viruses:
+it is an **endemic** bacterial pathogen that colonizes the nasopharynx asymptomatically in
+20-60% of children and 5-10% of adults [P5]. Only a small fraction of carriers develop
+clinical disease. Parameters are adapted from the SimFI agent-based model [P1,P2] and
+calibrated with US epidemiological data.
+
+### Pneumococcus vs Influenza/COVID-19: Key Parameter Differences
+
+| Parameter                | PneuS1          | FluS1 (H3N2)  | COVID-19 S1   | Notes                                                |
+|--------------------------|-----------------|----------------|---------------|------------------------------------------------------|
+| `p_trans`                | 0.06            | 0.15           | 0.20          | Lower per-contact prob; endemic R0~2.0 [P3]          |
+| `p_asymp`                | 0.80            | 0.16           | 0.30          | Most colonizations asymptomatic [P1,P5]              |
+| `asymp_relative_inf`     | 0.8             | 0.5            | 0.7           | Carriers shed effectively from day 0 [P2]            |
+| `latent_length` (mean)   | 1.0 days        | 1.5 days       | 3.9 days      | Shedding begins immediately [P2]                     |
+| `infectious_length` (mn) | 23 days         | 4.5 days       | 6.0 days      | Long carriage duration [P1,P4]                       |
+| `incubation_length` (mn) | 21 days         | 2.0 days       | 4.9 days      | Prolonged asymptomatic carriage [P1]                 |
+| `immune_length` (mean)   | 300 days        | 270 days       | 178 days      | Serotype-specific immunity [P1,P2]                   |
+| `CHR` (65+)              | 0.20            | 0.15           | 1.0           | U-shaped age distribution [P6,P7]                    |
+| `hospitalization_days`   | 3 3 4 5 6 7     | 2 2 3 3 5 5    | 3 3 3 3 8 7   | Median IPD LOS ~6 days [P8]                          |
+
+### Pneumococcus: Mapping SimFI Model to ExaEpi
+
+The SimFI model [P1,P2] represents pneumococcus as an endemic pathogen with the following
+natural history (Figure 1 of [P1]):
+
+1. **Colonization** (day 0): Individual acquires S. pneumoniae in nasopharynx
+2. **Asymptomatic carriage** (~21 days): Carrier is infectious, shedding bacteria [P2]
+3. **Symptomatic phase** (~12 days): Clinical disease if it develops [P1]
+4. **Resolution**: Shedding ends ~2 days after symptoms resolve [P2]
+
+This maps to ExaEpi parameters as:
+- **Latent period** (~1 day): Minimal, since shedding begins on day 0 [P2, Table 2]
+- **Incubation period** (~21 days): Asymptomatic carriage duration [P1, Table 1]
+- **Infectious period** (~23 days): Weighted average of carrier shedding across ages [P4]
+- **p_asymp** (0.80): ~80% of colonizations resolve without clinical symptoms [P5]
 
 ## Disease Coupling Matrices
 
@@ -117,6 +158,7 @@ Populations are derived from U.S. Census data encoded in the ExaEpi binary censu
 | Cov19S2 (Delta)  | 5        | 25         | 0.7         | > 0.9999        | ~1.0           |
 | FluS1 (H3N2)     | 30       | 150        | 4.4         | 0.9999          | ~1.0           |
 | FluS2 (H1N1pdm)  | 20       | 100        | 2.9         | 0.998           | ~1.0           |
+| PneuS1 (Pneumo)  | 40       | 200        | 5.9         | ~1.0            | ~1.0           |
 
 ### Stochastic Extinction and Branching Process Theory
 
@@ -135,6 +177,7 @@ Computed extinction probabilities per initial case:
 | Cov19S2 (Delta) | ~4.4 | ~0.02              | Poisson(4.4) model  |
 | FluS1 (H3N2)    | ~1.3 | ~0.73              | Poisson(1.3) model  |
 | FluS2 (H1N1pdm) | ~1.3 | ~0.73              | Poisson(1.3) model  |
+| PneuS1 (Pneumo) | ~2.0 | ~0.20              | Poisson(2.0) model  |
 
 For influenza (R0 ~ 1.3), the high single-case extinction probability (~73%) requires
 substantially more initial seeds than COVID-19 to reliably start an epidemic. Germann
@@ -195,6 +238,25 @@ pandemic strain had fewer introduction points than seasonal H3N2 (novel virus, s
 geographic origin), so we use a lower per-capita rate (3 vs 4.4 per million). The R0
 is similar to seasonal flu (~1.3), so sufficient seeds (20 Bay Area, 100 CA) are still
 needed to overcome stochastic extinction.
+
+### Pneumococcus (PneuS1): Rationale for ~5.9 per Million
+
+Pneumococcus is an endemic pathogen with ~20% carriage prevalence in children [P5].
+Unlike epidemic pathogens, S. pneumoniae circulates continuously in the population
+year-round, with seasonal winter peaks. The SimFI model [P1,P2] was calibrated to
+reproduce ~242 invasive pneumococcal infections per 100,000 per year, consistent with
+French surveillance data. In the US, CDC Active Bacterial Core surveillance reported
+IPD rates of 4.4 (18-49y), 15.6 (50-64y), and 23.6 (65+y) per 100,000 in 2019 [P6].
+
+The estimated R0 for pneumococcal carriage is ~2.0 (range 1.9-3.7) [P3], giving a
+single-case extinction probability of ~0.20, substantially lower than influenza (~0.73).
+With 40 seeds (Bay Area) or 200 seeds (CA), P(epidemic) ≈ 1.0. The higher per-capita
+seeding rate (5.9/million vs 4.4/million for flu) reflects the endemic nature of
+pneumococcus—since it circulates continuously, the simulation needs to establish
+a baseline carriage prevalence quickly rather than model a single-point introduction.
+The SimFI model used 20% initial carriage for the endemic scenario [P2, Table 2],
+but since ExaEpi uses point-source seeding, we use a moderate initial count to
+bootstrap endemic circulation.
 
 ---
 
@@ -343,6 +405,63 @@ needed to overcome stochastic extinction.
   - Results: "IFN secretion was decreased in almost all coinfections with IAV compared to IAV alone, especially when SARS-CoV-2 was added first."
   - Mechanism: Influenza A interferes with SARS-CoV-2 through IFN response, but SARS-CoV-2 immune evasion proteins reduce protective IFN signaling during co-infections.
   - Used for: cosusceptibility matrix — viral interference partially offsets clinical severity enhancement from [M4,M5], justifying 1.5 rather than the full OR of ~2.1-2.7.
+
+## Pneumococcus References
+
+- [P1] Arduin H, Opatowski L (2018). SimFI: A Transmission Agent-Based Model of Two Interacting Pathogens. *PAAMS 2018, LNAI 10978*, pp. 72-83. [doi:10.1007/978-3-319-94580-4_6](https://doi.org/10.1007/978-3-319-94580-4_6)
+  - Table 1: Pneumococcus asymptomatic (carriage) period — Gamma(k=21²/25, θ=25/21), mean = 21 days, variance = 25.
+  - Table 1: Pneumococcus symptomatic period — Gamma(k=12²/16, θ=16/12), mean = 12 days, variance = 16.
+  - Table 2: Infection rate = 4.2 × 10⁻⁵ per contact-day (calibrated).
+  - Table 2: Carriage rate = 20%; shedding = day 0 to symptoms+2 days; immunity = 300 days.
+  - Results: "Pneumococcal infections...lead to an average of 242 per 100,000 [241-243]₉₅% CI pneumococcal infections per year."
+  - Figure 1: Natural history — susceptible → asymptomatic → symptomatic → possible immunity.
+  - Used for: disease period distributions, shedding timeline, carriage prevalence, immunity duration.
+- [P2] Arduin H et al. (2017). An agent-based model simulation of influenza interactions at the host level: insight into the influenza-related burden of pneumococcal infections. *BMC Infect Dis* 17:382. [PMC5455134](https://pmc.ncbi.nlm.nih.gov/articles/PMC5455134/)
+  - Table 1: Pneumococcal infection-probability rate = 4.2 × 10⁻⁵ per day (calibrated to achieve ~220 PI cases/100,000/year).
+  - Table 1: Asymptomatic period Gamma(mean=21, variance=25); symptomatic period Gamma(mean=12, variance=16).
+  - Table 1: "individuals are contagious during the first 2 days" of symptomatic period.
+  - Table 1: Shedding onset = day 0 of colonization; shedding end = symptoms + 2 days.
+  - Table 1: Carriage rate = 20%; immunity duration = 300 days.
+  - Methods: "PI cases are assumed to be isolated after 2 days of symptoms."
+  - Used for: core pneumococcal transmission parameters, shedding timeline.
+- [P3] Lipsitch M et al. (2012). Estimating rates of carriage acquisition and clearance and competitive ability for pneumococcal serotypes in Kenya with a Markov transition model. *Epidemiology* 23(4):510-519 / Cobey S, Lipsitch M (2012). Niche and neutral effects of acquired immunity permit coexistence of pneumococcal serotypes. *Science* 335(6074):1376-1380. Pneumococcal microsimulation model: *PLoS Comput Biol*. [PMC3566073](https://pmc.ncbi.nlm.nih.gov/articles/PMC3566073/)
+  - Results: "the basic reproduction number is 2.0 (range of plausible values 1.9-3.7)."
+  - Results: Clearance rate = "0.67 per month in children <5 years of age" (mean carriage ~45 days).
+  - Results: Clearance "1.5 times higher in individuals of age 5+" (~1.0/month, mean ~30 days).
+  - Table: Age-dependent acquisition rates — β₁ = 0.045/day (0-1y), β₂ = 0.070/day (1-4y), β₃ = 0.020/day (5+y).
+  - Used for: R0 = 2.0, p_trans calibration, stochastic extinction probability.
+- [P4] Melegaro A et al. (2010). Dynamic models of pneumococcal carriage and the impact of the Heptavalent Pneumococcal Conjugate Vaccine on invasive pneumococcal disease. *BMC Infect Dis*. [PMC2867993](https://pmc.ncbi.nlm.nih.gov/articles/PMC2867993/)
+  - Table: Age-stratified carriage duration — 72 days (0-1y), 28 days (2-4y), 18 days (5-17y), 17 days (18+y).
+  - Table: Case:carrier ratios — highest in infants (0.00018 for VT) and elderly (0.00039 for VT).
+  - Results: Mixing pattern assortativeness parameter ε = 0.87 (contacts "closer to assortative than proportionate").
+  - Used for: infectious_length calibration, age-dependent transmission structure.
+- [P5] CDC (2024). Chapter 17: Pneumococcal Disease. *Epidemiology and Prevention of Vaccine-Preventable Diseases (Pink Book)*. [CDC](https://www.cdc.gov/pinkbook/hcp/table-of-contents/chapter-17-pneumococcal-disease.html)
+  - Incubation: "short, about 1 to 3 days" for pneumococcal pneumonia.
+  - Carriage: "20% to 60%" of school-age children; "5% to 10% of adults without children."
+  - Transmission: "Person-to-person contact via respiratory droplets."
+  - CFR: Bacteremia ~10%; meningitis ~14% (adults); pneumonia ~1% (children) vs >35% (adults).
+  - Burden: "more than 150,000 hospitalizations" annually from pneumococcal pneumonia in the US.
+  - Used for: incubation period, carriage rates, case fatality estimates, disease burden.
+- [P6] CDC Active Bacterial Core Surveillance (ABCs) (2019). Invasive Pneumococcal Disease Surveillance Report. [CDC](https://cdc.gov/abcs/downloads/spn_surveillance_report_2019.pdf)
+  - Results: IPD rates per 100,000 — 4.4 (18-49y), 15.6 (50-64y), 23.6 (65+y).
+  - Used for: CHR age distribution, initial case number calibration.
+- [P7] Pilishvili T et al. (2010). Sustained reductions in invasive pneumococcal disease in the era of conjugate vaccine. *J Infect Dis* 201(1):32-41 / CDC MMWR surveillance reports.
+  - Results: IPD incidence U-shaped by age — highest in <2y and 65+.
+  - Results: CFR 8.4% among children, 22.3% among adults.
+  - Results: Meningitis CFR ~14%; bacteremia CFR ~12%.
+  - Used for: CHR U-shaped age profile, icuCVF and ventCVF by age.
+- [P8] Ramirez JA et al. (2017). Adults Hospitalized With Pneumonia in the United States: Incidence, Epidemiology, and Mortality. *Clin Infect Dis* 65(11):1806-1812. [doi:10.1093/cid/cix647](https://doi.org/10.1093/cid/cix647)
+  - Results: CAP hospitalization incidence — 327/100,000 (18-64y), 2,093/100,000 (65+y).
+  - Results: "1,707 patients (23%) were admitted to the ICU" of 7,449 hospitalized CAP patients.
+  - Results: "Invasive mechanical ventilation: 24%" of ICU patients; "noninvasive ventilation: 20%."
+  - Results: ICU CAP in-hospital mortality 17%; 30-day mortality 27%; 1-year mortality 47%.
+  - Used for: CIC (23%), CVE (24%), hospitalization_days, icuCVF/ventCVF calibration.
+- [P9] Li Y et al. (2023). Prognostic factors for mortality in invasive pneumococcal disease in adult: a systematic review and meta-analysis. *Sci Rep*. [PMC8178309](https://pmc.ncbi.nlm.nih.gov/articles/PMC8178309/)
+  - Results: "The overall mortality rate from IPD included in this study was 20.8% (95% CI 17.5-24.0%)."
+  - Results: "The median in-hospital mortality was 23.0% (95% CI 17.2-27.2%)."
+  - Results: "Age > 64 years old was a high risk for overall mortality (OR 3.04, 95% CI 2.50-3.68)."
+  - Results: "The case fatality rate of IPD may reach 15-20% in adults and 30-40% in the elderly."
+  - Used for: ventCVF and icuCVF age gradient — elderly mortality substantially higher.
 
 ## Initial Case Seeding References
 
