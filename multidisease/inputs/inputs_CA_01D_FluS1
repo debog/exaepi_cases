@@ -47,15 +47,15 @@ agent.number_of_diseases = 1
 agent.disease_names = "FluS1"
 
 ## Initial infection
-## ~4.4 per million (CA pop 33.9M); seasonal flu seeds via multiple
+## ~0.6 per million (CA pop 33.9M); reduced from 150; seasonal flu seeds via multiple
 ## independent introductions [S4,S7]. R0≈1.3 gives high single-case extinction
-## prob ~0.73; 150 seeds ensure reliable epidemic [S3].
+## prob ~0.73; 20 seeds give P(epidemic)>99% [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 150
+disease.num_initial_cases = 20
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-## p_trans calibrated for R0 ~1.3 given shorter infectious period [1]
-disease.p_trans = 0.15
+## p_trans lowered from 0.15 to 0.09 (with longer infectious period) to preserve R0~1.3 [1]
+disease.p_trans = 0.09
 disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
 disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
 disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
@@ -81,9 +81,9 @@ disease.child_hh_closure = 2.0
 ## Latent period: mean ~1.5 days [3]
 disease.latent_length_alpha = 3.0
 disease.latent_length_beta = 0.5
-## Infectious period: mean ~4.5 days based on viral shedding duration [3]
-disease.infectious_length_alpha = 20.0
-disease.infectious_length_beta = 0.225
+## Infectious period: mean ~7.5 days; extended from 4.5d to slow epidemic peak timing [3]
+disease.infectious_length_alpha = 15.0
+disease.infectious_length_beta = 0.5
 ## Incubation period: mean ~2.0 days [2]
 disease.incubation_length_alpha = 4.0
 disease.incubation_length_beta = 0.5

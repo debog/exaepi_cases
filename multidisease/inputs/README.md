@@ -36,8 +36,10 @@ between pre-Delta and Delta periods [C7].
 ## Influenza: Parameter Differences S1 (H3N2) vs S2 (H1N1pdm09)
 
 Both strains share the same transmission and disease period parameters (similar R0 ~1.3,
-similar incubation ~2 days, similar infectious period ~4.5 days). They differ primarily in
-severity profile and age distribution of outcomes.
+similar incubation ~2 days, similar infectious period ~7.5 days). They differ primarily in
+severity profile and age distribution of outcomes. Note: p_trans was lowered from 0.15 to
+0.09 and infectious period extended from 4.5 to 7.5 days (product preserved) to produce
+more realistic epidemic peak timing; seeds were also reduced (CA: 20, Bay: 10).
 
 | Parameter | S1 (H3N2)                            | S2 (H1N1pdm09)                      | Rationale                                                |
 |-----------|--------------------------------------|--------------------------------------|----------------------------------------------------------|
@@ -52,11 +54,11 @@ severity profile and age distribution of outcomes.
 
 | Parameter                | COVID-19 S1   | Influenza S1 (H3N2) | Notes                                                |
 |--------------------------|---------------|----------------------|------------------------------------------------------|
-| `p_trans`                | 0.20          | 0.15                 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1]                |
+| `p_trans`                | 0.20          | 0.09                 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1]                |
 | `p_asymp`                | 0.30          | 0.16                 | COVID has higher asymptomatic fraction [C5,F4]       |
 | `asymp_relative_inf`     | 0.7           | 0.5                  | COVID asymptomatics relatively more infectious [F5]  |
 | `latent_length` (mean)   | 3.9 days      | 1.5 days             | Flu has much shorter latent period [C3,F3]           |
-| `infectious_length` (mn) | 6.0 days      | 4.5 days             | Flu has shorter infectious period [C4,F3]            |
+| `infectious_length` (mn) | 6.0 days      | 7.5 days             | Extended from 4.5d to slow peak timing [C4,F3]       |
 | `incubation_length` (mn) | 4.9 days      | 2.0 days             | Flu incubation roughly half of COVID [C2,F2]         |
 | `immune_length` (mean)   | 178 days      | 270 days             | Flu immunity somewhat longer [C7,F7]                 |
 | `CHR` (65+)              | 1.0           | 0.15                 | COVID far more severe in elderly                     |
@@ -74,11 +76,11 @@ calibrated with US epidemiological data.
 
 | Parameter                | PneuS1          | FluS1 (H3N2)  | COVID-19 S1   | Notes                                                |
 |--------------------------|-----------------|----------------|---------------|------------------------------------------------------|
-| `p_trans`                | 0.06            | 0.15           | 0.20          | Lower per-contact prob; endemic R0~2.0 [P3]          |
+| `p_trans`                | 0.06            | 0.09           | 0.20          | Lower per-contact prob; endemic R0~2.0 [P3]          |
 | `p_asymp`                | 0.80            | 0.16           | 0.30          | Most colonizations asymptomatic [P1,P5]              |
 | `asymp_relative_inf`     | 0.8             | 0.5            | 0.7           | Carriers shed effectively from day 0 [P2]            |
 | `latent_length` (mean)   | 1.0 days        | 1.5 days       | 3.9 days      | Shedding begins immediately [P2]                     |
-| `infectious_length` (mn) | 23 days         | 4.5 days       | 6.0 days      | Long carriage duration [P1,P4]                       |
+| `infectious_length` (mn) | 23 days         | 7.5 days       | 6.0 days      | Long carriage duration [P1,P4]                       |
 | `incubation_length` (mn) | 21 days         | 2.0 days       | 4.9 days      | Prolonged asymptomatic carriage [P1]                 |
 | `immune_length` (mean)   | 300 days        | 270 days       | 178 days      | Serotype-specific immunity [P1,P2]                   |
 | `CHR` (65+)              | 0.20            | 0.15           | 1.0           | U-shaped age distribution [P6,P7]                    |
@@ -180,8 +182,8 @@ Populations are derived from U.S. Census data encoded in the ExaEpi binary censu
 |------------------|----------|------------|-------------|-----------------|----------------|
 | Cov19S1 (WT)     | 20       | 100        | 2.9         | > 0.9999        | ~1.0           |
 | Cov19S2 (Delta)  | 5        | 25         | 0.7         | > 0.9999        | ~1.0           |
-| FluS1 (H3N2)     | 30       | 150        | 4.4         | 0.9999          | ~1.0           |
-| FluS2 (H1N1pdm)  | 20       | 100        | 2.9         | 0.998           | ~1.0           |
+| FluS1 (H3N2)     | 10       | 20         | 0.6-1.5     | 0.93            | 0.99           |
+| FluS2 (H1N1pdm)  | 10       | 20         | 0.6-1.5     | 0.93            | 0.99           |
 | PneuS1 (Pneumo)  | 40       | 200        | 5.9         | ~1.0            | ~1.0           |
 
 ### Stochastic Extinction and Branching Process Theory
@@ -249,7 +251,8 @@ introduced each day at each of 14 major international airports" (Simulation Mode
 Design). Since ExaEpi uses a single random-seeding event rather than continuous
 importation, a larger initial count compensates. The lower R0 (~1.3) gives a high
 single-case extinction probability (~73%), requiring more seeds to ensure at least one
-chain persists. With 30 seeds (Bay Area) or 150 seeds (CA), P(epidemic) > 0.999.
+chain persists. Seeds were reduced from 150/30 to 20/10 (CA/Bay) to produce more
+realistic epidemic peak timing; with 10 seeds P(epidemic) ≈ 93%, with 20 seeds ≈ 99%.
 
 ### Influenza A/H1N1pdm09 (FluS2): Rationale for ~3 per Million
 
