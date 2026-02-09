@@ -302,9 +302,11 @@ Reads output.dat or output_<disease>.dat files and creates plots of:
 
 import sys
 import numpy as np
+import warnings
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
+warnings.filterwarnings('ignore', message='.*PostScript backend does not support transparency.*')
 from pathlib import Path
 
 # Column indices in output.dat based on main.cpp line 192-194
