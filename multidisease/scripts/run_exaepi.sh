@@ -1386,7 +1386,7 @@ process_ensemble_case() {
 
     nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
-    walltime="${OVERRIDE_WALLTIME:-${PLATFORM_DEFAULTS_WALLTIME[$platform]:-01:00:00}}"
+    walltime="${OVERRIDE_WALLTIME:-06:00:00}"
 
     # Create ensemble directory
     local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
