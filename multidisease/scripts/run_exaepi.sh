@@ -452,6 +452,10 @@ setup_run_directory() {
     # Create run directory name (set global variable)
     RUN_DIR="${PROJECT_DIR}/.run_${case_name}_${platform}"
 
+    if [[ -d "$RUN_DIR" ]]; then
+        print_verbose "Removing existing run directory: ${RUN_DIR}"
+        rm -rf "$RUN_DIR"
+    fi
     print_verbose "Creating run directory: ${RUN_DIR}"
     mkdir -p "$RUN_DIR"
 
@@ -1390,6 +1394,10 @@ process_ensemble_case() {
 
     # Create ensemble directory
     local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
+    if [[ -d "$ensemble_dir" ]]; then
+        print_verbose "Removing existing ensemble directory: ${ensemble_dir}"
+        rm -rf "$ensemble_dir"
+    fi
     print_verbose "Creating ensemble directory: ${ensemble_dir}"
     mkdir -p "$ensemble_dir"
 
