@@ -345,6 +345,26 @@ COL_NEWH = 18         # New Hospitalizations
 COL_NEWA = 19         # New Asymptomatic
 COL_NEWP = 20         # New Presymptomatic
 
+# Age-group columns (written after base columns in main.cpp lines 479-484)
+# New Symptomatic by age group (columns 21-26)
+COL_SYMP_U5 = 21
+COL_SYMP_5TO17 = 22
+COL_SYMP_18TO29 = 23
+COL_SYMP_30TO49 = 24
+COL_SYMP_50TO64 = 25
+COL_SYMP_O64 = 26
+# New Hospitalizations by age group (columns 27-32)
+COL_HOSP_U5 = 27
+COL_HOSP_5TO17 = 28
+COL_HOSP_18TO29 = 29
+COL_HOSP_30TO49 = 30
+COL_HOSP_50TO64 = 31
+COL_HOSP_O64 = 32
+
+AGE_GROUP_HOSP_COLS = [COL_HOSP_U5, COL_HOSP_5TO17, COL_HOSP_18TO29,
+                       COL_HOSP_30TO49, COL_HOSP_50TO64, COL_HOSP_O64]
+AGE_GROUP_LABELS = ['<5', '5-17', '18-29', '30-49', '50-64', '65+']
+
 # Primary colors for plotting (prioritize these)
 COLOR_RED = '#D62728'      # Red
 COLOR_BLUE = '#1F77B4'     # Blue
@@ -477,6 +497,13 @@ def create_hospitalizations_plot(data, case_name, platform, output_format, plots
     ax.plot(days, total_hosp, color=COLOR_BLUE, linewidth=2.5, label='Total Hospitalized')
     ax.plot(days, new_hosp, color=COLOR_GREEN, linewidth=2, label='New Admissions')
     ax.plot(days, icu, color=COLOR_RED, linewidth=2, label='ICU Patients')
+
+    # Age-group hospitalization lines (thinner, dashed)
+    if data.shape[1] > COL_HOSP_O64:
+        age_colors = ['#1B9E77', '#D95F02', '#7570B3', '#E7298A', '#66A61E', '#E6AB02']
+        for i, (col, label) in enumerate(zip(AGE_GROUP_HOSP_COLS, AGE_GROUP_LABELS)):
+            ax.plot(days, data[:, col], color=age_colors[i], linewidth=1, linestyle='--',
+                    label=f'New Hosp {label}')
 
     ax.set_xlabel('Day', fontsize=12)
     ax.set_ylabel('Number of Patients', fontsize=12)
