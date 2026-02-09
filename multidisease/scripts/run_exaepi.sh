@@ -45,7 +45,6 @@ if [[ -z "${EXAEPI_DIR}" ]]; then
 fi
 
 # Default values
-DEFAULT_CASE="sdm_amsu"
 DEFAULT_MODE="interactive"
 CASE_NAME=""
 MODE=""
@@ -153,7 +152,7 @@ Usage:
   ./run_exaepi.sh [OPTIONS]
 
 Options:
-  -c, --case=NAME       Input case name (default: ${DEFAULT_CASE})
+  -c, --case=NAME       Input case name (required unless --all is used)
   -a, --all             Run or submit jobs for all available cases
   -m, --mode=MODE       Execution mode: interactive (default) or batch
   -e, --ensemble        Run ensemble of ${ENSEMBLE_SIZE} simulations with different seeds
@@ -750,7 +749,7 @@ create_job_script() {
     local input_file="$7"
     local run_dir="$8"
     local case_name="$9"
-    local job_script="${run_dir}/erf.job"
+    local job_script="${run_dir}/exaepi.job"
 
     case "$platform" in
         perlmutter)
@@ -1044,7 +1043,7 @@ create_ensemble_job_script() {
     local ensemble_dir="$8"
     local case_name="$9"
     local num_runs="${10}"
-    local job_script="${ensemble_dir}/erf.job"
+    local job_script="${ensemble_dir}/exaepi.job"
 
     # Build the MPI run command based on platform
     local run_cmd=""
@@ -1459,14 +1458,14 @@ process_ensemble_case() {
 
     if [[ "$dry_run" == "true" ]]; then
         print_info "Dry run - would submit:"
-        echo "  cd ${ensemble_dir} && sbatch erf.job"
+        echo "  cd ${ensemble_dir} && sbatch exaepi.job"
     else
         print_info "Submitting ensemble job for case: ${case_name}"
         case "$platform" in
             linux|linux-gpu|desktop)
                 # No SLURM, run the job script directly in background
                 print_info "No batch scheduler detected; running ensemble script directly..."
-                (cd "$ensemble_dir" && bash erf.job)
+                (cd "$ensemble_dir" && bash exaepi.job)
                 local exit_code=$?
                 if [[ $exit_code -eq 0 ]]; then
                     print_success "Ensemble completed for ${case_name}!"
@@ -1476,7 +1475,7 @@ process_ensemble_case() {
                 fi
                 ;;
             *)
-                (cd "$ensemble_dir" && sbatch erf.job)
+                (cd "$ensemble_dir" && sbatch exaepi.job)
                 print_success "Ensemble job submitted for ${case_name}!"
                 ;;
         esac
@@ -1544,13 +1543,13 @@ process_single_case() {
         print_verbose "Copied input file to run directory"
     fi
 
-    # Create run.sh and erf.job scripts in run directory
+    # Create run.sh and exaepi.job scripts in run directory
     print_verbose "Creating helper scripts in run directory..."
     create_run_script "$platform" "$ntasks" "$nnodes" "$queue" \
                       "$agent_exe" "inputs_${case_name}" "$run_dir"
     create_job_script "$platform" "$ntasks" "$nnodes" "$queue" "$walltime" \
                       "$agent_exe" "inputs_${case_name}" "$run_dir" "$case_name"
-    print_success "Created run.sh and erf.job in run directory"
+    print_success "Created run.sh and exaepi.job in run directory"
 
     # Display configuration
     echo ""
@@ -1573,17 +1572,17 @@ process_single_case() {
     echo ""
     print_info "Helper scripts created:"
     echo "  ${run_dir}/run.sh    - Interactive execution"
-    echo "  ${run_dir}/erf.job   - Batch submission"
+    echo "  ${run_dir}/exaepi.job   - Batch submission"
     echo ""
 
     # Execute based on mode
     if [[ "$mode" == "batch" ]]; then
         if [[ "$dry_run" == "true" ]]; then
             print_info "Dry run - would submit:"
-            echo "  cd ${run_dir} && sbatch erf.job"
+            echo "  cd ${run_dir} && sbatch exaepi.job"
         else
             print_info "Submitting batch job for case: ${case_name}"
-            (cd "$run_dir" && sbatch erf.job)
+            (cd "$run_dir" && sbatch exaepi.job)
             print_success "Job submitted for ${case_name}!"
         fi
     else
@@ -1661,7 +1660,12 @@ main() {
             echo "Ensemble summary: ${success_count} succeeded, ${fail_count} failed"
             [[ $fail_count -gt 0 ]] && exit 1
         else
-            CASE_NAME="${CASE_NAME:-$DEFAULT_CASE}"
+            if [[ -z "$CASE_NAME" ]]; then
+                print_error "No case specified. Use -c/--case=NAME or -a/--all."
+                echo ""
+                show_help
+                exit 1
+            fi
             process_ensemble_case "$CASE_NAME" "$PLATFORM" "$AGENT_EXE" "$DRY_RUN"
             exit $?
         fi
@@ -1721,7 +1725,12 @@ main() {
         fi
     else
         # Single case mode
-        CASE_NAME="${CASE_NAME:-$DEFAULT_CASE}"
+        if [[ -z "$CASE_NAME" ]]; then
+            print_error "No case specified. Use -c/--case=NAME or -a/--all."
+            echo ""
+            show_help
+            exit 1
+        fi
         process_single_case "$CASE_NAME" "$PLATFORM" "$AGENT_EXE" "$MODE" "$DRY_RUN"
         exit $?
     fi
