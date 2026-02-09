@@ -546,7 +546,7 @@ build_run_command() {
 
     case "$platform" in
         perlmutter)
-            run_cmd="srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) --cpu-bind=cores bash -c 'export CUDA_VISIBLE_DEVICES=\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1'"
+            run_cmd="srun --cpu-bind=cores -n ${ntasks} bash -c 'export CUDA_VISIBLE_DEVICES=\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1'"
             ;;
         dane)
             if [[ -n "$queue" ]]; then
@@ -610,18 +610,46 @@ EOF_HEADER
 
     case "$platform" in
         perlmutter)
-            cat >> "$run_script" << EOF
+            cat >> "$run_script" << 'EOF'
 
 export MPICH_OFI_NIC_POLICY=GPU
 export OMP_NUM_THREADS=1
 
-NTOTAL=\$((${nnodes} * ${ntasks}))
+OUTFILE=out.${NERSC_HOST}.log
 
-echo "Running ExaEpi on Perlmutter..."
-echo "Command: srun -N ${nnodes} -n \${NTOTAL} --cpu-bind=cores ..."
-echo ""
+# Find ExaEpi executable (check direct build or machine subdirectory)
+if [ -d "$EXAEPI_BUILD/bin" ] && ls $EXAEPI_BUILD/bin/*agent* &> /dev/null; then
+    # Direct build
+    EXEC=$(ls $EXAEPI_BUILD/bin/*agent*)
+elif [ -d "$EXAEPI_BUILD/$NERSC_HOST/bin" ] && ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent* &> /dev/null; then
+    # Machine-specific subdirectory
+    EXEC=$(ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent*)
+else
+    echo "ERROR: ExaEpi executable not found in $EXAEPI_BUILD/bin/ or machine subdirectories"
+    exit 1
+fi
+echo "Executable file is ${EXEC}."
 
-srun -N ${nnodes} -n \${NTOTAL} --cpu-bind=cores bash -c "export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1"
+INP=$(ls inputs*)
+echo "Input file is ${INP}."
+EOF
+            cat >> "$run_script" << EOF
+
+NGPU=${ntasks}
+
+# pin to closest NIC to GPU
+export MPICH_OFI_NIC_POLICY=GPU
+export OMP_NUM_THREADS=1
+GPU_AWARE_MPI="amrex.use_gpu_aware_mpi=1"
+
+rm -rf Backtrace* plt* cases* \$OUTFILE output.dat *.core
+echo "  running ExaEpi with input file \$INP"
+# CUDA visible devices are ordered inverse to local task IDs
+#   Reference: nvidia-smi topo -m
+srun --cpu-bind=cores -n \$NGPU bash -c "
+    export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID));
+    \${EXEC} \${INP} \${GPU_AWARE_MPI}" \\
+    2>&1 |tee \$OUTFILE
 EOF
             ;;
         dane)
@@ -728,32 +756,50 @@ create_job_script() {
         perlmutter)
             cat > "$job_script" << EOF
 #!/bin/bash -l
-#SBATCH --job-name=exaepi_${case_name}
-#SBATCH --nodes=${nnodes}
-#SBATCH --ntasks-per-node=${ntasks}
-#SBATCH --cpus-per-task=32
-#SBATCH --gpus-per-node=${ntasks}
-#SBATCH --qos=${queue}
-#SBATCH --time=${walltime}
-#SBATCH --constraint=gpu
+
+#SBATCH -t ${walltime}
+#SBATCH -N ${nnodes}
+#SBATCH -J ExaEpi
+#SBATCH -A m5071_g
+#SBATCH -q ${queue}
+#SBATCH -C gpu
 #SBATCH --exclusive
+#SBATCH --cpus-per-task=32
 #SBATCH --gpu-bind=none
-#SBATCH --account=m5071_g
-#SBATCH --output=exaepi_%j.out
-#SBATCH --error=exaepi_%j.err
+#SBATCH --ntasks-per-node=${ntasks}
+#SBATCH --gpus-per-node=${ntasks}
+#SBATCH -o ExaEpi.o%j
+#SBATCH -e ExaEpi.e%j
 
-echo "Job started at: \$(date)"
-echo "Running on host: \$(hostname)"
-echo "Working directory: \$(pwd)"
-echo ""
 
+OUTFILE=out.\${NERSC_HOST}.log
+
+INP=\$(ls inputs*)
+echo "Input file is \${INP}."
+
+# Find ExaEpi executable (check direct build or machine subdirectory)
+if [ -d "\$EXAEPI_BUILD/bin" ] && ls \$EXAEPI_BUILD/bin/*agent* &> /dev/null; then
+    EXEC=\$(ls \$EXAEPI_BUILD/bin/*agent*)
+elif [ -d "\$EXAEPI_BUILD/\$NERSC_HOST/bin" ] && ls \$EXAEPI_BUILD/\$NERSC_HOST/bin/*agent* &> /dev/null; then
+    EXEC=\$(ls \$EXAEPI_BUILD/\$NERSC_HOST/bin/*agent*)
+else
+    echo "ERROR: ExaEpi executable not found"
+    exit 1
+fi
+echo "Executable file is \${EXEC}."
+
+# pin to closest NIC to GPU
 export MPICH_OFI_NIC_POLICY=GPU
 export OMP_NUM_THREADS=1
+GPU_AWARE_MPI="amrex.use_gpu_aware_mpi=1"
 
-srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) --cpu-bind=cores bash -c "export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1"
-
-echo ""
-echo "Job finished at: \$(date)"
+# CUDA visible devices are ordered inverse to local task IDs
+#   Reference: nvidia-smi topo -m
+rm -rf Backtrace* plt* cases* \$OUTFILE output.dat *.core
+srun --cpu-bind=cores bash -c "
+    export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID));
+    \${EXEC} \${INP} \${GPU_AWARE_MPI}" \\
+    2>&1 |tee \$OUTFILE
 EOF
             ;;
         dane|matrix)
@@ -1004,7 +1050,7 @@ create_ensemble_job_script() {
     local run_cmd=""
     case "$platform" in
         perlmutter)
-            run_cmd="srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) --cpu-bind=cores bash -c \"export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); ${agent_exe}"
+            run_cmd="srun --cpu-bind=cores bash -c \"export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); \${EXEC}"
             ;;
         dane)
             run_cmd="srun -N ${nnodes} -n ${ntasks} ${agent_exe}"
@@ -1034,22 +1080,36 @@ create_ensemble_job_script() {
         perlmutter)
             cat > "$job_script" << EOF
 #!/bin/bash -l
-#SBATCH --job-name=ens_${case_name}
-#SBATCH --nodes=${nnodes}
-#SBATCH --ntasks-per-node=${ntasks}
-#SBATCH --cpus-per-task=32
-#SBATCH --gpus-per-node=${ntasks}
-#SBATCH --qos=${queue}
-#SBATCH --time=${walltime}
-#SBATCH --constraint=gpu
-#SBATCH --exclusive
-#SBATCH --gpu-bind=none
-#SBATCH --account=m5071_g
-#SBATCH --output=ensemble_%j.out
-#SBATCH --error=ensemble_%j.err
 
+#SBATCH -t ${walltime}
+#SBATCH -N ${nnodes}
+#SBATCH -J ens_${case_name}
+#SBATCH -A m5071_g
+#SBATCH -q ${queue}
+#SBATCH -C gpu
+#SBATCH --exclusive
+#SBATCH --cpus-per-task=32
+#SBATCH --gpu-bind=none
+#SBATCH --ntasks-per-node=${ntasks}
+#SBATCH --gpus-per-node=${ntasks}
+#SBATCH -o ensemble_%j.out
+#SBATCH -e ensemble_%j.err
+
+# Find ExaEpi executable (check direct build or machine subdirectory)
+if [ -d "\$EXAEPI_BUILD/bin" ] && ls \$EXAEPI_BUILD/bin/*agent* &> /dev/null; then
+    EXEC=\$(ls \$EXAEPI_BUILD/bin/*agent*)
+elif [ -d "\$EXAEPI_BUILD/\$NERSC_HOST/bin" ] && ls \$EXAEPI_BUILD/\$NERSC_HOST/bin/*agent* &> /dev/null; then
+    EXEC=\$(ls \$EXAEPI_BUILD/\$NERSC_HOST/bin/*agent*)
+else
+    echo "ERROR: ExaEpi executable not found"
+    exit 1
+fi
+echo "Executable file is \${EXEC}."
+
+# pin to closest NIC to GPU
 export MPICH_OFI_NIC_POLICY=GPU
 export OMP_NUM_THREADS=1
+GPU_AWARE_MPI="amrex.use_gpu_aware_mpi=1"
 EOF
             ;;
         dane|matrix)
@@ -1135,7 +1195,7 @@ for i in \$(seq 1 ${num_runs}); do
     done
 
     # Run simulation with unique seed
-    ${run_cmd} ${input_file} agent.seed=\$i$(if [[ "$platform" == "perlmutter" ]]; then echo ' amrex.use_gpu_aware_mpi=1"'; fi)
+    ${run_cmd} ${input_file} agent.seed=\$i$(if [[ "$platform" == "perlmutter" ]]; then echo ' ${GPU_AWARE_MPI}"'; fi)
     EXIT_CODE=\$?
 
     if [ \$EXIT_CODE -ne 0 ]; then
