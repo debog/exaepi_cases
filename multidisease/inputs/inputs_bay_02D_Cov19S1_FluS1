@@ -33,15 +33,7 @@ diag.output_filename = "output_Cov19S1.dat" "output_FluS1.dat"
 ## Air travel (disabled)
 agent.air_travel_int = -1
 
-## Shelter-in-place
-agent.shelter_start = -1
-agent.shelter_length = 0
-agent.shelter_compliance = 0.95
 
-## Social structure
-agent.nborhood_size = 500
-agent.workgroup_size = 20
-agent.student_teacher_ratio = 0 15 15 15 15 15
 
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
