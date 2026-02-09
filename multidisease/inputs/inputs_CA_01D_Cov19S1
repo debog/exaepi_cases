@@ -23,6 +23,7 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 
 ## Multi-disease setup
 agent.number_of_diseases = 1
+agent.disease_names = "Cov19S1"
 
 ## Initial infection
 ## ~3 per million (CA pop 33.9M); ~100 confirmed cases in CA at community-

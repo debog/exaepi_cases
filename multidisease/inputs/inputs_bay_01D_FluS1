@@ -44,6 +44,7 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
 
 ## Multi-disease setup
 agent.number_of_diseases = 1
+agent.disease_names = "FluS1"
 
 ## Initial infection
 ## ~4.4 per million (Bay Area pop 6.78M); seasonal flu seeds via multiple
