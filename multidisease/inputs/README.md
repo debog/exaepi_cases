@@ -200,36 +200,149 @@ needed to overcome stochastic extinction.
 
 ## COVID-19 References
 
-- [C1] Liu Y, Rocklov J (2021). The reproductive number of the Delta variant of SARS-CoV-2 is far higher compared to the ancestral SARS-CoV-2 virus. *J Travel Medicine* 28(7). [doi:10.1093/jtm/taab124](https://doi.org/10.1093/jtm/taab124)
-- [C2] Hart WS et al. (2022). Estimation of the incubation period and generation time of SARS-CoV-2 Alpha and Delta variants from contact tracing data. *Epidemics*. [PMC9837419](https://pmc.ncbi.nlm.nih.gov/articles/PMC9837419/)
+- [C1] Liu Y, Rocklov J (2021). The reproductive number of the Delta variant of SARS-CoV-2 is far higher compared to the ancestral SARS-CoV-2 virus. *J Travel Medicine* 28(7). [PMC8436367](https://pmc.ncbi.nlm.nih.gov/articles/PMC8436367/)
+  - Results: "The basic reproductive number for Delta ranged from 3.2 to 8, with a mean of 5.08."
+  - Results: "We found a mean R0 of 5.08, which is much higher than the R0 of the ancestral strain of 2.79."
+  - Used for: `p_trans` scaling — Delta ~2x higher than wild-type (0.35 vs 0.20).
+- [C2] Hart WS, Manica M et al. (2022). Estimation of the incubation period and generation time of SARS-CoV-2 Alpha and Delta variants from contact tracing data. *Epidemics*. [PMC9837419](https://pmc.ncbi.nlm.nih.gov/articles/PMC9837419/)
+  - Table 2: Delta incubation period gamma distribution — shape = 4.43 (95% CrI: 3.26-6.70), scale = 1.01 (95% CrI: 0.65-1.43), mean = 4.5 days (95% CrI: 4.0-5.0).
+  - Table 2: 2.5-97.5 percentile range of distribution: 1-10 days.
+  - Results: "no statistical difference" between Alpha and Delta incubation periods (P = 0.45).
+  - Used for: `incubation_length_alpha` = 4.43, `incubation_length_beta` = 1.01.
 - [C3] Xin H et al. (2024). Latent and incubation periods of Delta, BA.1, and BA.2 variant cases and associated factors. *BMC Infect Dis*. [PMC10916204](https://pmc.ncbi.nlm.nih.gov/articles/PMC10916204/)
+  - Table 2: Delta latent period mean = 4.40 days (95% CI: 4.24-4.63), SD = 2.46, median = 3.95.
+  - Results: "The mean latent period for 672 Delta...cases was 4.40 (95%CI: 4.24 ~ 4.63)."
+  - Results: "85.65% (95%CI: 83.40 ~ 87.77%)" of Delta cases "started to shed the virus within 7 days after exposure."
+  - Discussion: "Previous studies have shown that the mean latent period...was gradually shortened in the wild-type strain (5.5 days), the Delta variant (3.9 days)."
+  - Used for: `latent_length_alpha` = 4.7 (rounded from 4.40/0.75 to preserve beta).
 - [C4] Pang Z et al. (2023). The differences in virus shedding time between the Delta variant and original SARS-CoV-2 infected patients. *Frontiers Public Health*. [PMC10408444](https://pmc.ncbi.nlm.nih.gov/articles/PMC10408444/)
+  - Results: "virus shedding time of the Delta variant group was dramatically longer than the original SARS-CoV-2 group [41.5 (31.5, 46.75) vs. 18.5 (13, 25.75) day, p < 0.001]."
+  - Conclusion: "Delta variant and fewer lymphocyte were correlated with prolonged virus shedding time."
+  - Used for: `infectious_length_beta` = 0.27 (longer shedding: mean ~7.1 vs ~6.0 days).
 - [C5] Miyahara R et al. (2022). A low proportion of asymptomatic COVID-19 patients with the Delta variant infection by viral transmission through household contact. *Int J Environ Res Public Health*. [PMC9243404](https://pmc.ncbi.nlm.nih.gov/articles/PMC9243404/)
-- [C6] Fisman DN, Tuite AR (2021). Increased risk of hospitalisation and death with the delta variant in the USA. *Lancet Infect Dis*. [doi:10.1016/S1473-3099(21)00685-X](https://doi.org/10.1016/S1473-3099(21)00685-X)
+  - Results: Delta asymptomatic 14.2% (41/289) vs wild-type 28.8% (62/215), RR = 0.49 (95% CI: 0.35-0.70).
+  - Results (ages 20-59): Delta 8.5% vs wild-type 24.3%, RR = 0.35 (95% CI: 0.18-0.66).
+  - Entire Ibaraki Prefecture: 13.7% (Aug 2021, Delta) vs 30.3% (Nov 2020-Jan 2021, wild-type), RR = 0.45 (95% CI: 0.42-0.50).
+  - Used for: `p_asymp` = 0.15 (Delta) vs 0.30 (wild-type).
+- [C6] Fisman DN, Tuite AR (2021). Progressive increase in virulence of novel SARS-CoV-2 variants in Ontario, Canada. *medRxiv* / *Lancet Infect Dis*. [doi:10.1016/S1473-3099(21)00685-X](https://doi.org/10.1016/S1473-3099(21)00685-X)
+  - Results: Delta vs non-VOC adjusted risk increases — hospitalization: 120% (95% CI: 93-153%), ICU admission: 287% (95% CI: 198-399%), death: 137% (95% CI: 50-230%).
+  - These correspond to OR ~2.2 for hospitalization, ~3.9 for ICU, ~2.4 for death.
+  - Used for: `CHR` scaling — Delta CHR approximately doubled across age groups.
 - [C7] Garg S et al. (2021). Severity of Disease Among Adults Hospitalized with Laboratory-Confirmed COVID-19 Before and During the Period of SARS-CoV-2 B.1.617.2 (Delta) Predominance. *MMWR* 70(43). [CDC](https://www.cdc.gov/mmwr/volumes/70/wr/mm7043e1.htm)
+  - Results: "no significant increases in the proportion of hospitalized COVID-19 patients with severe outcomes during the Delta period."
+  - Results: "No difference was observed in ICU admission, receipt of IMV, or in-hospital death among nonpregnant hospitalized adults between the pre-Delta and Delta periods."
+  - Results: Ages ≥50 — ICU/death "generally trended upward in the Delta period" but "not statistically significant (p = 0.70)."
+  - Used for: CIC and CVE kept the same between S1/S2; icuCVF and ventCVF only modestly increased.
 - [C8] Allen H et al. (2022). Household secondary attack rates of SARS-CoV-2 by variant and vaccination status: an updated systematic review and meta-analysis. *JAMA Netw Open*. [PMC8764734](https://pmc.ncbi.nlm.nih.gov/articles/PMC8764734/)
+  - Results (Figure 2): "Estimated mean household SAR...Delta was 30.8% (95%CI, 23.5%-39.3%)."
+  - Results: Wild-type (pre-April 2020): "15.7% (95%CI, 13.3%-18.4%)."
+  - Results: "Restricting to unvaccinated contacts only, mean estimated SAR for Delta was 34.9% (95%CI, 26.7%-44.1%)."
+  - Used for: `p_trans` — Delta SAR roughly double wild-type, supporting p_trans = 0.35 vs 0.20.
 
 ## Influenza References
 
 - [F1] Biggerstaff M et al. (2014). Estimates of the reproduction number for seasonal, pandemic, and zoonotic influenza: a systematic review of the literature. *BMC Infect Dis*. [PMC4169819](https://pmc.ncbi.nlm.nih.gov/articles/PMC4169819/)
+  - Table 5: H3N2 seasonal — median R = 1.25 (IQR: 1.18-1.27).
+  - Table 5: H1N1 seasonal — median R = 1.25 (IQR: 1.18-1.35).
+  - Table 5: All seasonal influenza — median R = 1.28 (IQR: 1.19-1.37).
+  - Methods: 79% of seasonal influenza studies "relied on unconfirmed illnesses or deaths."
+  - Used for: `p_trans` = 0.15 (calibrated to R0 ~1.3 in agent-based model).
 - [F2] Lessler J et al. (2009). Incubation periods of acute respiratory viral infections: a systematic review. *Lancet Infect Dis*. [PMC4327893](https://pmc.ncbi.nlm.nih.gov/articles/PMC4327893/)
+  - Table 3: Influenza A incubation — median 1.4 days (95% CI: 1.3-1.5), dispersion 1.51 (95% CI: 1.43-1.60).
+  - Table 3: 5th percentile 0.7 days (95% CI: 0.6-0.8), 95th percentile 2.8 days (95% CI: 2.5-3.2).
+  - Table 3: 25th percentile 1.1 days (1.0-1.2), 75th percentile 1.9 days (1.7-2.1).
+  - Sensitivity: Excluding one atypical study revised median to 1.9 days with dispersion 1.22.
+  - Used for: `incubation_length_alpha` = 4.0, `incubation_length_beta` = 0.5 (gamma mean = 2.0 days).
 - [F3] Carrat F et al. (2008). Time lines of infection and disease in human influenza: a review of volunteer challenge studies. *Am J Epidemiol* 167(7):775-785. [doi:10.1093/aje/kwm375](https://doi.org/10.1093/aje/kwm375)
+  - Results: "The duration of viral shedding averaged over 375 participants was 4.80 days (95% confidence interval: 4.31, 5.29)."
+  - Results: "Viral shedding increased sharply between 0.5 and 1 day after challenge and consistently peaked on day 2."
+  - Results: "The total symptoms scores increased on day 1 and peaked on day 3."
+  - Results: "The frequency of symptomatic infection was 66.9% (95% confidence interval: 58.3, 74.5)."
+  - Results: "Fever was observed in 37.0% of A/H1N1, 40.6% of A/H3N2 (p = 0.86), and 7.5% of B infections."
+  - Study: 56 volunteer challenge studies, 1,280 healthy participants.
+  - Used for: `infectious_length` (mean ~4.5 days) and `latent_length` (mean ~1.5 days).
 - [F4] Leung NHL et al. (2015). The fraction of influenza virus infections that are asymptomatic: a systematic review and meta-analysis. *Epidemiology*. [PMC4586318](https://pmc.ncbi.nlm.nih.gov/articles/PMC4586318/)
-- [F5] Tsang TK et al. (2023). Reconstructing household transmission dynamics to estimate the infectiousness of asymptomatic influenza virus infections. *PNAS*. [doi:10.1073/pnas.2304750120](https://doi.org/10.1073/pnas.2304750120)
+  - Results (outbreak investigations): "pooled mean of 16% (95% CI: 13%, 19%)" with low heterogeneity (I²=0%).
+  - Results (serologic studies, adjusted): point estimates 65-85%, I²=58%.
+  - Results: "the asymptomatic fraction was lower for H3N2 infections compared to infections with H1N1 and B."
+  - Discussion: "Estimates of the asymptomatic fraction are affected by the study design, and the definitions of infection and symptomatic illness."
+  - Used for: `p_asymp` = 0.16 (H3N2), 0.12 (H1N1pdm09, slightly lower per subtype finding).
+- [F5] Tsang TK et al. (2023). Reconstructing household transmission dynamics to estimate the infectiousness of asymptomatic influenza virus infections. *PNAS* 120(33). [PMC10436695](https://pmc.ncbi.nlm.nih.gov/articles/PMC10436695/)
+  - Results: "estimated relative infectiousness 0.57 (95% CrI: 0.11, 1.54)."
+  - Results: "posterior probability that asymptomatic cases are less infectious than symptomatic cases is 0.82."
+  - Results (ARI definition): "estimated relative infectiousness of cases meeting the ARI definition compared with cases without ARI is 0.41 (95% CrI: 0.07, 1.09)."
+  - Study: 727 households, 2,515 individuals, 2009 H1N1pdm09 outbreak in Hong Kong.
+  - Used for: `asymp_relative_inf` = 0.5 (midpoint of 0.41-0.57 range).
 - [F6] CDC FluSurv-NET (2024). Laboratory-Confirmed Influenza-Associated Hospitalizations Among Children and Adults, United States, 2010-2023. *MMWR Surveill Summ* 73(SS-6). [CDC](https://www.cdc.gov/mmwr/volumes/73/ss/ss7306a1.htm)
+  - Results: Adults ≥65 consistently highest hospitalization rates (e.g. 437.2 per 100,000 in 2017-18).
+  - Results: ICU admission among hospitalized patients: 14.1-22.3% across seasons.
+  - Results: Mechanical ventilation: 4.9-11.1% of hospitalized patients.
+  - Results: Rates increase sharply with age within elderly (75-84 > 65-74; ≥85 highest).
+  - Used for: `hospitalization_days`, `CHR` age distribution, `CIC`, `CVE` estimates.
 - [F7] Sridhar S et al. (2015). Longevity and determinants of protective humoral immunity after pandemic influenza infection. *Am J Respir Crit Care Med*. [PMC4351579](https://pmc.ncbi.nlm.nih.gov/articles/PMC4351579/)
+  - Abstract: "Antibodies induced by natural infection persisted at constant high titer for a minimum of approximately 15 months."
+  - Results: Mean titers remained "above the protective threshold of 1:32" for "up to 480 days" post-infection.
+  - Table 1: Individual HI titers across timepoints; only 1 subject (F179) declined to baseline within 300 days.
+  - Results: Vaccine-induced titers showed "decline in the magnitude of titer within 9 months post-vaccination" but "remained at a protective titer."
+  - Used for: `immune_length_alpha` = 180.0, `immune_length_beta` = 1.5 (mean ~270 days, ~9 months).
 - [F8] Koh YS et al. (2023). Inference of age-dependent case-fatality ratios for seasonal influenza virus subtypes A(H3N2) and A(H1N1)pdm09 and B lineages. *Influenza Other Respir Viruses*. [PMC10279999](https://pmc.ncbi.nlm.nih.gov/articles/PMC10279999/)
+  - Table 2: H3N2 age-aggregated CFR = 0.582% (95% CrI: 0.563-0.601%).
+  - Table 2: H1N1pdm09 age-aggregated CFR = 0.283% (95% CrI: 0.240-0.326%).
+  - Table 2: H3N2 CFR 85+ = 4.76% (4.53-5.01%); H1N1pdm09 CFR 85+ = 2.51% (2.09-2.94%).
+  - Table 2: H3N2 CFR 55-59 = 0.018% (0.016-0.021%); H1N1pdm09 CFR 55-59 = 0.010%.
+  - Results: "case-fatality estimates were highest for influenza A(H3N2) followed by influenza B and then A(H1N1)pdm09."
+  - Study: Netherlands, 2011/2012-2019/2020 seasons.
+  - Used for: `ventCVF` and `icuCVF` age profiles — H3N2 more lethal overall, especially in elderly.
 - [F9] Writing Committee of the WHO Consultation on Clinical Aspects of Pandemic (H1N1) 2009 Influenza (2010). Clinical aspects of pandemic 2009 influenza A (H1N1) virus infection. *NEJM* 362:1708-1719. [doi:10.1056/NEJMra1000449](https://doi.org/10.1056/NEJMra1000449)
+  - Results: Hospitalization rates "highest for children under the age of 5 years, especially those under 1 year, and lowest for persons 65 years or older."
+  - Results: "32 to 45% of hospitalized patients in the United States" were under 18 years of age.
+  - Results: "approximately 9 to 31% of hospitalized patients admitted to ICU where 14 to 46% died."
+  - Results: ICU syndrome — "diffuse viral pneumonitis associated with severe hypoxemia, ARDS, and sometimes shock and renal failure, accounting for approximately 49 to 72% of ICU admissions."
+  - Results: "rapid progression typically starting on day 4 to 5 after illness onset."
+  - Used for: `CHR`, `CIC`, `CVE` for FluS2 — higher ICU/ventilation rates in young adults vs H3N2.
 - [F10] CDC (2019). 2009 H1N1 Pandemic summary. [CDC](https://archive.cdc.gov/www_cdc_gov/flu/pandemic-resources/2009-h1n1-pandemic.html)
+  - Summary: First detected April 2009 in California; spread to all 50 states by June.
+  - Estimated US burden: ~60.8 million cases, ~274,304 hospitalizations, ~12,469 deaths.
+  - Age distribution: 80% of deaths in persons younger than 65 years (unusual for seasonal flu).
+  - Used for: FluS2 age profile — disproportionate severity in younger adults vs elderly.
 
 ## Disease Coupling References
 
 - [M1] Goldberg Y et al. (2021). Duration of SARS-CoV-2 natural immunity and protection against the Delta variant: a retrospective cohort study. *JAMA Intern Med*. [PMC8690283](https://pmc.ncbi.nlm.nih.gov/articles/PMC8690283/)
-- [M2] Planas D et al. (2021). Reduced sensitivity of SARS-CoV-2 variant Delta to antibody neutralization. *Nature*. [doi:10.1038/s41586-021-03777-9](https://doi.org/10.1038/s41586-021-03777-9)
+  - Results: "Protection of prior infection against reinfection with Delta was 85.4% (95% CI, 80.0-89.3)."
+  - Results: "Overall protection of previous infection was 85.7% (95% CI, 82.2-88.5) and lasted up to 13 months."
+  - Results: Among 325,157 patients, reinfection rate 0.08% (prior infection) vs 0.5% (no prior infection) during Delta-dominant period.
+  - Results: "Patients over age 65 had slightly lower protection" compared to younger cohorts.
+  - Used for: coimmunity matrix off-diagonal = 0.85 (COVID S1-S2 cross-immunity).
+- [M2] Planas D et al. (2021). Reduced sensitivity of SARS-CoV-2 variant Delta to antibody neutralization. *Nature* 596:276-280. [doi:10.1038/s41586-021-03777-9](https://doi.org/10.1038/s41586-021-03777-9)
+  - Results: Convalescent sera were "fourfold less potent against the Delta variant relative to the Alpha variant."
+  - Results: Vaccine-elicited neutralizing titers were "three- to fivefold lower against the Delta variant compared to the original strain."
+  - Results: Delta was "resistant to neutralization by some anti-NTD and anti-RBD monoclonal antibodies, including bamlanivimab."
+  - Used for: coimmunity matrix — despite 3-5 fold reduction in neutralization titers, clinical protection remains high (~85%), supporting 0.85 rather than a lower value.
 - [M3] Bobrovitz N et al. (2023). Past SARS-CoV-2 infection protection against re-infection: a systematic review and meta-analysis. *Lancet*. [doi:10.1016/S0140-6736(22)02465-5](https://doi.org/10.1016/S0140-6736(22)02465-5)
-- [M4] Zheng J et al. (2022). The role of respiratory co-infection with influenza or RSV in the clinical severity of COVID-19 patients: a systematic review and meta-analysis. *J Glob Health*. [doi:10.7189/jogh.12.05040](https://doi.org/10.7189/jogh.12.05040)
-- [M5] Gao YD et al. (2023). Prevalence and associated outcomes of coinfection between SARS-CoV-2 and influenza: a systematic review and meta-analysis. *Int J Infect Dis*. [doi:10.1016/j.ijid.2023.08.009](https://doi.org/10.1016/j.ijid.2023.08.009)
+  - Results: Protection against reinfection at 40 weeks — ancestral/alpha/delta: 78.6% (95% UI: 49.8-93.6%).
+  - Results: Protection against severe disease at 40 weeks — ancestral/alpha/delta: 90.2% (95% UI: 69.7-97.5%).
+  - Results: "Mean pooled effectiveness was greater than 78% against severe disease (hospitalisation and death) for all variants."
+  - Results: Omicron BA.1 reinfection protection at 40 weeks dropped to 36.1% (24.4-51.3%), but severe disease protection remained at 88.9% (84.7-90.9%).
+  - Used for: coimmunity matrix — 0.85 reflects strong but imperfect cross-protection between COVID variants, consistent with 78-90% estimates from meta-analysis.
+- [M4] Zheng J et al. (2022). The role of respiratory co-infection with influenza or RSV in the clinical severity of COVID-19 patients: a systematic review and meta-analysis. *J Glob Health* 12:05040. [doi:10.7189/jogh.12.05040](https://doi.org/10.7189/jogh.12.05040)
+  - Results: COVID+influenza co-infection — ICU admission OR = 2.09 (95% CI: 1.64-2.68).
+  - Results: Mechanical ventilation OR = 2.31 (95% CI: 1.10-4.85).
+  - Used for: cosusceptibility matrix COVID-Flu = 1.5 (moderate estimate of enhanced severity).
+- [M5] Gao YD et al. (2023). Prevalence and associated outcomes of coinfection between SARS-CoV-2 and influenza: a systematic review and meta-analysis. *Int J Infect Dis* 136:29-36. [doi:10.1016/j.ijid.2023.08.009](https://doi.org/10.1016/j.ijid.2023.08.009)
+  - Results: Pooled co-infection prevalence 2.45% (95% CI: 1.67-3.58%).
+  - Results: Influenza A co-infection — ICU OR = 2.20 (95% CI: 1.68-2.87, P < 0.001).
+  - Results: Influenza A co-infection — mechanical ventilation OR = 2.73 (95% CI: 1.46-5.10, P = 0.002).
+  - Results: Influenza A co-infection — mortality OR = 2.92 (95% CI: 1.16-7.30, P = 0.022).
+  - Study: 95 studies, 62,107 COVID-19 patients.
+  - Used for: cosusceptibility matrix COVID-Flu = 1.5 — OR values of 2.1-2.7 support enhanced severity; 1.5 is a conservative estimate accounting for viral interference [M6].
 - [M6] Dee K et al. (2024). Viral interference between SARS-CoV-2 and influenza A viruses. *PLoS Pathog*. [doi:10.1371/journal.ppat.1012017](https://doi.org/10.1371/journal.ppat.1012017)
+  - Results: "A prior infection with A/H3N2 greatly reduced the replication of Omicron by 3 logs compared to Omicron alone at 96 h p.i."
+  - Results: "SARS-CoV-2 did not significantly interfere with A/H3N2 or A/H1N1" (asymmetric effect).
+  - Results: "IAV, especially A/H3N2, caused a much greater secretion of type I and type III IFN proteins than SARS-CoV-2."
+  - Results: "IFN secretion was decreased in almost all coinfections with IAV compared to IAV alone, especially when SARS-CoV-2 was added first."
+  - Mechanism: Influenza A interferes with SARS-CoV-2 through IFN response, but SARS-CoV-2 immune evasion proteins reduce protective IFN signaling during co-infections.
+  - Used for: cosusceptibility matrix — viral interference partially offsets clinical severity enhancement from [M4,M5], justifying 1.5 rather than the full OR of ~2.1-2.7.
 
 ## Initial Case Seeding References
 
