@@ -546,7 +546,7 @@ build_run_command() {
 
     case "$platform" in
         perlmutter)
-            run_cmd="srun -N ${nnodes} -n ${ntasks} -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}"
+            run_cmd="srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) --cpu-bind=cores bash -c 'export CUDA_VISIBLE_DEVICES=\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1'"
             ;;
         dane)
             if [[ -n "$queue" ]]; then
@@ -615,11 +615,13 @@ EOF_HEADER
 export MPICH_OFI_NIC_POLICY=GPU
 export OMP_NUM_THREADS=1
 
+NTOTAL=\$((${nnodes} * ${ntasks}))
+
 echo "Running ExaEpi on Perlmutter..."
-echo "Command: srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}"
+echo "Command: srun -N ${nnodes} -n \${NTOTAL} --cpu-bind=cores ..."
 echo ""
 
-srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}
+srun -N ${nnodes} -n \${NTOTAL} --cpu-bind=cores bash -c "export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1"
 EOF
             ;;
         dane)
@@ -725,7 +727,7 @@ create_job_script() {
     case "$platform" in
         perlmutter)
             cat > "$job_script" << EOF
-#!/bin/bash
+#!/bin/bash -l
 #SBATCH --job-name=exaepi_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks-per-node=${ntasks}
@@ -734,6 +736,8 @@ create_job_script() {
 #SBATCH --qos=${queue}
 #SBATCH --time=${walltime}
 #SBATCH --constraint=gpu
+#SBATCH --exclusive
+#SBATCH --gpu-bind=none
 #SBATCH --account=m5071_g
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
@@ -746,7 +750,7 @@ echo ""
 export MPICH_OFI_NIC_POLICY=GPU
 export OMP_NUM_THREADS=1
 
-srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe} ${input_file}
+srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) --cpu-bind=cores bash -c "export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); ${agent_exe} ${input_file} amrex.use_gpu_aware_mpi=1"
 
 echo ""
 echo "Job finished at: \$(date)"
@@ -1000,7 +1004,7 @@ create_ensemble_job_script() {
     local run_cmd=""
     case "$platform" in
         perlmutter)
-            run_cmd="srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) -c 32 --gpus-per-task=1 ${agent_exe}"
+            run_cmd="srun -N ${nnodes} -n \$((${nnodes} * ${ntasks})) --cpu-bind=cores bash -c \"export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID)); ${agent_exe}"
             ;;
         dane)
             run_cmd="srun -N ${nnodes} -n ${ntasks} ${agent_exe}"
@@ -1029,7 +1033,7 @@ create_ensemble_job_script() {
     case "$platform" in
         perlmutter)
             cat > "$job_script" << EOF
-#!/bin/bash
+#!/bin/bash -l
 #SBATCH --job-name=ens_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks-per-node=${ntasks}
@@ -1038,6 +1042,8 @@ create_ensemble_job_script() {
 #SBATCH --qos=${queue}
 #SBATCH --time=${walltime}
 #SBATCH --constraint=gpu
+#SBATCH --exclusive
+#SBATCH --gpu-bind=none
 #SBATCH --account=m5071_g
 #SBATCH --output=ensemble_%j.out
 #SBATCH --error=ensemble_%j.err
@@ -1129,7 +1135,7 @@ for i in \$(seq 1 ${num_runs}); do
     done
 
     # Run simulation with unique seed
-    ${run_cmd} ${input_file} agent.seed=\$i
+    ${run_cmd} ${input_file} agent.seed=\$i$(if [[ "$platform" == "perlmutter" ]]; then echo ' amrex.use_gpu_aware_mpi=1"'; fi)
     EXIT_CODE=\$?
 
     if [ \$EXIT_CODE -ne 0 ]; then
