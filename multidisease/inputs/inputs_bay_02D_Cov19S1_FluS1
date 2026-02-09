@@ -29,9 +29,6 @@ agent.aggregated_diag_int = 1
 agent.aggregated_diag_prefix = "cases"
 diag.output_filename = "output_Cov19S1.dat" "output_FluS1.dat"
 
-## Random travel
-agent.random_travel_int = 24
-agent.random_travel_prob = 0.0001
 
 ## Air travel (disabled)
 agent.air_travel_int = -1
