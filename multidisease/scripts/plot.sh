@@ -301,13 +301,25 @@ Reads output.dat or output_<disease>.dat files and creates plots of:
 """
 
 import sys
+import os
 import numpy as np
-import warnings
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
-warnings.filterwarnings('ignore', module='matplotlib.*')
 from pathlib import Path
+
+def save_eps(fig_or_plt, filepath):
+    """Save EPS file with PostScript transparency warnings suppressed."""
+    stderr_fd = sys.stderr.fileno()
+    old_stderr = os.dup(stderr_fd)
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, stderr_fd)
+    try:
+        fig_or_plt.savefig(filepath, format='eps', bbox_inches='tight')
+    finally:
+        os.dup2(old_stderr, stderr_fd)
+        os.close(old_stderr)
+        os.close(devnull)
 
 # Column indices in output.dat based on main.cpp line 192-194
 # Headers: Day, Su, PS/PI, S/PI/NH, S/PI/H, PS/I, S/I/NH, S/I/H, A/PI, A/I, H/NI, H/I, ICU, V, R, D, NewI, NewS, NewH, NewA, NewP
@@ -407,7 +419,7 @@ def create_infections_plot(data, case_name, platform, output_format, plots_dir, 
 
     if output_format in ['eps', 'both']:
         eps_file = str(Path(plots_dir) / f"{base_name}.eps")
-        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        save_eps(plt, eps_file)
         print(f"Created: {eps_file}")
 
     plt.close()
@@ -447,7 +459,7 @@ def create_deaths_plot(data, case_name, platform, output_format, plots_dir, dise
 
     if output_format in ['eps', 'both']:
         eps_file = str(Path(plots_dir) / f"{base_name}.eps")
-        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        save_eps(plt, eps_file)
         print(f"Created: {eps_file}")
 
     plt.close()
@@ -492,7 +504,7 @@ def create_hospitalizations_plot(data, case_name, platform, output_format, plots
 
     if output_format in ['eps', 'both']:
         eps_file = str(Path(plots_dir) / f"{base_name}.eps")
-        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        save_eps(plt, eps_file)
         print(f"Created: {eps_file}")
 
     plt.close()
@@ -528,7 +540,7 @@ def create_immune_plot(data, case_name, platform, output_format, plots_dir, dise
 
     if output_format in ['eps', 'both']:
         eps_file = str(Path(plots_dir) / f"{base_name}.eps")
-        plt.savefig(eps_file, format='eps', bbox_inches='tight')
+        save_eps(plt, eps_file)
         print(f"Created: {eps_file}")
 
     plt.close()
@@ -600,12 +612,11 @@ Reads ensemble summary statistics files (*_summary_mean.dat, *_summary_std.dat,
 """
 
 import sys
-import warnings
+import os
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-warnings.filterwarnings('ignore', module='matplotlib.*')
 from pathlib import Path
 
 # Colors
@@ -615,6 +626,19 @@ COLOR_GREEN = '#2CA02C'
 
 BAND_ALPHA_2STD = 0.15
 BAND_ALPHA_1STD = 0.3
+
+def save_eps(fig_or_plt, filepath):
+    """Save EPS file with PostScript transparency warnings suppressed."""
+    stderr_fd = sys.stderr.fileno()
+    old_stderr = os.dup(stderr_fd)
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, stderr_fd)
+    try:
+        fig_or_plt.savefig(filepath, format='eps', bbox_inches='tight')
+    finally:
+        os.dup2(old_stderr, stderr_fd)
+        os.close(old_stderr)
+        os.close(devnull)
 
 def read_summary_file(filename):
     """Read ensemble summary file, skipping header"""
@@ -633,7 +657,7 @@ def save_figure(fig, base_name, output_format, plots_dir):
         print(f"Created: {png_file}")
     if output_format in ['eps', 'both']:
         eps_file = str(Path(plots_dir) / f"{base_name}.eps")
-        fig.savefig(eps_file, format='eps', bbox_inches='tight')
+        save_eps(fig, eps_file)
         print(f"Created: {eps_file}")
 
 def plot_ensemble_quantity(days, mean, std, ylabel, title,
