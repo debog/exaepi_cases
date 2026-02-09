@@ -572,8 +572,8 @@ COLOR_RED = '#D62728'
 COLOR_BLUE = '#1F77B4'
 COLOR_GREEN = '#2CA02C'
 
-BAND_ALPHA_MINMAX = 0.15
-BAND_ALPHA_STD = 0.3
+BAND_ALPHA_2STD = 0.15
+BAND_ALPHA_1STD = 0.3
 
 def read_summary_file(filename):
     """Read ensemble summary file, skipping header"""
@@ -595,15 +595,15 @@ def save_figure(fig, base_name, output_format, plots_dir):
         fig.savefig(eps_file, format='eps', bbox_inches='tight')
         print(f"Created: {eps_file}")
 
-def plot_ensemble_quantity(days, mean, std, qmin, qmax, ylabel, title,
+def plot_ensemble_quantity(days, mean, std, ylabel, title,
                            color, base_name, output_format, plots_dir):
     """Create a single ensemble plot with mean line and variation bands"""
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    # Min/max band (lighter)
-    ax.fill_between(days, qmin, qmax, alpha=BAND_ALPHA_MINMAX, color=color, label='Min/Max')
-    # Std band (darker)
-    ax.fill_between(days, mean - std, mean + std, alpha=BAND_ALPHA_STD, color=color, label='Mean +/- 1 Std')
+    # 2-std band (lighter)
+    ax.fill_between(days, mean - 2*std, mean + 2*std, alpha=BAND_ALPHA_2STD, color=color, label='Mean +/- 2 Std')
+    # 1-std band (darker)
+    ax.fill_between(days, mean - std, mean + std, alpha=BAND_ALPHA_1STD, color=color, label='Mean +/- 1 Std')
     # Mean line
     ax.plot(days, mean, color=color, linewidth=2.5, label='Mean')
 
@@ -644,20 +644,15 @@ def main():
         stats_base = fname.replace('_summary_mean.dat', '')
 
         std_file  = ensemble_dir / f"{stats_base}_summary_std.dat"
-        min_file  = ensemble_dir / f"{stats_base}_summary_min.dat"
-        max_file  = ensemble_dir / f"{stats_base}_summary_max.dat"
 
-        for f in [std_file, min_file, max_file]:
-            if not f.exists():
-                print(f"WARNING: Missing {f}, skipping {stats_base}", file=sys.stderr)
-                continue
+        if not std_file.exists():
+            print(f"WARNING: Missing {std_file}, skipping {stats_base}", file=sys.stderr)
+            continue
 
         mean_data = read_summary_file(mean_file)
         std_data  = read_summary_file(std_file)
-        min_data  = read_summary_file(min_file)
-        max_data  = read_summary_file(max_file)
 
-        if any(d is None for d in [mean_data, std_data, min_data, max_data]):
+        if any(d is None for d in [mean_data, std_data]):
             continue
 
         # Columns: Day(0), TotalInfected(1), TotalHospitalized(2), Deaths(3)
@@ -679,24 +674,21 @@ def main():
 
         # 1. Total Infections
         plot_ensemble_quantity(
-            days,
-            mean_data[:, 1], std_data[:, 1], min_data[:, 1], max_data[:, 1],
+            days, mean_data[:, 1], std_data[:, 1],
             'Total Infected', f'Total Infections Over Time{disease_suffix}',
             COLOR_BLUE, f"{prefix}_infections_{platform}",
             output_format, plots_dir)
 
         # 2. Total Hospitalizations
         plot_ensemble_quantity(
-            days,
-            mean_data[:, 2], std_data[:, 2], min_data[:, 2], max_data[:, 2],
+            days, mean_data[:, 2], std_data[:, 2],
             'Total Hospitalized', f'Total Hospitalizations Over Time{disease_suffix}',
             COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
             output_format, plots_dir)
 
         # 3. Deaths
         plot_ensemble_quantity(
-            days,
-            mean_data[:, 3], std_data[:, 3], min_data[:, 3], max_data[:, 3],
+            days, mean_data[:, 3], std_data[:, 3],
             'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
             COLOR_RED, f"{prefix}_deaths_{platform}",
             output_format, plots_dir)
