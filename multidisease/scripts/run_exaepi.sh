@@ -646,7 +646,7 @@ echo "  running ExaEpi with input file \$INP"
 # CUDA visible devices are ordered inverse to local task IDs
 #   Reference: nvidia-smi topo -m
 srun --cpu-bind=cores -n \$NGPU bash -c "
-    export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID));
+    export CUDA_VISIBLE_DEVICES=\$((3-SLURM_LOCALID));
     \${EXEC} \${INP} \${GPU_AWARE_MPI}" \\
     2>&1 |tee \$OUTFILE
 EOF
@@ -765,8 +765,8 @@ create_job_script() {
 #SBATCH --exclusive
 #SBATCH --cpus-per-task=32
 #SBATCH --gpu-bind=none
-#SBATCH --ntasks-per-node=${ntasks}
-#SBATCH --gpus-per-node=${ntasks}
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-node=4
 #SBATCH -o ExaEpi.o%j
 #SBATCH -e ExaEpi.e%j
 
@@ -796,7 +796,7 @@ GPU_AWARE_MPI="amrex.use_gpu_aware_mpi=1"
 #   Reference: nvidia-smi topo -m
 rm -rf Backtrace* plt* cases* \$OUTFILE output.dat *.core
 srun --cpu-bind=cores bash -c "
-    export CUDA_VISIBLE_DEVICES=\\\$((3-SLURM_LOCALID));
+    export CUDA_VISIBLE_DEVICES=\$((3-SLURM_LOCALID));
     \${EXEC} \${INP} \${GPU_AWARE_MPI}" \\
     2>&1 |tee \$OUTFILE
 EOF
@@ -1089,8 +1089,8 @@ create_ensemble_job_script() {
 #SBATCH --exclusive
 #SBATCH --cpus-per-task=32
 #SBATCH --gpu-bind=none
-#SBATCH --ntasks-per-node=${ntasks}
-#SBATCH --gpus-per-node=${ntasks}
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-node=4
 #SBATCH -o ensemble_%j.out
 #SBATCH -e ensemble_%j.err
 
