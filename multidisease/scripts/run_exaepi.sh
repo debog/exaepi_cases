@@ -1617,10 +1617,9 @@ main() {
     # Set defaults
     MODE="${MODE:-$DEFAULT_MODE}"
 
-    # Validate ensemble mode requires batch
+    # Ensemble mode implies batch
     if [[ "$ENSEMBLE" == "true" ]] && [[ "$MODE" != "batch" ]]; then
-        print_error "Ensemble mode (--ensemble) requires batch mode (--mode=batch)"
-        exit 1
+        MODE="batch"
     fi
 
     # Detect platform
