@@ -306,7 +306,7 @@ import warnings
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
-warnings.filterwarnings('ignore', message='.*PostScript backend does not support transparency.*')
+warnings.filterwarnings('ignore', module='matplotlib.*')
 from pathlib import Path
 
 # Column indices in output.dat based on main.cpp line 192-194
@@ -605,7 +605,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-warnings.filterwarnings('ignore', message='.*PostScript backend does not support transparency.*')
+warnings.filterwarnings('ignore', module='matplotlib.*')
 from pathlib import Path
 
 # Colors
