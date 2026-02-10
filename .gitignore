@@ -10,4 +10,5 @@ Backtrace*
 *core
 std*
 .run*
+.ensemble*
 __pycache__/
