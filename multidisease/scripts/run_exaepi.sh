@@ -1318,14 +1318,37 @@ for output_name in output_files:
         recovered      = stacked[:, :, recov_idx]
         days           = stacked[0, :, 0]  # Day column (same for all runs)
 
-        # Stack derived quantities: (num_runs, num_timesteps, 4)
-        derived = np.stack([total_infected, total_hosp, deaths, recovered], axis=2)
+        # Subcategories for infected
+        presymp_cols = ['PS/PI', 'PS/I']
+        asymp_cols   = ['A/PI', 'A/I']
+        symp_cols    = ['S/PI/NH', 'S/PI/H', 'S/I/NH', 'S/I/H']
+        presymp_idx = [headers.index(c) for c in presymp_cols if c in headers]
+        asymp_idx   = [headers.index(c) for c in asymp_cols   if c in headers]
+        symp_idx    = [headers.index(c) for c in symp_cols    if c in headers]
+
+        presymp   = np.sum(stacked[:, :, presymp_idx], axis=2) if presymp_idx else np.zeros_like(deaths)
+        asymp     = np.sum(stacked[:, :, asymp_idx],   axis=2) if asymp_idx   else np.zeros_like(deaths)
+        symp      = np.sum(stacked[:, :, symp_idx],    axis=2) if symp_idx    else np.zeros_like(deaths)
+
+        # Subcategories for hospitalized
+        newh_idx = headers.index('NewH') if 'NewH' in headers else None
+        icu_idx  = headers.index('ICU')  if 'ICU'  in headers else None
+        new_hosp  = stacked[:, :, newh_idx] if newh_idx is not None else np.zeros_like(deaths)
+        icu       = stacked[:, :, icu_idx]  if icu_idx  is not None else np.zeros_like(deaths)
+
+        # Stack derived quantities: (num_runs, num_timesteps, 11)
+        derived = np.stack([total_infected, presymp, asymp, symp,
+                            total_hosp, new_hosp, icu,
+                            deaths, recovered], axis=2)
         derived_mean = np.mean(derived, axis=0)
         derived_std  = np.std(derived, axis=0)
         derived_min  = np.min(derived, axis=0)
         derived_max  = np.max(derived, axis=0)
 
-        summary_header = '%5s %16s %16s %16s %16s' % ('Day', 'TotalInfected', 'TotalHospitalized', 'Deaths', 'Recovered')
+        col_names = ['TotalInfected', 'Presymptomatic', 'Asymptomatic', 'Symptomatic',
+                     'TotalHospitalized', 'NewAdmissions', 'ICU',
+                     'Deaths', 'Recovered']
+        summary_header = '%5s' % 'Day' + ''.join(' %16s' % c for c in col_names)
 
         def write_summary_file(filepath, header, days, data):
             with open(filepath, 'w') as f:

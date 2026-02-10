@@ -692,10 +692,14 @@ def plot_ensemble_quantity(days, mean, std, ylabel, title,
     """Create a single ensemble plot with mean line and variation bands"""
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    # Clamp lower bounds at zero (negative counts are unphysical)
+    lo_2std = np.maximum(mean - 2*std, 0)
+    lo_1std = np.maximum(mean - std, 0)
+
     # 2-std band (lighter)
-    ax.fill_between(days, mean - 2*std, mean + 2*std, alpha=BAND_ALPHA_2STD, color=color, label='Mean +/- 2 Std')
+    ax.fill_between(days, lo_2std, mean + 2*std, alpha=BAND_ALPHA_2STD, color=color, label='Mean +/- 2 Std')
     # 1-std band (darker)
-    ax.fill_between(days, mean - std, mean + std, alpha=BAND_ALPHA_1STD, color=color, label='Mean +/- 1 Std')
+    ax.fill_between(days, lo_1std, mean + std, alpha=BAND_ALPHA_1STD, color=color, label='Mean +/- 1 Std')
     # Mean line
     ax.plot(days, mean, color=color, linewidth=2.5, label='Mean')
 
@@ -747,8 +751,11 @@ def main():
         if any(d is None for d in [mean_data, std_data]):
             continue
 
-        # Columns: Day(0), TotalInfected(1), TotalHospitalized(2), Deaths(3), Recovered(4)
+        # Columns: Day(0), TotalInfected(1), Presymptomatic(2), Asymptomatic(3),
+        #   Symptomatic(4), TotalHospitalized(5), NewAdmissions(6), ICU(7),
+        #   Deaths(8), Recovered(9)
         days = mean_data[:, 0]
+        ncols = mean_data.shape[1]
 
         # Determine disease name for titles
         disease_name = None
@@ -771,24 +778,55 @@ def main():
             COLOR_BLUE, f"{prefix}_infections_{platform}",
             output_format, plots_dir)
 
-        # 2. Total Hospitalizations
+        # 2. Infection subcategories
+        if ncols > 4:
+            plot_ensemble_quantity(
+                days, mean_data[:, 2], std_data[:, 2],
+                'Presymptomatic', f'Presymptomatic Over Time{disease_suffix}',
+                '#9467BD', f"{prefix}_presymptomatic_{platform}",
+                output_format, plots_dir)
+            plot_ensemble_quantity(
+                days, mean_data[:, 3], std_data[:, 3],
+                'Asymptomatic', f'Asymptomatic Over Time{disease_suffix}',
+                '#FF7F0E', f"{prefix}_asymptomatic_{platform}",
+                output_format, plots_dir)
+            plot_ensemble_quantity(
+                days, mean_data[:, 4], std_data[:, 4],
+                'Symptomatic', f'Symptomatic Over Time{disease_suffix}',
+                '#D62728', f"{prefix}_symptomatic_{platform}",
+                output_format, plots_dir)
+
+        # 3. Total Hospitalizations
         plot_ensemble_quantity(
-            days, mean_data[:, 2], std_data[:, 2],
+            days, mean_data[:, 5], std_data[:, 5],
             'Total Hospitalized', f'Total Hospitalizations Over Time{disease_suffix}',
             COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
             output_format, plots_dir)
 
-        # 3. Deaths
+        # 4. Hospitalization subcategories
+        if ncols > 7:
+            plot_ensemble_quantity(
+                days, mean_data[:, 6], std_data[:, 6],
+                'New Admissions', f'New Admissions Over Time{disease_suffix}',
+                '#1F77B4', f"{prefix}_newadmissions_{platform}",
+                output_format, plots_dir)
+            plot_ensemble_quantity(
+                days, mean_data[:, 7], std_data[:, 7],
+                'ICU Patients', f'ICU Patients Over Time{disease_suffix}',
+                '#D62728', f"{prefix}_icu_{platform}",
+                output_format, plots_dir)
+
+        # 5. Deaths
         plot_ensemble_quantity(
-            days, mean_data[:, 3], std_data[:, 3],
+            days, mean_data[:, 8], std_data[:, 8],
             'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
             COLOR_RED, f"{prefix}_deaths_{platform}",
             output_format, plots_dir)
 
-        # 4. Immune (Recovered)
-        if mean_data.shape[1] > 4:
+        # 6. Immune (Recovered)
+        if ncols > 9:
             plot_ensemble_quantity(
-                days, mean_data[:, 4], std_data[:, 4],
+                days, mean_data[:, 9], std_data[:, 9],
                 'Currently Immune', f'Immune Over Time{disease_suffix}',
                 COLOR_GREEN, f"{prefix}_immune_{platform}",
                 output_format, plots_dir)
