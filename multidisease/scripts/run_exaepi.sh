@@ -1211,6 +1211,10 @@ EOF
             ;;
     esac
 
+    cat >> "$job_script" << EOF
+NUM_RUNS=${num_runs}
+EOF
+
     cat >> "$job_script" << 'EOF'
 
 if [ -f "$AGENT_EXE" ]; then
@@ -1220,7 +1224,7 @@ else
     AGENT_MTIME=0
 fi
 
-for i in $(seq 1 ${num_runs}); do
+for i in $(seq 1 $NUM_RUNS); do
     RUN_DIR="${ENSEMBLE_DIR}/run_$(printf '%03d' $i)"
     mkdir -p "${RUN_DIR}"
 
@@ -1231,12 +1235,12 @@ for i in $(seq 1 ${num_runs}); do
             if [ -f "$output_file" ]; then
                 OUTPUT_MTIME=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null || echo "0")
                 if [ $OUTPUT_MTIME -gt $AGENT_MTIME ]; then
-                    echo "--- Run $i/${num_runs}: Already completed (skipping) ---"
+                    echo "--- Run $i/$NUM_RUNS: Already completed (skipping) ---"
                     SKIP_RUN=true
                     SKIPPED=$((SKIPPED + 1))
                     break
                 else
-                    echo "--- Run $i/${num_runs}: Outdated (re-running) ---"
+                    echo "--- Run $i/$NUM_RUNS: Outdated (re-running) ---"
                 fi
             fi
         done
@@ -1246,7 +1250,7 @@ for i in $(seq 1 ${num_runs}); do
         continue
     fi
 
-    echo "--- Run $i/${num_runs} (seed=$i) started at $(date) ---"
+    echo "--- Run $i/$NUM_RUNS (seed=$i) started at $(date) ---"
 
     cd "${RUN_DIR}"
 
@@ -1278,7 +1282,7 @@ EOF
     rm -rf "${RUN_DIR}"/plt?????
 
     cd "${ENSEMBLE_DIR}"
-    echo "--- Run $i/${num_runs} finished ---"
+    echo "--- Run $i/$NUM_RUNS finished ---"
     echo ""
 done
 
@@ -1291,7 +1295,7 @@ echo "Failed: $FAILED"
 echo ""
 echo "Computing ensemble statistics..."
 
-NUM_RUNS=${num_runs} python3 << 'PYEOF'
+NUM_RUNS=$NUM_RUNS python3 << 'PYEOF'
 import sys, os
 import numpy as np
 
