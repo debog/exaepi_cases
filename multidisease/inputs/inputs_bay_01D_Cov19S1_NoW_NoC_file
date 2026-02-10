@@ -1,0 +1,78 @@
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "BayArea.dat"
+agent.workerflow_filename = "BayArea-wf.bin"
+
+## Simulation control
+agent.nsteps = 70
+agent.max_box_size = 16
+
+## Output control
+agent.plot_int = 10
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output.dat"
+## Air travel (disabled)
+agent.air_travel_int = -1
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.0 0.0 0.0 0.0 0.0 0.0
+agent.symptomatic_withdraw_compliance_day_1 = 0.0 0.0 0.0 0.0 0.0 0.0
+agent.symptomatic_withdraw_compliance_day_2 = 0.0 0.0 0.0 0.0 0.0 0.0
+
+## Multi-disease setup
+agent.number_of_diseases = 1
+agent.disease_names = "Cov19S1"
+
+## Initial infection (from file for deterministic sanity check)
+disease.initial_case_type = "file"
+disease.case_filename = "July4.cases"
+
+## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.p_trans = 0.20
+disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
+disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
+disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
+disease.xmit_hh_child = 0.6 0.6 0.3 0.3 0.3 0.3
+disease.xmit_nc_adult = 0.0528 0.0528 0.066 0.066 0.066 0.066
+disease.xmit_nc_child = 0.1 0.1 0.0528 0.0528 0.0528 0.0528
+disease.xmit_work = 0.0575
+
+## School transmission (by school type: none, college, high, middle, elementary, daycare)
+disease.xmit_school = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_a2c = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_c2a = 0 0.0315 0.0315 0.0375 0.0435 0.15
+
+## Disease characteristics
+disease.p_asymp = 0.30
+disease.asymp_relative_inf = 0.7
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+
+## Disease period distributions (gamma distribution: alpha, beta)
+disease.latent_length_alpha = 5.2
+disease.latent_length_beta = 0.75
+disease.infectious_length_alpha = 26.2
+disease.infectious_length_beta = 0.23
+disease.incubation_length_alpha = 7.5
+disease.incubation_length_beta = 0.65
+disease.immune_length_alpha = 540.0
+disease.immune_length_beta = 0.33
+
+## Hospitalization delay distribution (gamma distribution: alpha, beta)
+disease.hospital_delay_length_alpha = 1.0
+disease.hospital_delay_length_beta = 1.0
+
+## Hospital stay model
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 3 3 3 3 8 7
+
+## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.CHR = 0.0 0.0 0.0 0.0 0.0 0.0
+disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
+disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
+disease.hospCVF = 0 0 0 0 0 0
+disease.icuCVF = 0 0 0 0 0 0.26
+disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0

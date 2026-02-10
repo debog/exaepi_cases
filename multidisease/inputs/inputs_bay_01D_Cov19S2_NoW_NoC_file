@@ -1,0 +1,113 @@
+## SARS-CoV-2 Delta variant (B.1.617.2)
+## Parameters modified from S1 (ancestral/wild-type) based on published literature.
+## References:
+##   [1] Liu & Rocklov (2021), J Travel Medicine, doi:10.1093/jtm/taab124
+##       - Delta R0 ~5.08 vs ~2.5 for wild-type (~2x increase)
+##   [2] Hart et al. (2022), Epidemics, PMC9837419
+##       - Delta incubation period: gamma(shape=4.43, scale=1.01), mean=4.47 days
+##   [3] Xin et al. (2024), BMC Infect Dis, PMC10916204
+##       - Delta latent period: mean=4.40 days, SD=2.46
+##   [4] Pang et al. (2023), Frontiers Public Health, PMC10408444
+##       - Delta viral shedding median 13.5 days vs 4.5 days for wild-type;
+##         culture-positive duration ~7 days vs ~4 days
+##   [5] Miyahara et al. (2022), Int J Environ Res Public Health, PMC9243404
+##       - Delta asymptomatic fraction 14.2% vs 28.8% for wild-type
+##   [6] Fisman & Tuite (2021), Lancet Infect Dis, doi:10.1016/S1473-3099(21)00685-X
+##       - Delta HR for hospitalization ~1.93, ICU OR ~2.29, death HR ~2.15
+##   [7] Garg et al. (2021), MMWR 70(43), CDC
+##       - Delta-period ICU/ventilator/mortality rates among hospitalized patients
+##         similar to pre-Delta (severity increase driven by higher hospitalization)
+##   [8] Allen et al. (2022), JAMA Netw Open, PMC8764734
+##       - Delta household secondary attack rate ~2x higher than wild-type
+
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "BayArea.dat"
+agent.workerflow_filename = "BayArea-wf.bin"
+
+## Simulation control
+agent.nsteps = 70
+agent.max_box_size = 16
+
+## Output control
+agent.plot_int = 10
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output.dat"
+## Air travel (disabled)
+agent.air_travel_int = -1
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.0 0.0 0.0 0.0 0.0 0.0
+agent.symptomatic_withdraw_compliance_day_1 = 0.0 0.0 0.0 0.0 0.0 0.0
+agent.symptomatic_withdraw_compliance_day_2 = 0.0 0.0 0.0 0.0 0.0 0.0
+
+## Multi-disease setup
+agent.number_of_diseases = 1
+agent.disease_names = "Cov19S2"
+
+## Initial infection (from file for deterministic sanity check)
+disease.initial_case_type = "file"
+disease.case_filename = "July4.cases"
+
+## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+## p_trans increased from 0.20 to 0.35 to reflect ~2x higher R0 [1],
+## combined with longer infectious period below, yields ~2x effective transmissibility.
+## Contact rate structure (xmit_*) kept same as S1; Delta's higher transmission
+## is primarily driven by higher viral loads, captured via p_trans [1,8].
+disease.p_trans = 0.35
+disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
+disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
+disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
+disease.xmit_hh_child = 0.6 0.6 0.3 0.3 0.3 0.3
+disease.xmit_nc_adult = 0.0528 0.0528 0.066 0.066 0.066 0.066
+disease.xmit_nc_child = 0.1 0.1 0.0528 0.0528 0.0528 0.0528
+disease.xmit_work = 0.0575
+
+## School transmission (by school type: none, college, high, middle, elementary, daycare)
+disease.xmit_school = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_a2c = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_c2a = 0 0.0315 0.0315 0.0375 0.0435 0.15
+
+## Disease characteristics
+## p_asymp reduced from 0.30 to 0.15: Delta had lower asymptomatic fraction [5]
+disease.p_asymp = 0.15
+disease.asymp_relative_inf = 0.7
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+
+## Disease period distributions (gamma distribution: alpha, beta)
+## Latent period: scaled proportionally to shorter incubation [3]; mean 3.9 -> 3.5 days
+disease.latent_length_alpha = 4.7
+disease.latent_length_beta = 0.75
+## Infectious period: culture-positive duration ~7 days vs ~4 for wild-type [4]; mean 6.0 -> 7.1
+disease.infectious_length_alpha = 26.2
+disease.infectious_length_beta = 0.27
+## Incubation period: gamma fit from contact tracing data [2]; mean 4.875 -> 4.47 days
+disease.incubation_length_alpha = 4.43
+disease.incubation_length_beta = 1.01
+## Immune period: kept same as S1 (limited variant-specific data)
+disease.immune_length_alpha = 540.0
+disease.immune_length_beta = 0.33
+
+## Hospitalization delay distribution (gamma distribution: alpha, beta)
+disease.hospital_delay_length_alpha = 1.0
+disease.hospital_delay_length_beta = 1.0
+
+## Hospital stay model
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 3 3 3 3 8 7
+
+## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+## CHR scaled by HR ~1.93 for hospitalization risk [6], capped at 1.0
+disease.CHR = 0.0 0.0 0.0 0.0 0.0 0.0
+## CIC, CVE: kept same as S1; among hospitalized patients, ICU/ventilator rates
+## were not significantly different between pre-Delta and Delta periods [7]
+disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
+disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
+## Case fatality: modest increase in ventilator mortality [6,7]
+disease.hospCVF = 0 0 0 0 0 0
+disease.icuCVF = 0 0 0 0 0 0.30
+disease.ventCVF = 0.25 0.25 0.25 0.55 0.55 1.0

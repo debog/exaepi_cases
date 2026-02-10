@@ -1,0 +1,109 @@
+## Seasonal Influenza A/H3N2
+## Parameters derived from published literature for seasonal H3N2 influenza.
+## References:
+##   [1] Biggerstaff et al. (2014), BMC Infect Dis, PMC4169819
+##       - Seasonal influenza median R0 = 1.27 (IQR: 1.19-1.37)
+##   [2] Lessler et al. (2009), Lancet Infect Dis, PMC4327893
+##       - Influenza A incubation period: median 1.4 days (1.9 excl. outlier study)
+##   [3] Carrat et al. (2008), Am J Epidemiol 167(7):775-785
+##       - Viral shedding timeline: mean ~4.8 days; infectious period ~4-5 days
+##       - Latent period ~1.5-2 days before viral shedding onset
+##   [4] Leung et al. (2015), Epidemiology, PMC4586318
+##       - Asymptomatic fraction: pooled mean 16% (95% CI: 13-19%)
+##   [5] Tsang et al. (2023), PNAS, doi:10.1073/pnas.2304750120
+##       - Asymptomatic relative infectiousness: 0.57 (95% CrI: 0.11-1.54)
+##   [6] CDC FluSurv-NET (2024), MMWR Surveill Summ 73(SS-6)
+##       - Age-specific ICU (14-22%), ventilation (5-11%), death (2-3.5%)
+##   [7] Sridhar et al. (2015), Am J Respir Crit Care Med, PMC4351579
+##       - Protective humoral immunity persists ~15 months post-infection
+##   [8] Koh et al. (2023), Influenza Other Respir Viruses, PMC10279999
+##       - H3N2 CFR by age: 0.018% (55-59) to 4.76% (85+)
+
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "BayArea.dat"
+agent.workerflow_filename = "BayArea-wf.bin"
+
+## Simulation control
+agent.nsteps = 120
+agent.max_box_size = 16
+
+## Output control
+agent.plot_int = 10
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output.dat"
+## Air travel (disabled)
+agent.air_travel_int = -1
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.0 0.0 0.0 0.0 0.0 0.0
+agent.symptomatic_withdraw_compliance_day_1 = 0.0 0.0 0.0 0.0 0.0 0.0
+agent.symptomatic_withdraw_compliance_day_2 = 0.0 0.0 0.0 0.0 0.0 0.0
+
+## Multi-disease setup
+agent.number_of_diseases = 1
+agent.disease_names = "FluS1"
+
+## Initial infection (from file for deterministic sanity check)
+disease.initial_case_type = "file"
+disease.case_filename = "July4.cases"
+
+## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+## p_trans lowered from 0.15 to 0.09 (with longer infectious period) to preserve R0~1.3 [1]
+disease.p_trans = 0.09
+disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
+disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
+disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
+disease.xmit_hh_child = 0.6 0.6 0.3 0.3 0.3 0.3
+disease.xmit_nc_adult = 0.0528 0.0528 0.066 0.066 0.066 0.066
+disease.xmit_nc_child = 0.1 0.1 0.0528 0.0528 0.0528 0.0528
+disease.xmit_work = 0.0575
+
+## School transmission (by school type: none, college, high, middle, elementary, daycare)
+disease.xmit_school = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_a2c = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_c2a = 0 0.0315 0.0315 0.0375 0.0435 0.15
+
+## Disease characteristics
+## Asymptomatic fraction 16% [4]; relative infectiousness 0.5 [5]
+disease.p_asymp = 0.16
+disease.asymp_relative_inf = 0.5
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+
+## Disease period distributions (gamma distribution: alpha, beta; mean = alpha*beta)
+## Latent period: mean ~3.0 days; matches SimFI shedding onset (incubation+1) [3]
+disease.latent_length_alpha = 6.0
+disease.latent_length_beta = 0.5
+## Infectious period: mean ~7.5 days; extended from 4.5d to slow epidemic peak timing [3]
+disease.infectious_length_alpha = 15.0
+disease.infectious_length_beta = 0.5
+## Incubation period: mean ~2.0 days [2]
+disease.incubation_length_alpha = 4.0
+disease.incubation_length_beta = 0.5
+## Immune period: mean ~270 days (~9 months) [7]
+disease.immune_length_alpha = 180.0
+disease.immune_length_beta = 1.5
+
+## Hospitalization delay distribution (gamma distribution: alpha, beta)
+disease.hospital_delay_length_alpha = 1.0
+disease.hospital_delay_length_beta = 1.0
+
+## Hospital stay model (shorter stays than COVID)
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 2 2 3 3 5 5
+
+## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+## CHR: H3N2 is most severe in elderly [6,8]
+disease.CHR = 0.0 0.0 0.0 0.0 0.0 0.0
+## CIC: ICU admission rates among hospitalized flu patients [6]
+disease.CIC = 0.18 0.22 0.16 0.16 0.21 0.15
+## CVE: ventilator rates among ICU patients [6]
+disease.CVE = 0.28 0.25 0.50 0.50 0.52 0.40
+## Case fatality: calibrated to match in-hospital mortality by age [6,8]
+disease.hospCVF = 0 0 0 0 0 0
+disease.icuCVF = 0.02 0.02 0.03 0.03 0.05 0.10
+disease.ventCVF = 0.05 0.10 0.15 0.25 0.30 0.50
