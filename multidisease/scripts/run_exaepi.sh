@@ -1233,6 +1233,12 @@ for i in $(seq 1 $NUM_RUNS); do
     if [ -d "${RUN_DIR}" ]; then
         for output_file in "${RUN_DIR}"/output*.dat; do
             if [ -f "$output_file" ]; then
+                # Check if output file has data (more than just header)
+                FILE_SIZE=$(stat -c %s "$output_file" 2>/dev/null || stat -f %z "$output_file" 2>/dev/null || echo "0")
+                if [ $FILE_SIZE -lt 100 ]; then
+                    echo "--- Run $i/$NUM_RUNS: Incomplete output (re-running) ---"
+                    break
+                fi
                 OUTPUT_MTIME=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null || echo "0")
                 if [ $OUTPUT_MTIME -gt $AGENT_MTIME ]; then
                     echo "--- Run $i/$NUM_RUNS: Already completed (skipping) ---"
@@ -1677,6 +1683,14 @@ process_ensemble_case() {
             local has_output=false
             for output_file in "${run_dir_check}"/output*.dat; do
                 if [[ -f "$output_file" ]]; then
+                    # Check if output file has data (more than just header)
+                    local file_size=$(stat -c %s "$output_file" 2>/dev/null || stat -f %z "$output_file" 2>/dev/null || echo "0")
+                    if [[ $file_size -lt 100 ]]; then
+                        # File is too small to contain valid data, mark as outdated
+                        outdated_count=$((outdated_count + 1))
+                        has_output=true
+                        break
+                    fi
                     has_output=true
                     # Check if output is newer than agent executable
                     local output_mtime=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null || echo "0")
