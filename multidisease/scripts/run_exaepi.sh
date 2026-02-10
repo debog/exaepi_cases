@@ -1418,7 +1418,20 @@ process_ensemble_case() {
 
     nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
-    walltime="${OVERRIDE_WALLTIME:-06:00:00}"
+
+    # Set walltime based on platform (shorter for LC systems)
+    if [[ -z "$OVERRIDE_WALLTIME" ]]; then
+        case "$platform" in
+            tuolumne|matrix|dane)
+                walltime="01:00:00"
+                ;;
+            *)
+                walltime="06:00:00"
+                ;;
+        esac
+    else
+        walltime="$OVERRIDE_WALLTIME"
+    fi
 
     # Create ensemble directory
     local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
