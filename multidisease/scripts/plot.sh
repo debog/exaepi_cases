@@ -701,19 +701,26 @@ def main():
             print(f"Disease: {disease_name}")
         print(f"Timesteps: {len(data)}")
 
-        # Create per-disease plots
-        create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-        create_deaths_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-        create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-        create_immune_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-
         if disease_name:
             diseases.append((disease_name, data))
+        else:
+            # Single-disease case: create individual plots
+            create_infections_plot(data, case_name, platform, output_format, plots_dir)
+            create_deaths_plot(data, case_name, platform, output_format, plots_dir)
+            create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir)
+            create_immune_plot(data, case_name, platform, output_format, plots_dir)
 
-    # Create combined plots when multiple diseases are present
+    # Multi-disease case: create combined plots only
     if len(diseases) > 1:
         print(f"Creating combined plots for {len(diseases)} diseases...")
         create_combined_plots(diseases, case_name, platform, output_format, plots_dir)
+    elif len(diseases) == 1:
+        # Single named disease: create individual plots
+        dname, data = diseases[0]
+        create_infections_plot(data, case_name, platform, output_format, plots_dir, dname)
+        create_deaths_plot(data, case_name, platform, output_format, plots_dir, dname)
+        create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, dname)
+        create_immune_plot(data, case_name, platform, output_format, plots_dir, dname)
 
     print("Plotting complete!")
 
