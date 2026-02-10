@@ -29,7 +29,7 @@ PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PLOTS_DIR="${PROJECT_DIR}/plots"
 
 # Default values
-CASE_NAME=""
+CASE_NAMES=()
 PLOT_ALL=false
 VERBOSE=false
 OUTPUT_FORMAT="both"  # eps, png, or both
@@ -70,7 +70,7 @@ Usage:
   ./plot.sh [OPTIONS]
 
 Options:
-  -c, --case=NAME       Plot specific case (run directory name without .run_ prefix)
+  -c, --case=NAME       Plot specific case(s) (can be specified multiple times)
   -a, --all             Plot all available cases for the current/specified platform
   -e, --ensemble        Plot ensemble results (from .ensemble_ directories)
   -P, --platform=NAME   Specify platform (default: auto-detect)
@@ -85,6 +85,9 @@ Environment:
 Examples:
   # Plot specific case
   ./plot.sh --case=bay_01D_Cov19S1_dane
+
+  # Plot multiple cases
+  ./plot.sh -c bay_01D_Cov19S1_dane CA_01D_Cov19S1_dane
 
   # Plot all cases
   ./plot.sh --all
@@ -1082,11 +1085,14 @@ parse_args() {
                 shift
                 ;;
             -c|--case)
-                CASE_NAME="$2"
-                shift 2
+                shift
+                while [[ $# -gt 0 ]] && [[ "$1" != -* ]]; do
+                    CASE_NAMES+=("$1")
+                    shift
+                done
                 ;;
             --case=*)
-                CASE_NAME="${1#*=}"
+                CASE_NAMES+=("${1#*=}")
                 shift
                 ;;
             -a|--all)
@@ -1188,19 +1194,57 @@ main() {
             echo "Ensemble plotting summary: ${success_count} succeeded, ${fail_count} failed"
             [[ $fail_count -gt 0 ]] && exit 1
         else
-            if [[ -z "$CASE_NAME" ]]; then
+            # Plot specified ensemble case(s)
+            if [[ ${#CASE_NAMES[@]} -eq 0 ]]; then
                 print_error "No case specified"
                 echo "Use --case=NAME or --all with --ensemble"
                 exit 1
             fi
-            local ENS_DIR=$(find_ensemble_directory "${CASE_NAME}" "$PLATFORM")
-            if [[ $? -ne 0 ]]; then
-                print_error "Ensemble directory not found for case: ${CASE_NAME} (platform: ${PLATFORM})"
-                echo "Expected: ${PROJECT_DIR}/.ensemble_${CASE_NAME}_${PLATFORM}"
-                exit 1
+
+            local success_count=0
+            local fail_count=0
+            local failed_cases=()
+
+            for case_name in "${CASE_NAMES[@]}"; do
+                print_info "=========================================="
+                print_info "Plotting ensemble case: ${case_name}"
+                print_info "=========================================="
+
+                local ENS_DIR=$(find_ensemble_directory "${case_name}" "$PLATFORM")
+                if [[ $? -ne 0 ]]; then
+                    print_error "Ensemble directory not found for case: ${case_name} (platform: ${PLATFORM})"
+                    echo "Expected: ${PROJECT_DIR}/.ensemble_${case_name}_${PLATFORM}"
+                    fail_count=$((fail_count + 1))
+                    failed_cases+=("$case_name")
+                    continue
+                fi
+
+                if plot_ensemble_case "$ENS_DIR" "$OUTPUT_FORMAT"; then
+                    success_count=$((success_count + 1))
+                else
+                    fail_count=$((fail_count + 1))
+                    failed_cases+=("$case_name")
+                fi
+            done
+
+            if [[ ${#CASE_NAMES[@]} -gt 1 ]]; then
+                echo "=========================================="
+                echo "Ensemble Plotting Summary"
+                echo "=========================================="
+                echo "Total cases:     ${#CASE_NAMES[@]}"
+                echo "Successful:      ${success_count}"
+                echo "Failed:          ${fail_count}"
+                if [[ $fail_count -gt 0 ]]; then
+                    echo ""
+                    echo "Failed cases:"
+                    for failed_case in "${failed_cases[@]}"; do
+                        echo "  - ${failed_case}"
+                    done
+                fi
+                echo "=========================================="
             fi
-            plot_ensemble_case "$ENS_DIR" "$OUTPUT_FORMAT"
-            exit $?
+
+            [[ $fail_count -gt 0 ]] && exit 1
         fi
         exit 0
     fi
@@ -1252,23 +1296,64 @@ main() {
             exit 1
         fi
     else
-        # Plot single case
-        if [[ -z "$CASE_NAME" ]]; then
+        # Plot specified case(s)
+        if [[ ${#CASE_NAMES[@]} -eq 0 ]]; then
             print_error "No case specified"
             echo "Use --case=NAME or --all"
             echo "Use --list-cases to see available cases"
             exit 1
         fi
 
-        RUN_DIR=$(find_run_directory "${CASE_NAME}" "$PLATFORM")
-        if [[ $? -ne 0 ]]; then
-            print_error "Run directory not found for case: ${CASE_NAME} (platform: ${PLATFORM})"
-            echo "Use --list-cases to see available cases"
-            exit 1
+        local success_count=0
+        local fail_count=0
+        local failed_cases=()
+
+        for case_name in "${CASE_NAMES[@]}"; do
+            if [[ ${#CASE_NAMES[@]} -gt 1 ]]; then
+                print_info "=========================================="
+                print_info "Plotting case: ${case_name}"
+                print_info "=========================================="
+            fi
+
+            RUN_DIR=$(find_run_directory "${case_name}" "$PLATFORM")
+            if [[ $? -ne 0 ]]; then
+                print_error "Run directory not found for case: ${case_name} (platform: ${PLATFORM})"
+                echo "Use --list-cases to see available cases"
+                fail_count=$((fail_count + 1))
+                failed_cases+=("$case_name")
+                continue
+            fi
+
+            if plot_case "$RUN_DIR" "$OUTPUT_FORMAT"; then
+                success_count=$((success_count + 1))
+            else
+                fail_count=$((fail_count + 1))
+                failed_cases+=("$case_name")
+            fi
+
+            if [[ ${#CASE_NAMES[@]} -gt 1 ]]; then
+                echo ""
+            fi
+        done
+
+        if [[ ${#CASE_NAMES[@]} -gt 1 ]]; then
+            echo "=========================================="
+            echo "Plotting Summary"
+            echo "=========================================="
+            echo "Total cases:     ${#CASE_NAMES[@]}"
+            echo "Successful:      ${success_count}"
+            echo "Failed:          ${fail_count}"
+            if [[ $fail_count -gt 0 ]]; then
+                echo ""
+                echo "Failed cases:"
+                for failed_case in "${failed_cases[@]}"; do
+                    echo "  - ${failed_case}"
+                done
+            fi
+            echo "=========================================="
         fi
 
-        plot_case "$RUN_DIR" "$OUTPUT_FORMAT"
-        exit $?
+        [[ $fail_count -gt 0 ]] && exit 1
     fi
 }
 
