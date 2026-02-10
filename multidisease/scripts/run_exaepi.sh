@@ -46,7 +46,7 @@ fi
 
 # Default values
 DEFAULT_MODE="interactive"
-CASE_NAME=""
+CASE_NAMES=()
 MODE=""
 OVERRIDE_NTASKS=""
 OVERRIDE_NNODES=""
@@ -152,7 +152,7 @@ Usage:
   ./run_exaepi.sh [OPTIONS]
 
 Options:
-  -c, --case=NAME       Input case name (required unless --all is used)
+  -c, --case=NAME       Input case name (can be specified multiple times)
   -a, --all             Run or submit jobs for all available cases
   -m, --mode=MODE       Execution mode: interactive (default) or batch
   -e, --ensemble        Run ensemble of ${ENSEMBLE_SIZE} simulations with different seeds
@@ -948,11 +948,14 @@ parse_args() {
                 exit 0
                 ;;
             -c|--case)
-                CASE_NAME="$2"
-                shift 2
+                shift
+                while [[ $# -gt 0 ]] && [[ "$1" != -* ]]; do
+                    CASE_NAMES+=("$1")
+                    shift
+                done
                 ;;
             --case=*)
-                CASE_NAME="${1#*=}"
+                CASE_NAMES+=("${1#*=}")
                 shift
                 ;;
             -a|--all)
@@ -1690,14 +1693,30 @@ main() {
             echo "Ensemble summary: ${success_count} succeeded, ${fail_count} failed"
             [[ $fail_count -gt 0 ]] && exit 1
         else
-            if [[ -z "$CASE_NAME" ]]; then
+            if [[ ${#CASE_NAMES[@]} -eq 0 ]]; then
                 print_error "No case specified. Use -c/--case=NAME or -a/--all."
                 echo ""
                 show_help
                 exit 1
             fi
-            process_ensemble_case "$CASE_NAME" "$PLATFORM" "$AGENT_EXE" "$DRY_RUN"
-            exit $?
+            print_info "Running ensemble for ${#CASE_NAMES[@]} case(s)..."
+            local success_count=0
+            local fail_count=0
+            for case_name in "${CASE_NAMES[@]}"; do
+                print_info "=========================================="
+                print_info "Ensemble for case: ${case_name}"
+                print_info "=========================================="
+                process_ensemble_case "$case_name" "$PLATFORM" "$AGENT_EXE" "$DRY_RUN"
+                if [[ $? -eq 0 ]]; then
+                    success_count=$((success_count + 1))
+                else
+                    fail_count=$((fail_count + 1))
+                fi
+            done
+            if [[ ${#CASE_NAMES[@]} -gt 1 ]]; then
+                echo "Ensemble summary: ${success_count} succeeded, ${fail_count} failed"
+            fi
+            [[ $fail_count -gt 0 ]] && exit 1
         fi
         exit 0
     fi
@@ -1754,15 +1773,51 @@ main() {
             exit 1
         fi
     else
-        # Single case mode
-        if [[ -z "$CASE_NAME" ]]; then
+        # Specified case(s) mode
+        if [[ ${#CASE_NAMES[@]} -eq 0 ]]; then
             print_error "No case specified. Use -c/--case=NAME or -a/--all."
             echo ""
             show_help
             exit 1
         fi
-        process_single_case "$CASE_NAME" "$PLATFORM" "$AGENT_EXE" "$MODE" "$DRY_RUN"
-        exit $?
+
+        local success_count=0
+        local fail_count=0
+        local failed_cases=()
+
+        for case_name in "${CASE_NAMES[@]}"; do
+            print_info "=========================================="
+            print_info "Processing case: ${case_name}"
+            print_info "=========================================="
+
+            process_single_case "$case_name" "$PLATFORM" "$AGENT_EXE" "$MODE" "$DRY_RUN"
+            if [[ $? -eq 0 ]]; then
+                success_count=$((success_count + 1))
+            else
+                fail_count=$((fail_count + 1))
+                failed_cases+=("$case_name")
+            fi
+            echo ""
+        done
+
+        if [[ ${#CASE_NAMES[@]} -gt 1 ]]; then
+            echo "=========================================="
+            echo "Summary"
+            echo "=========================================="
+            echo "Total cases:     ${#CASE_NAMES[@]}"
+            echo "Successful:      ${success_count}"
+            echo "Failed:          ${fail_count}"
+            if [[ $fail_count -gt 0 ]]; then
+                echo ""
+                echo "Failed cases:"
+                for failed_case in "${failed_cases[@]}"; do
+                    echo "  - ${failed_case}"
+                done
+            fi
+            echo "=========================================="
+        fi
+
+        [[ $fail_count -gt 0 ]] && exit 1
     fi
 }
 
