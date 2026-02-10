@@ -1293,12 +1293,12 @@ EOF
 echo ""
 echo "Computing ensemble statistics..."
 
-python3 << 'PYEOF'
+NUM_RUNS=${num_runs} python3 << 'PYEOF'
 import sys, os
 import numpy as np
 
 ensemble_dir = os.environ.get('ENSEMBLE_DIR', '.')
-num_runs = ${num_runs}
+num_runs = int(os.environ.get('NUM_RUNS', '100'))
 
 # Find output files from first successful run
 first_run = None
