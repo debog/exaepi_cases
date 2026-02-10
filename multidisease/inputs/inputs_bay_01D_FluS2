@@ -85,8 +85,8 @@ disease.child_compliance = 0.5
 disease.child_hh_closure = 2.0
 
 ## Disease period distributions (gamma distribution: alpha, beta; mean = alpha*beta)
-## Latent period: mean ~1.5 days [3] (similar to H3N2)
-disease.latent_length_alpha = 3.0
+## Latent period: mean ~3.0 days; matches SimFI shedding onset (incubation+1) [3] (similar to H3N2)
+disease.latent_length_alpha = 6.0
 disease.latent_length_beta = 0.5
 ## Infectious period: mean ~4.5 days [3] (similar to H3N2)
 disease.infectious_length_alpha = 15.0
