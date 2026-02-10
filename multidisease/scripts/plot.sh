@@ -761,9 +761,11 @@ from pathlib import Path
 COLOR_RED = '#D62728'
 COLOR_BLUE = '#1F77B4'
 COLOR_GREEN = '#2CA02C'
+COLOR_ORANGE = '#FF7F0E'
+COLOR_PURPLE = '#9467BD'
+COLOR_BROWN = '#8C564B'
 
-BAND_ALPHA_2STD = 0.15
-BAND_ALPHA_1STD = 0.3
+DISEASE_COLORS = [COLOR_BLUE, COLOR_RED, COLOR_GREEN, COLOR_ORANGE, COLOR_PURPLE, COLOR_BROWN]
 
 def save_eps(fig_or_plt, filepath):
     """Save EPS file with PostScript transparency warnings suppressed."""
@@ -777,6 +779,17 @@ def save_eps(fig_or_plt, filepath):
         os.dup2(old_stderr, stderr_fd)
         os.close(old_stderr)
         os.close(devnull)
+
+def blend_color_with_white(color_hex, alpha):
+    """Blend a hex color with white background to simulate transparency for EPS."""
+    # Convert hex to RGB
+    color_hex = color_hex.lstrip('#')
+    r, g, b = tuple(int(color_hex[i:i+2], 16) for i in (0, 2, 4))
+    # Blend with white (255, 255, 255)
+    r_blend = int(r * alpha + 255 * (1 - alpha))
+    g_blend = int(g * alpha + 255 * (1 - alpha))
+    b_blend = int(b * alpha + 255 * (1 - alpha))
+    return f'#{r_blend:02x}{g_blend:02x}{b_blend:02x}'
 
 def read_summary_file(filename):
     """Read ensemble summary file, skipping header. Returns (data, headers)."""
@@ -803,26 +816,37 @@ def save_figure(fig, base_name, output_format, plots_dir):
 
 def plot_ensemble_quantity(days, mean, std, ylabel, title,
                            color, base_name, output_format, plots_dir,
-                           subcats=None):
+                           subcats=None, disease_label=None):
     """Create a single ensemble plot with mean line and variation bands.
-    subcats: optional list of (mean_array, label, color) for subcategory lines."""
+    subcats: optional list of (mean_array, label, color) for subcategory lines.
+    disease_label: optional disease name to add to legend labels."""
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Clamp lower bounds at zero (negative counts are unphysical)
     lo_2std = np.maximum(mean - 2*std, 0)
     lo_1std = np.maximum(mean - std, 0)
 
-    # 2-std band (lighter)
-    ax.fill_between(days, lo_2std, mean + 2*std, alpha=BAND_ALPHA_2STD, color=color, label='Mean +/- 2 Std')
-    # 1-std band (darker)
-    ax.fill_between(days, lo_1std, mean + std, alpha=BAND_ALPHA_1STD, color=color, label='Mean +/- 1 Std')
+    # For EPS compatibility, use solid colors blended with white instead of alpha
+    color_2std = blend_color_with_white(color, 0.15)
+    color_1std = blend_color_with_white(color, 0.3)
+
+    # Build label prefix
+    label_prefix = f'{disease_label} ' if disease_label else ''
+
+    # 2-std band (lighter) - use solid color for EPS compatibility
+    ax.fill_between(days, lo_2std, mean + 2*std, color=color_2std,
+                    edgecolor='none', label=f'{label_prefix}Mean +/- 2 Std')
+    # 1-std band (darker) - use solid color for EPS compatibility
+    ax.fill_between(days, lo_1std, mean + std, color=color_1std,
+                    edgecolor='none', label=f'{label_prefix}Mean +/- 1 Std')
     # Mean line
-    ax.plot(days, mean, color=color, linewidth=2.5, label='Mean')
+    ax.plot(days, mean, color=color, linewidth=2.5, label=f'{label_prefix}Mean')
 
     # Subcategory mean lines (thinner, dashed)
     if subcats:
         for sub_mean, sub_label, sub_color in subcats:
-            ax.plot(days, sub_mean, color=sub_color, linewidth=1, linestyle='--', label=sub_label)
+            full_label = f'{label_prefix}{sub_label}' if disease_label else sub_label
+            ax.plot(days, sub_mean, color=sub_color, linewidth=1, linestyle='--', label=full_label)
 
     ax.set_xlabel('Day', fontsize=12)
     ax.set_ylabel(ylabel, fontsize=12)
@@ -832,6 +856,119 @@ def plot_ensemble_quantity(days, mean, std, ylabel, title,
 
     plt.tight_layout()
     save_figure(fig, base_name, output_format, plots_dir)
+    plt.close()
+
+def plot_combined_ensemble(diseases_data, case_name, platform, output_format, plots_dir):
+    """Create combined ensemble plots for multiple diseases.
+    diseases_data: list of (disease_name, mean_data, std_data, col_dict, days) tuples."""
+
+    colors = DISEASE_COLORS[:len(diseases_data)]
+
+    # 1. Combined Total Infections
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, mean_data, std_data, col, days), color in zip(diseases_data, colors):
+        if 'TotalInfected' in col:
+            mean = mean_data[:, col['TotalInfected']]
+            std = std_data[:, col['TotalInfected']]
+            lo_2std = np.maximum(mean - 2*std, 0)
+            lo_1std = np.maximum(mean - std, 0)
+
+            # Use solid blended colors for EPS compatibility
+            color_2std = blend_color_with_white(color, 0.15)
+            color_1std = blend_color_with_white(color, 0.3)
+
+            ax.fill_between(days, lo_2std, mean + 2*std, color=color_2std, edgecolor='none')
+            ax.fill_between(days, lo_1std, mean + std, color=color_1std, edgecolor='none')
+            ax.plot(days, mean, color=color, linewidth=2.5, label=f'{dname}')
+
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Number of Agents', fontsize=12)
+    ax.set_title('Total Infections Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_figure(fig, f"{case_name}_ensemble_infections_{platform}", output_format, plots_dir)
+    plt.close()
+
+    # 2. Combined Deaths (not disease-specific, use first disease)
+    dname, mean_data, std_data, col, days = diseases_data[0]
+    if 'Deaths' in col:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        mean = mean_data[:, col['Deaths']]
+        std = std_data[:, col['Deaths']]
+        lo_2std = np.maximum(mean - 2*std, 0)
+        lo_1std = np.maximum(mean - std, 0)
+
+        color_2std = blend_color_with_white(COLOR_RED, 0.15)
+        color_1std = blend_color_with_white(COLOR_RED, 0.3)
+
+        ax.fill_between(days, lo_2std, mean + 2*std, color=color_2std, edgecolor='none')
+        ax.fill_between(days, lo_1std, mean + std, color=color_1std, edgecolor='none')
+        ax.plot(days, mean, color=COLOR_RED, linewidth=2.5)
+
+        ax.set_xlabel('Day', fontsize=12)
+        ax.set_ylabel('Cumulative Deaths', fontsize=12)
+        ax.set_title('Deaths Over Time', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        save_figure(fig, f"{case_name}_ensemble_deaths_{platform}", output_format, plots_dir)
+        plt.close()
+
+    # 3. Combined Hospitalizations (not disease-specific, use first disease)
+    if 'TotalHospitalized' in col:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        mean = mean_data[:, col['TotalHospitalized']]
+        std = std_data[:, col['TotalHospitalized']]
+        lo_2std = np.maximum(mean - 2*std, 0)
+        lo_1std = np.maximum(mean - std, 0)
+
+        color_2std = blend_color_with_white(COLOR_GREEN, 0.15)
+        color_1std = blend_color_with_white(COLOR_GREEN, 0.3)
+
+        ax.fill_between(days, lo_2std, mean + 2*std, color=color_2std, edgecolor='none')
+        ax.fill_between(days, lo_1std, mean + std, color=color_1std, edgecolor='none')
+        ax.plot(days, mean, color=COLOR_GREEN, linewidth=2.5, label='Total Hospitalized')
+
+        # Add subcategories if available
+        if 'NewAdmissions' in col:
+            ax.plot(days, mean_data[:, col['NewAdmissions']], color=COLOR_BLUE,
+                   linewidth=1.5, linestyle='--', label='New Admissions')
+        if 'ICU' in col:
+            ax.plot(days, mean_data[:, col['ICU']], color=COLOR_RED,
+                   linewidth=1.5, linestyle='--', label='ICU')
+
+        ax.set_xlabel('Day', fontsize=12)
+        ax.set_ylabel('Number of Patients', fontsize=12)
+        ax.set_title('Hospitalizations Over Time', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=10, loc='best')
+        plt.tight_layout()
+        save_figure(fig, f"{case_name}_ensemble_hospitalizations_{platform}", output_format, plots_dir)
+        plt.close()
+
+    # 4. Combined Immune
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, mean_data, std_data, col, days), color in zip(diseases_data, colors):
+        if 'Recovered' in col:
+            mean = mean_data[:, col['Recovered']]
+            std = std_data[:, col['Recovered']]
+            lo_2std = np.maximum(mean - 2*std, 0)
+            lo_1std = np.maximum(mean - std, 0)
+
+            color_2std = blend_color_with_white(color, 0.15)
+            color_1std = blend_color_with_white(color, 0.3)
+
+            ax.fill_between(days, lo_2std, mean + 2*std, color=color_2std, edgecolor='none')
+            ax.fill_between(days, lo_1std, mean + std, color=color_1std, edgecolor='none')
+            ax.plot(days, mean, color=color, linewidth=2.5, label=f'{dname}')
+
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Currently Immune', fontsize=12)
+    ax.set_title('Immune Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_figure(fig, f"{case_name}_ensemble_immune_{platform}", output_format, plots_dir)
     plt.close()
 
 def main():
@@ -854,84 +991,123 @@ def main():
         print("ERROR: No ensemble summary files found", file=sys.stderr)
         sys.exit(1)
 
-    for mean_file in summary_mean_files:
-        # Derive stats_base: output_summary_mean.dat -> output
-        # or output_Covid19_summary_mean.dat -> output_Covid19
-        fname = mean_file.name  # e.g. output_summary_mean.dat
-        stats_base = fname.replace('_summary_mean.dat', '')
+    # Collect all disease data
+    diseases_data = []
 
-        std_file  = ensemble_dir / f"{stats_base}_summary_std.dat"
+    for mean_file in summary_mean_files:
+        fname = mean_file.name
+        stats_base = fname.replace('_summary_mean.dat', '')
+        std_file = ensemble_dir / f"{stats_base}_summary_std.dat"
 
         if not std_file.exists():
             print(f"WARNING: Missing {std_file}, skipping {stats_base}", file=sys.stderr)
             continue
 
         mean_data, headers = read_summary_file(mean_file)
-        std_data, _        = read_summary_file(std_file)
+        std_data, _ = read_summary_file(std_file)
 
         if mean_data is None or std_data is None:
             continue
 
-        # Build column index lookup from header
         col = {name: i for i, name in enumerate(headers)}
         days = mean_data[:, 0]
 
-        # Determine disease name for titles
+        # Determine disease name
         disease_name = None
         if stats_base.startswith('output_'):
             disease_name = stats_base[7:]  # Remove 'output_'
-        disease_suffix = f" ({disease_name})" if disease_name else ""
 
-        print(f"Processing ensemble plots for {stats_base}...")
+        print(f"Processing ensemble data for {stats_base}...")
 
-        # Filename prefix
         if disease_name:
-            prefix = f"{case_name}_{disease_name}_ensemble"
+            diseases_data.append((disease_name, mean_data, std_data, col, days))
         else:
-            prefix = f"{case_name}_ensemble"
+            # Single disease case - create individual plots
+            subcats = []
+            if 'TotalInfected' in col:
+                for name, label, color in [('Presymptomatic', 'Presymptomatic', COLOR_PURPLE),
+                                           ('Asymptomatic', 'Asymptomatic', COLOR_ORANGE),
+                                           ('Symptomatic', 'Symptomatic', COLOR_RED)]:
+                    if name in col:
+                        subcats.append((mean_data[:, col[name]], label, color))
+                plot_ensemble_quantity(
+                    days, mean_data[:, col['TotalInfected']], std_data[:, col['TotalInfected']],
+                    'Number of Agents', 'Total Infections Over Time',
+                    COLOR_BLUE, f"{case_name}_ensemble_infections_{platform}",
+                    output_format, plots_dir, subcats=subcats)
 
-        # 1. Total Infections with subcategories
+            if 'TotalHospitalized' in col:
+                subcats = []
+                for name, label, color in [('NewAdmissions', 'New Admissions', COLOR_BLUE),
+                                          ('ICU', 'ICU', COLOR_RED)]:
+                    if name in col:
+                        subcats.append((mean_data[:, col[name]], label, color))
+                plot_ensemble_quantity(
+                    days, mean_data[:, col['TotalHospitalized']], std_data[:, col['TotalHospitalized']],
+                    'Number of Patients', 'Total Hospitalizations Over Time',
+                    COLOR_GREEN, f"{case_name}_ensemble_hospitalizations_{platform}",
+                    output_format, plots_dir, subcats=subcats)
+
+            if 'Deaths' in col:
+                plot_ensemble_quantity(
+                    days, mean_data[:, col['Deaths']], std_data[:, col['Deaths']],
+                    'Cumulative Deaths', 'Deaths Over Time',
+                    COLOR_RED, f"{case_name}_ensemble_deaths_{platform}",
+                    output_format, plots_dir)
+
+            if 'Recovered' in col:
+                plot_ensemble_quantity(
+                    days, mean_data[:, col['Recovered']], std_data[:, col['Recovered']],
+                    'Currently Immune', 'Immune Over Time',
+                    COLOR_GREEN, f"{case_name}_ensemble_immune_{platform}",
+                    output_format, plots_dir)
+
+    # Multi-disease case: create combined plots
+    if len(diseases_data) > 1:
+        print(f"Creating combined ensemble plots for {len(diseases_data)} diseases...")
+        plot_combined_ensemble(diseases_data, case_name, platform, output_format, plots_dir)
+    elif len(diseases_data) == 1:
+        # Single named disease - create individual plots with disease name
+        dname, mean_data, std_data, col, days = diseases_data[0]
+
         if 'TotalInfected' in col:
             subcats = []
-            for name, label, color in [('Presymptomatic', 'Presymptomatic', '#9467BD'),
-                                        ('Asymptomatic',   'Asymptomatic',   '#FF7F0E'),
-                                        ('Symptomatic',    'Symptomatic',    '#D62728')]:
+            for name, label, color in [('Presymptomatic', 'Presymptomatic', COLOR_PURPLE),
+                                       ('Asymptomatic', 'Asymptomatic', COLOR_ORANGE),
+                                       ('Symptomatic', 'Symptomatic', COLOR_RED)]:
                 if name in col:
                     subcats.append((mean_data[:, col[name]], label, color))
             plot_ensemble_quantity(
                 days, mean_data[:, col['TotalInfected']], std_data[:, col['TotalInfected']],
-                'Number of Agents', f'Total Infections Over Time{disease_suffix}',
-                COLOR_BLUE, f"{prefix}_infections_{platform}",
-                output_format, plots_dir, subcats=subcats)
+                'Number of Agents', f'Total Infections Over Time ({dname})',
+                COLOR_BLUE, f"{case_name}_{dname}_ensemble_infections_{platform}",
+                output_format, plots_dir, subcats=subcats, disease_label=dname)
 
-        # 2. Total Hospitalizations with subcategories
         if 'TotalHospitalized' in col:
             subcats = []
-            for name, label, color in [('NewAdmissions', 'New Admissions', '#1F77B4'),
-                                        ('ICU',           'ICU',            '#D62728')]:
+            for name, label, color in [('NewAdmissions', 'New Admissions', COLOR_BLUE),
+                                      ('ICU', 'ICU', COLOR_RED)]:
                 if name in col:
                     subcats.append((mean_data[:, col[name]], label, color))
             plot_ensemble_quantity(
                 days, mean_data[:, col['TotalHospitalized']], std_data[:, col['TotalHospitalized']],
-                'Number of Patients', f'Total Hospitalizations Over Time{disease_suffix}',
-                COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
-                output_format, plots_dir, subcats=subcats)
+                'Number of Patients', f'Total Hospitalizations Over Time ({dname})',
+                COLOR_GREEN, f"{case_name}_{dname}_ensemble_hospitalizations_{platform}",
+                output_format, plots_dir, subcats=subcats, disease_label=dname)
 
-        # 3. Deaths
         if 'Deaths' in col:
             plot_ensemble_quantity(
                 days, mean_data[:, col['Deaths']], std_data[:, col['Deaths']],
-                'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
-                COLOR_RED, f"{prefix}_deaths_{platform}",
-                output_format, plots_dir)
+                'Cumulative Deaths', f'Deaths Over Time ({dname})',
+                COLOR_RED, f"{case_name}_{dname}_ensemble_deaths_{platform}",
+                output_format, plots_dir, disease_label=dname)
 
-        # 4. Immune (Recovered)
         if 'Recovered' in col:
             plot_ensemble_quantity(
                 days, mean_data[:, col['Recovered']], std_data[:, col['Recovered']],
-                'Currently Immune', f'Immune Over Time{disease_suffix}',
-                COLOR_GREEN, f"{prefix}_immune_{platform}",
-                output_format, plots_dir)
+                'Currently Immune', f'Immune Over Time ({dname})',
+                COLOR_GREEN, f"{case_name}_{dname}_ensemble_immune_{platform}",
+                output_format, plots_dir, disease_label=dname)
 
     print("Ensemble plotting complete!")
 
