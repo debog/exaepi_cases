@@ -572,46 +572,148 @@ def create_immune_plot(data, case_name, platform, output_format, plots_dir, dise
 
     plt.close()
 
+def save_combined(fig, base_name, output_format, plots_dir):
+    """Save a combined figure in requested formats"""
+    if output_format in ['png', 'both']:
+        png_file = str(Path(plots_dir) / f"{base_name}.png")
+        fig.savefig(png_file, dpi=300, bbox_inches='tight')
+        print(f"Created: {png_file}")
+    if output_format in ['eps', 'both']:
+        eps_file = str(Path(plots_dir) / f"{base_name}.eps")
+        save_eps(fig, eps_file)
+        print(f"Created: {eps_file}")
+
+DISEASE_COLORS = ['#1F77B4', '#D62728', '#2CA02C', '#FF7F0E', '#9467BD', '#8C564B']
+
+def create_combined_plots(diseases, case_name, platform, output_format, plots_dir):
+    """Create combined plots overlaying the same variable across diseases.
+    diseases: list of (disease_name, data) tuples."""
+
+    colors = DISEASE_COLORS[:len(diseases)]
+
+    # 1. Combined Total Infections
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, data), color in zip(diseases, colors):
+        days = data[:, COL_DAY]
+        total_infected = (data[:, COL_PS_PI] + data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] +
+                         data[:, COL_PS_I] + data[:, COL_S_I_NH] + data[:, COL_S_I_H] +
+                         data[:, COL_A_PI] + data[:, COL_A_I])
+        ax.plot(days, total_infected, color=color, linewidth=2, label=dname)
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Total Infected', fontsize=12)
+    ax.set_title('Total Infections Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_combined(fig, f"{case_name}_combined_infections_{platform}", output_format, plots_dir)
+    plt.close()
+
+    # 2. Combined Deaths
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, data), color in zip(diseases, colors):
+        days = data[:, COL_DAY]
+        ax.plot(days, data[:, COL_D], color=color, linewidth=2, label=dname)
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Cumulative Deaths', fontsize=12)
+    ax.set_title('Cumulative Deaths Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_combined(fig, f"{case_name}_combined_deaths_{platform}", output_format, plots_dir)
+    plt.close()
+
+    # 3. Combined Total Hospitalizations
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, data), color in zip(diseases, colors):
+        days = data[:, COL_DAY]
+        total_hosp = data[:, COL_H_NI] + data[:, COL_H_I]
+        ax.plot(days, total_hosp, color=color, linewidth=2, label=dname)
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Total Hospitalized', fontsize=12)
+    ax.set_title('Total Hospitalizations Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_combined(fig, f"{case_name}_combined_hospitalizations_{platform}", output_format, plots_dir)
+    plt.close()
+
+    # 4. Combined New Hospitalizations
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, data), color in zip(diseases, colors):
+        days = data[:, COL_DAY]
+        ax.plot(days, data[:, COL_NEWH], color=color, linewidth=2, label=dname)
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('New Admissions', fontsize=12)
+    ax.set_title('New Hospital Admissions Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_combined(fig, f"{case_name}_combined_newadmissions_{platform}", output_format, plots_dir)
+    plt.close()
+
+    # 5. Combined Immune
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for (dname, data), color in zip(diseases, colors):
+        days = data[:, COL_DAY]
+        ax.plot(days, data[:, COL_R], color=color, linewidth=2, label=dname)
+    ax.set_xlabel('Day', fontsize=12)
+    ax.set_ylabel('Currently Immune', fontsize=12)
+    ax.set_title('Immune Over Time', fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=10, loc='best')
+    plt.tight_layout()
+    save_combined(fig, f"{case_name}_combined_immune_{platform}", output_format, plots_dir)
+    plt.close()
+
 def main():
     if len(sys.argv) < 5:
-        print("Usage: plot_output.py <output_file> <case_name> <platform> <output_format> <plots_dir>", file=sys.stderr)
+        print("Usage: plot_output.py <case_name> <platform> <output_format> <plots_dir> <output_file> [output_file ...]", file=sys.stderr)
         sys.exit(1)
 
-    output_file = sys.argv[1]
-    case_name = sys.argv[2]
-    platform = sys.argv[3]
-    output_format = sys.argv[4] if len(sys.argv) > 4 else 'both'
-    plots_dir = sys.argv[5] if len(sys.argv) > 5 else '.'
+    case_name = sys.argv[1]
+    platform = sys.argv[2]
+    output_format = sys.argv[3]
+    plots_dir = sys.argv[4]
+    output_files = sys.argv[5:]
 
-    if not Path(output_file).exists():
-        print(f"ERROR: Output file not found: {output_file}", file=sys.stderr)
-        sys.exit(1)
-
-    # Create plots directory if it doesn't exist
     Path(plots_dir).mkdir(parents=True, exist_ok=True)
 
-    # Read data
-    data = read_output_file(output_file)
-    if data is None:
-        sys.exit(1)
+    # Read all output files and create per-disease plots
+    diseases = []  # list of (disease_name, data)
+    for output_file in output_files:
+        if not Path(output_file).exists():
+            print(f"ERROR: Output file not found: {output_file}", file=sys.stderr)
+            continue
 
-    # Determine disease name from filename
-    disease_name = None
-    filename = Path(output_file).name
-    if filename.startswith('output_') and filename.endswith('.dat'):
-        disease_name = filename[7:-4]  # Remove 'output_' and '.dat'
+        data = read_output_file(output_file)
+        if data is None:
+            continue
 
-    print(f"Processing: {output_file}")
-    print(f"Case: {case_name}, Platform: {platform}")
-    if disease_name:
-        print(f"Disease: {disease_name}")
-    print(f"Timesteps: {len(data)}")
+        # Determine disease name from filename
+        disease_name = None
+        filename = Path(output_file).name
+        if filename.startswith('output_') and filename.endswith('.dat'):
+            disease_name = filename[7:-4]  # Remove 'output_' and '.dat'
 
-    # Create plots
-    create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-    create_deaths_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-    create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, disease_name)
-    create_immune_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+        print(f"Processing: {output_file}")
+        print(f"Case: {case_name}, Platform: {platform}")
+        if disease_name:
+            print(f"Disease: {disease_name}")
+        print(f"Timesteps: {len(data)}")
+
+        # Create per-disease plots
+        create_infections_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+        create_deaths_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+        create_hospitalizations_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+        create_immune_plot(data, case_name, platform, output_format, plots_dir, disease_name)
+
+        if disease_name:
+            diseases.append((disease_name, data))
+
+    # Create combined plots when multiple diseases are present
+    if len(diseases) > 1:
+        print(f"Creating combined plots for {len(diseases)} diseases...")
+        create_combined_plots(diseases, case_name, platform, output_format, plots_dir)
 
     print("Plotting complete!")
 
@@ -946,20 +1048,10 @@ plot_case() {
     local python_script=$(create_plotting_script)
     print_verbose "Created plotting script: ${python_script}"
 
-    # Plot each output file
-    local plot_count=0
-    for output_file in "${output_files[@]}"; do
-        print_info "Plotting: $(basename "$output_file")"
-
-        if python3 "$python_script" "$output_file" "$case_name" "$platform" "$output_format" "$PLOTS_DIR"; then
-            plot_count=$((plot_count + 1))
-        else
-            print_error "Failed to create plots for $(basename "$output_file")"
-        fi
-    done
-
-    if [[ $plot_count -gt 0 ]]; then
-        print_success "Created plots for ${plot_count} disease(s) in ${PLOTS_DIR}"
+    # Plot all output files (combined plots created when multiple diseases)
+    print_info "Plotting ${#output_files[@]} output file(s)..."
+    if python3 "$python_script" "$case_name" "$platform" "$output_format" "$PLOTS_DIR" "${output_files[@]}"; then
+        print_success "Created plots for ${#output_files[@]} disease(s) in ${PLOTS_DIR}"
         echo ""
         return 0
     else
