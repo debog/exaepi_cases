@@ -668,13 +668,16 @@ def save_eps(fig_or_plt, filepath):
         os.close(devnull)
 
 def read_summary_file(filename):
-    """Read ensemble summary file, skipping header"""
+    """Read ensemble summary file, skipping header. Returns (data, headers)."""
     try:
+        with open(filename, 'r') as f:
+            header_line = f.readline().strip()
+        headers = header_line.split()
         data = np.loadtxt(filename, skiprows=1)
-        return data
+        return data, headers
     except Exception as e:
         print(f"ERROR: Failed to read {filename}: {e}", file=sys.stderr)
-        return None
+        return None, None
 
 def save_figure(fig, base_name, output_format, plots_dir):
     """Save figure in requested formats"""
@@ -752,17 +755,15 @@ def main():
             print(f"WARNING: Missing {std_file}, skipping {stats_base}", file=sys.stderr)
             continue
 
-        mean_data = read_summary_file(mean_file)
-        std_data  = read_summary_file(std_file)
+        mean_data, headers = read_summary_file(mean_file)
+        std_data, _        = read_summary_file(std_file)
 
-        if any(d is None for d in [mean_data, std_data]):
+        if mean_data is None or std_data is None:
             continue
 
-        # Columns: Day(0), TotalInfected(1), Presymptomatic(2), Asymptomatic(3),
-        #   Symptomatic(4), TotalHospitalized(5), NewAdmissions(6), ICU(7),
-        #   Deaths(8), Recovered(9)
+        # Build column index lookup from header
+        col = {name: i for i, name in enumerate(headers)}
         days = mean_data[:, 0]
-        ncols = mean_data.shape[1]
 
         # Determine disease name for titles
         disease_name = None
@@ -779,43 +780,44 @@ def main():
             prefix = f"{case_name}_ensemble"
 
         # 1. Total Infections with subcategories
-        subcats = []
-        if ncols > 4:
-            subcats = [
-                (mean_data[:, 2], 'Presymptomatic', '#9467BD'),
-                (mean_data[:, 3], 'Asymptomatic',   '#FF7F0E'),
-                (mean_data[:, 4], 'Symptomatic',    '#D62728'),
-            ]
-        plot_ensemble_quantity(
-            days, mean_data[:, 1], std_data[:, 1],
-            'Number of Agents', f'Total Infections Over Time{disease_suffix}',
-            COLOR_BLUE, f"{prefix}_infections_{platform}",
-            output_format, plots_dir, subcats=subcats)
+        if 'TotalInfected' in col:
+            subcats = []
+            for name, label, color in [('Presymptomatic', 'Presymptomatic', '#9467BD'),
+                                        ('Asymptomatic',   'Asymptomatic',   '#FF7F0E'),
+                                        ('Symptomatic',    'Symptomatic',    '#D62728')]:
+                if name in col:
+                    subcats.append((mean_data[:, col[name]], label, color))
+            plot_ensemble_quantity(
+                days, mean_data[:, col['TotalInfected']], std_data[:, col['TotalInfected']],
+                'Number of Agents', f'Total Infections Over Time{disease_suffix}',
+                COLOR_BLUE, f"{prefix}_infections_{platform}",
+                output_format, plots_dir, subcats=subcats)
 
         # 2. Total Hospitalizations with subcategories
-        subcats = []
-        if ncols > 7:
-            subcats = [
-                (mean_data[:, 6], 'New Admissions', '#1F77B4'),
-                (mean_data[:, 7], 'ICU',            '#D62728'),
-            ]
-        plot_ensemble_quantity(
-            days, mean_data[:, 5], std_data[:, 5],
-            'Number of Patients', f'Total Hospitalizations Over Time{disease_suffix}',
-            COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
-            output_format, plots_dir, subcats=subcats)
-
-        # 5. Deaths
-        plot_ensemble_quantity(
-            days, mean_data[:, 8], std_data[:, 8],
-            'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
-            COLOR_RED, f"{prefix}_deaths_{platform}",
-            output_format, plots_dir)
-
-        # 6. Immune (Recovered)
-        if ncols > 9:
+        if 'TotalHospitalized' in col:
+            subcats = []
+            for name, label, color in [('NewAdmissions', 'New Admissions', '#1F77B4'),
+                                        ('ICU',           'ICU',            '#D62728')]:
+                if name in col:
+                    subcats.append((mean_data[:, col[name]], label, color))
             plot_ensemble_quantity(
-                days, mean_data[:, 9], std_data[:, 9],
+                days, mean_data[:, col['TotalHospitalized']], std_data[:, col['TotalHospitalized']],
+                'Number of Patients', f'Total Hospitalizations Over Time{disease_suffix}',
+                COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
+                output_format, plots_dir, subcats=subcats)
+
+        # 3. Deaths
+        if 'Deaths' in col:
+            plot_ensemble_quantity(
+                days, mean_data[:, col['Deaths']], std_data[:, col['Deaths']],
+                'Cumulative Deaths', f'Deaths Over Time{disease_suffix}',
+                COLOR_RED, f"{prefix}_deaths_{platform}",
+                output_format, plots_dir)
+
+        # 4. Immune (Recovered)
+        if 'Recovered' in col:
+            plot_ensemble_quantity(
+                days, mean_data[:, col['Recovered']], std_data[:, col['Recovered']],
                 'Currently Immune', f'Immune Over Time{disease_suffix}',
                 COLOR_GREEN, f"{prefix}_immune_{platform}",
                 output_format, plots_dir)
