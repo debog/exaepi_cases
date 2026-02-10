@@ -1393,15 +1393,17 @@ process_ensemble_case() {
 
     # Find input file
     print_verbose "Looking for input file for case: ${case_name}"
-    local input_file=$(find_input_file "${case_name}")
-    if [[ $? -ne 0 ]]; then
+    local input_file
+    input_file=$(find_input_file "${case_name}")
+    if [[ $? -ne 0 ]] || [[ -z "$input_file" ]]; then
         print_error "Input file not found for case: ${case_name}"
         return 1
     fi
     print_success "Found input file: ${input_file}"
 
     # Get platform defaults, with case-specific overrides
-    local case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
+    local case_tasks
+    case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
     local ntasks nnodes queue walltime
 
     if [[ -z "$OVERRIDE_NTASKS" ]]; then
@@ -1530,15 +1532,17 @@ process_single_case() {
 
     # Find input file
     print_verbose "Looking for input file for case: ${case_name}"
-    local input_file=$(find_input_file "${case_name}")
-    if [[ $? -ne 0 ]]; then
+    local input_file
+    input_file=$(find_input_file "${case_name}")
+    if [[ $? -ne 0 ]] || [[ -z "$input_file" ]]; then
         print_error "Input file not found for case: ${case_name}"
         return 1
     fi
     print_success "Found input file: ${input_file}"
 
     # Get platform defaults, with case-specific overrides
-    local case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
+    local case_tasks
+    case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
     local ntasks nnodes queue walltime
 
     if [[ -z "$OVERRIDE_NTASKS" ]]; then
