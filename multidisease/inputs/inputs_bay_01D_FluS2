@@ -32,7 +32,7 @@ agent.census_filename = "BayArea.dat"
 agent.workerflow_filename = "BayArea-wf.bin"
 
 ## Simulation control
-agent.nsteps = 70
+agent.nsteps = 120
 agent.max_box_size = 16
 
 ## Output control
