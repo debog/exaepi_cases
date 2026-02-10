@@ -122,6 +122,6 @@ disease_Cov19S2.latent_length_alpha = 4.7
 disease_Cov19S2.infectious_length_beta = 0.27
 disease_Cov19S2.incubation_length_alpha = 4.43
 disease_Cov19S2.incubation_length_beta = 1.01
-disease_Cov19S2.CHR = 0.0201 0.0201 0.135 0.54 0.54 1.0
+disease_Cov19S2.CHR = 0.0 0.0 0.0 0.0 0.0 0.0
 disease_Cov19S2.icuCVF = 0 0 0 0 0 0.30
 disease_Cov19S2.ventCVF = 0.25 0.25 0.25 0.55 0.55 1.0
