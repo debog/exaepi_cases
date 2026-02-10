@@ -614,7 +614,7 @@ def create_combined_plots(diseases, case_name, platform, output_format, plots_di
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=8, loc='best', ncol=len(diseases))
     plt.tight_layout()
-    save_combined(fig, f"{case_name}_combined_infections_{platform}", output_format, plots_dir)
+    save_combined(fig, f"{case_name}_infections_{platform}", output_format, plots_dir)
     plt.close()
 
     # 2. Deaths (not disease-specific, use first disease's data)
@@ -626,7 +626,7 @@ def create_combined_plots(diseases, case_name, platform, output_format, plots_di
     ax.set_title('Cumulative Deaths Over Time', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    save_combined(fig, f"{case_name}_combined_deaths_{platform}", output_format, plots_dir)
+    save_combined(fig, f"{case_name}_deaths_{platform}", output_format, plots_dir)
     plt.close()
 
     # 3. Hospitalizations with subcategories (not disease-specific, use first disease's data)
@@ -647,7 +647,7 @@ def create_combined_plots(diseases, case_name, platform, output_format, plots_di
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10, loc='best')
     plt.tight_layout()
-    save_combined(fig, f"{case_name}_combined_hospitalizations_{platform}", output_format, plots_dir)
+    save_combined(fig, f"{case_name}_hospitalizations_{platform}", output_format, plots_dir)
     plt.close()
 
     # 4. Combined Immune
@@ -661,7 +661,7 @@ def create_combined_plots(diseases, case_name, platform, output_format, plots_di
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10, loc='best')
     plt.tight_layout()
-    save_combined(fig, f"{case_name}_combined_immune_{platform}", output_format, plots_dir)
+    save_combined(fig, f"{case_name}_immune_{platform}", output_format, plots_dir)
     plt.close()
 
 def main():
