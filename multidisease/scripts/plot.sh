@@ -587,71 +587,70 @@ DISEASE_COLORS = ['#1F77B4', '#D62728', '#2CA02C', '#FF7F0E', '#9467BD', '#8C564
 
 def create_combined_plots(diseases, case_name, platform, output_format, plots_dir):
     """Create combined plots overlaying the same variable across diseases.
-    diseases: list of (disease_name, data) tuples."""
+    diseases: list of (disease_name, data) tuples.
+    Deaths and hospitalizations are not disease-specific, so only one line is plotted."""
 
     colors = DISEASE_COLORS[:len(diseases)]
 
-    # 1. Combined Total Infections
+    # 1. Combined Total Infections with subcategories
     fig, ax = plt.subplots(figsize=(10, 6))
     for (dname, data), color in zip(diseases, colors):
         days = data[:, COL_DAY]
         total_infected = (data[:, COL_PS_PI] + data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] +
                          data[:, COL_PS_I] + data[:, COL_S_I_NH] + data[:, COL_S_I_H] +
                          data[:, COL_A_PI] + data[:, COL_A_I])
-        ax.plot(days, total_infected, color=color, linewidth=2, label=dname)
+        exposed = data[:, COL_PS_PI] + data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] + data[:, COL_A_PI]
+        presymptomatic = data[:, COL_PS_PI] + data[:, COL_PS_I]
+        asymptomatic = data[:, COL_A_PI] + data[:, COL_A_I]
+        symptomatic = data[:, COL_S_PI_NH] + data[:, COL_S_PI_H] + data[:, COL_S_I_NH] + data[:, COL_S_I_H]
+        ax.plot(days, total_infected, color=color, linewidth=2.5, label=f'{dname} Total')
+        ax.plot(days, exposed, color=color, linewidth=1, linestyle='--', alpha=0.7, label=f'{dname} Exposed')
+        ax.plot(days, presymptomatic, color=color, linewidth=1, linestyle=':', alpha=0.7, label=f'{dname} Presymp')
+        ax.plot(days, asymptomatic, color=color, linewidth=1, linestyle='-.', alpha=0.7, label=f'{dname} Asymp')
+        ax.plot(days, symptomatic, color=color, linewidth=1, linestyle=(0, (5, 1)), alpha=0.7, label=f'{dname} Symp')
     ax.set_xlabel('Day', fontsize=12)
-    ax.set_ylabel('Total Infected', fontsize=12)
-    ax.set_title('Total Infections Over Time', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Number of Infected Individuals', fontsize=12)
+    ax.set_title('Infections Over Time', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10, loc='best')
+    ax.legend(fontsize=8, loc='best', ncol=len(diseases))
     plt.tight_layout()
     save_combined(fig, f"{case_name}_combined_infections_{platform}", output_format, plots_dir)
     plt.close()
 
-    # 2. Combined Deaths
+    # 2. Deaths (not disease-specific, use first disease's data)
+    days = diseases[0][1][:, COL_DAY]
     fig, ax = plt.subplots(figsize=(10, 6))
-    for (dname, data), color in zip(diseases, colors):
-        days = data[:, COL_DAY]
-        ax.plot(days, data[:, COL_D], color=color, linewidth=2, label=dname)
+    ax.plot(days, diseases[0][1][:, COL_D], color=COLOR_RED, linewidth=2.5)
     ax.set_xlabel('Day', fontsize=12)
     ax.set_ylabel('Cumulative Deaths', fontsize=12)
     ax.set_title('Cumulative Deaths Over Time', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10, loc='best')
     plt.tight_layout()
     save_combined(fig, f"{case_name}_combined_deaths_{platform}", output_format, plots_dir)
     plt.close()
 
-    # 3. Combined Total Hospitalizations
+    # 3. Hospitalizations with subcategories (not disease-specific, use first disease's data)
+    data = diseases[0][1]
     fig, ax = plt.subplots(figsize=(10, 6))
-    for (dname, data), color in zip(diseases, colors):
-        days = data[:, COL_DAY]
-        total_hosp = data[:, COL_H_NI] + data[:, COL_H_I]
-        ax.plot(days, total_hosp, color=color, linewidth=2, label=dname)
+    total_hosp = data[:, COL_H_NI] + data[:, COL_H_I]
+    ax.plot(days, total_hosp, color=COLOR_BLUE, linewidth=2.5, label='Total Hospitalized')
+    ax.plot(days, data[:, COL_NEWH], color=COLOR_GREEN, linewidth=2, label='New Admissions')
+    ax.plot(days, data[:, COL_ICU], color=COLOR_RED, linewidth=2, label='ICU Patients')
+    if data.shape[1] > COL_HOSP_O64:
+        age_colors = ['#1B9E77', '#D95F02', '#7570B3', '#E7298A', '#66A61E', '#E6AB02']
+        for i, (col, label) in enumerate(zip(AGE_GROUP_HOSP_COLS, AGE_GROUP_LABELS)):
+            ax.plot(days, data[:, col], color=age_colors[i], linewidth=1, linestyle='--',
+                    label=f'New Hosp {label}')
     ax.set_xlabel('Day', fontsize=12)
-    ax.set_ylabel('Total Hospitalized', fontsize=12)
-    ax.set_title('Total Hospitalizations Over Time', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Number of Patients', fontsize=12)
+    ax.set_title('Hospitalizations Over Time', fontsize=14, fontweight='bold')
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=10, loc='best')
     plt.tight_layout()
     save_combined(fig, f"{case_name}_combined_hospitalizations_{platform}", output_format, plots_dir)
     plt.close()
 
-    # 4. Combined New Hospitalizations
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for (dname, data), color in zip(diseases, colors):
-        days = data[:, COL_DAY]
-        ax.plot(days, data[:, COL_NEWH], color=color, linewidth=2, label=dname)
-    ax.set_xlabel('Day', fontsize=12)
-    ax.set_ylabel('New Admissions', fontsize=12)
-    ax.set_title('New Hospital Admissions Over Time', fontsize=14, fontweight='bold')
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=10, loc='best')
-    plt.tight_layout()
-    save_combined(fig, f"{case_name}_combined_newadmissions_{platform}", output_format, plots_dir)
-    plt.close()
-
-    # 5. Combined Immune
+    # 4. Combined Immune
     fig, ax = plt.subplots(figsize=(10, 6))
     for (dname, data), color in zip(diseases, colors):
         days = data[:, COL_DAY]
