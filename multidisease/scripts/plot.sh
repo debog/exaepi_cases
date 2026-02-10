@@ -688,8 +688,10 @@ def save_figure(fig, base_name, output_format, plots_dir):
         print(f"Created: {eps_file}")
 
 def plot_ensemble_quantity(days, mean, std, ylabel, title,
-                           color, base_name, output_format, plots_dir):
-    """Create a single ensemble plot with mean line and variation bands"""
+                           color, base_name, output_format, plots_dir,
+                           subcats=None):
+    """Create a single ensemble plot with mean line and variation bands.
+    subcats: optional list of (mean_array, label, color) for subcategory lines."""
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Clamp lower bounds at zero (negative counts are unphysical)
@@ -702,6 +704,11 @@ def plot_ensemble_quantity(days, mean, std, ylabel, title,
     ax.fill_between(days, lo_1std, mean + std, alpha=BAND_ALPHA_1STD, color=color, label='Mean +/- 1 Std')
     # Mean line
     ax.plot(days, mean, color=color, linewidth=2.5, label='Mean')
+
+    # Subcategory mean lines (thinner, dashed)
+    if subcats:
+        for sub_mean, sub_label, sub_color in subcats:
+            ax.plot(days, sub_mean, color=sub_color, linewidth=1, linestyle='--', label=sub_label)
 
     ax.set_xlabel('Day', fontsize=12)
     ax.set_ylabel(ylabel, fontsize=12)
@@ -771,50 +778,32 @@ def main():
         else:
             prefix = f"{case_name}_ensemble"
 
-        # 1. Total Infections
+        # 1. Total Infections with subcategories
+        subcats = []
+        if ncols > 4:
+            subcats = [
+                (mean_data[:, 2], 'Presymptomatic', '#9467BD'),
+                (mean_data[:, 3], 'Asymptomatic',   '#FF7F0E'),
+                (mean_data[:, 4], 'Symptomatic',    '#D62728'),
+            ]
         plot_ensemble_quantity(
             days, mean_data[:, 1], std_data[:, 1],
-            'Total Infected', f'Total Infections Over Time{disease_suffix}',
+            'Number of Agents', f'Total Infections Over Time{disease_suffix}',
             COLOR_BLUE, f"{prefix}_infections_{platform}",
-            output_format, plots_dir)
+            output_format, plots_dir, subcats=subcats)
 
-        # 2. Infection subcategories
-        if ncols > 4:
-            plot_ensemble_quantity(
-                days, mean_data[:, 2], std_data[:, 2],
-                'Presymptomatic', f'Presymptomatic Over Time{disease_suffix}',
-                '#9467BD', f"{prefix}_presymptomatic_{platform}",
-                output_format, plots_dir)
-            plot_ensemble_quantity(
-                days, mean_data[:, 3], std_data[:, 3],
-                'Asymptomatic', f'Asymptomatic Over Time{disease_suffix}',
-                '#FF7F0E', f"{prefix}_asymptomatic_{platform}",
-                output_format, plots_dir)
-            plot_ensemble_quantity(
-                days, mean_data[:, 4], std_data[:, 4],
-                'Symptomatic', f'Symptomatic Over Time{disease_suffix}',
-                '#D62728', f"{prefix}_symptomatic_{platform}",
-                output_format, plots_dir)
-
-        # 3. Total Hospitalizations
+        # 2. Total Hospitalizations with subcategories
+        subcats = []
+        if ncols > 7:
+            subcats = [
+                (mean_data[:, 6], 'New Admissions', '#1F77B4'),
+                (mean_data[:, 7], 'ICU',            '#D62728'),
+            ]
         plot_ensemble_quantity(
             days, mean_data[:, 5], std_data[:, 5],
-            'Total Hospitalized', f'Total Hospitalizations Over Time{disease_suffix}',
+            'Number of Patients', f'Total Hospitalizations Over Time{disease_suffix}',
             COLOR_GREEN, f"{prefix}_hospitalizations_{platform}",
-            output_format, plots_dir)
-
-        # 4. Hospitalization subcategories
-        if ncols > 7:
-            plot_ensemble_quantity(
-                days, mean_data[:, 6], std_data[:, 6],
-                'New Admissions', f'New Admissions Over Time{disease_suffix}',
-                '#1F77B4', f"{prefix}_newadmissions_{platform}",
-                output_format, plots_dir)
-            plot_ensemble_quantity(
-                days, mean_data[:, 7], std_data[:, 7],
-                'ICU Patients', f'ICU Patients Over Time{disease_suffix}',
-                '#D62728', f"{prefix}_icu_{platform}",
-                output_format, plots_dir)
+            output_format, plots_dir, subcats=subcats)
 
         # 5. Deaths
         plot_ensemble_quantity(
