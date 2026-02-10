@@ -1213,6 +1213,10 @@ EOF
 
     cat >> "$job_script" << EOF
 NUM_RUNS=${num_runs}
+EXPECTED_NSTEPS=\$(grep -E "^agent\.nsteps\s*=" ${input_file} | sed -E 's/.*=\s*([0-9]+).*/\1/')
+if [ -z "\$EXPECTED_NSTEPS" ]; then
+    EXPECTED_NSTEPS=0
+fi
 EOF
 
     cat >> "$job_script" << 'EOF'
@@ -1238,6 +1242,15 @@ for i in $(seq 1 $NUM_RUNS); do
                 if [ $FILE_SIZE -lt 100 ]; then
                     echo "--- Run $i/$NUM_RUNS: Incomplete output (re-running) ---"
                     break
+                fi
+                # Check if simulation ran to completion by verifying last timestep
+                if [ $EXPECTED_NSTEPS -gt 0 ]; then
+                    LAST_STEP=$(tail -n 1 "$output_file" | awk '{print $1}')
+                    EXPECTED_LAST_STEP=$((EXPECTED_NSTEPS - 1))
+                    if [ "$LAST_STEP" != "$EXPECTED_LAST_STEP" ]; then
+                        echo "--- Run $i/$NUM_RUNS: Incomplete (last step $LAST_STEP, expected $EXPECTED_LAST_STEP) ---"
+                        break
+                    fi
                 fi
                 OUTPUT_MTIME=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null || echo "0")
                 if [ $OUTPUT_MTIME -gt $AGENT_MTIME ]; then
@@ -1668,6 +1681,12 @@ process_ensemble_case() {
     print_verbose "Creating ensemble directory: ${ensemble_dir}"
     mkdir -p "$ensemble_dir"
 
+    # Extract expected number of steps from input file
+    local expected_nsteps=$(grep -E "^agent\.nsteps\s*=" "$input_file" | sed -E 's/.*=\s*([0-9]+).*/\1/')
+    if [[ -z "$expected_nsteps" ]]; then
+        expected_nsteps=0
+    fi
+
     # Check for existing completed runs
     local agent_exe_mtime=0
     if [[ -f "$agent_exe" ]]; then
@@ -1690,6 +1709,17 @@ process_ensemble_case() {
                         outdated_count=$((outdated_count + 1))
                         has_output=true
                         break
+                    fi
+                    # Check if simulation ran to completion by verifying last timestep
+                    if [[ $expected_nsteps -gt 0 ]]; then
+                        local last_step=$(tail -n 1 "$output_file" | awk '{print $1}')
+                        local expected_last_step=$((expected_nsteps - 1))
+                        if [[ "$last_step" != "$expected_last_step" ]]; then
+                            # Simulation didn't complete, mark as outdated
+                            outdated_count=$((outdated_count + 1))
+                            has_output=true
+                            break
+                        fi
                     fi
                     has_output=true
                     # Check if output is newer than agent executable
