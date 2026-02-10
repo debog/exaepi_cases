@@ -1184,41 +1184,110 @@ echo ""
 
 ENSEMBLE_DIR="\$(pwd)"
 FAILED=0
+SKIPPED=0
+COMPLETED=0
 
-for i in \$(seq 1 ${num_runs}); do
-    RUN_DIR="\${ENSEMBLE_DIR}/run_\$(printf '%03d' \$i)"
-    mkdir -p "\${RUN_DIR}"
+# Get agent executable modification time for comparison
+EOF
 
-    echo "--- Run \$i/${num_runs} (seed=\$i) started at \$(date) ---"
+    # Add platform-specific logic to find agent executable
+    case "$platform" in
+        perlmutter)
+            cat >> "$job_script" << 'EOF'
+if [ -d "$EXAEPI_BUILD/bin" ] && ls $EXAEPI_BUILD/bin/*agent* &> /dev/null; then
+    AGENT_EXE=$(ls $EXAEPI_BUILD/bin/*agent*)
+elif [ -d "$EXAEPI_BUILD/$NERSC_HOST/bin" ] && ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent* &> /dev/null; then
+    AGENT_EXE=$(ls $EXAEPI_BUILD/$NERSC_HOST/bin/*agent*)
+else
+    echo "ERROR: ExaEpi executable not found"
+    exit 1
+fi
+EOF
+            ;;
+        *)
+            cat >> "$job_script" << EOF
+AGENT_EXE="${agent_exe}"
+EOF
+            ;;
+    esac
 
-    cd "\${RUN_DIR}"
+    cat >> "$job_script" << 'EOF'
+
+if [ -f "$AGENT_EXE" ]; then
+    AGENT_MTIME=$(stat -c %Y "$AGENT_EXE" 2>/dev/null || stat -f %m "$AGENT_EXE" 2>/dev/null || echo "0")
+else
+    echo "WARNING: Agent executable not found: $AGENT_EXE"
+    AGENT_MTIME=0
+fi
+
+for i in $(seq 1 ${num_runs}); do
+    RUN_DIR="${ENSEMBLE_DIR}/run_$(printf '%03d' $i)"
+    mkdir -p "${RUN_DIR}"
+
+    # Check if run is already completed and up-to-date
+    SKIP_RUN=false
+    if [ -d "${RUN_DIR}" ]; then
+        for output_file in "${RUN_DIR}"/output*.dat; do
+            if [ -f "$output_file" ]; then
+                OUTPUT_MTIME=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null || echo "0")
+                if [ $OUTPUT_MTIME -gt $AGENT_MTIME ]; then
+                    echo "--- Run $i/${num_runs}: Already completed (skipping) ---"
+                    SKIP_RUN=true
+                    SKIPPED=$((SKIPPED + 1))
+                    break
+                else
+                    echo "--- Run $i/${num_runs}: Outdated (re-running) ---"
+                fi
+            fi
+        done
+    fi
+
+    if [ "$SKIP_RUN" = true ]; then
+        continue
+    fi
+
+    echo "--- Run $i/${num_runs} (seed=$i) started at $(date) ---"
+
+    cd "${RUN_DIR}"
 
     # Copy input file and data files into run directory
-    for f in "\${ENSEMBLE_DIR}"/inputs_* "\${ENSEMBLE_DIR}"/*.dat "\${ENSEMBLE_DIR}"/*.bin; do
-        if [ -f "\$f" ]; then
-            ln -sf "\$f" "\${RUN_DIR}/" 2>/dev/null || cp "\$f" "\${RUN_DIR}/"
+    for f in "${ENSEMBLE_DIR}"/inputs_* "${ENSEMBLE_DIR}"/*.dat "${ENSEMBLE_DIR}"/*.bin; do
+        if [ -f "$f" ]; then
+            ln -sf "$f" "${RUN_DIR}/" 2>/dev/null || cp "$f" "${RUN_DIR}/"
         fi
     done
 
     # Run simulation with unique seed
-    ${run_cmd} ${input_file} agent.seed=\$i$(if [[ "$platform" == "perlmutter" ]]; then echo ' ${GPU_AWARE_MPI}"'; fi)
-    EXIT_CODE=\$?
+EOF
 
-    if [ \$EXIT_CODE -ne 0 ]; then
-        echo "WARNING: Run \$i failed with exit code \$EXIT_CODE"
-        FAILED=\$((FAILED + 1))
+    cat >> "$job_script" << EOF
+    ${run_cmd} ${input_file} agent.seed=\$i$(if [[ "$platform" == "perlmutter" ]]; then echo ' ${GPU_AWARE_MPI}"'; fi)
+EOF
+
+    cat >> "$job_script" << 'EOF'
+    EXIT_CODE=$?
+
+    if [ $EXIT_CODE -ne 0 ]; then
+        echo "WARNING: Run $i failed with exit code $EXIT_CODE"
+        FAILED=$((FAILED + 1))
+    else
+        COMPLETED=$((COMPLETED + 1))
     fi
 
     # Remove plt* directories to save space
-    rm -rf "\${RUN_DIR}"/plt?????
+    rm -rf "${RUN_DIR}"/plt?????
 
-    cd "\${ENSEMBLE_DIR}"
-    echo "--- Run \$i/${num_runs} finished ---"
+    cd "${ENSEMBLE_DIR}"
+    echo "--- Run $i/${num_runs} finished ---"
     echo ""
 done
 
-echo "All ${num_runs} runs completed at \$(date)"
-echo "Failed runs: \$FAILED"
+echo "All runs processed at $(date)"
+echo "Skipped (up-to-date): $SKIPPED"
+echo "Newly completed: $COMPLETED"
+echo "Failed: $FAILED"
+EOF
+
 
 # Compute ensemble statistics
 echo ""
@@ -1381,6 +1450,159 @@ EOF
 }
 
 #------------------------------------------------------------------------------
+# Helper function to compute ensemble statistics
+#------------------------------------------------------------------------------
+
+compute_ensemble_statistics() {
+    local ensemble_dir="$1"
+    local num_runs="$2"
+
+    cd "$ensemble_dir" || return 1
+
+    NUM_RUNS="$num_runs" python3 << 'PYEOF'
+import sys, os
+import numpy as np
+
+ensemble_dir = '.'
+num_runs = int(os.environ.get('NUM_RUNS', '100'))
+
+# Find output files from first successful run
+first_run = None
+for i in range(1, num_runs + 1):
+    run_dir = os.path.join(ensemble_dir, 'run_%03d' % i)
+    if not os.path.isdir(run_dir):
+        continue
+    candidates = [f for f in os.listdir(run_dir) if f.startswith('output') and f.endswith('.dat')]
+    if candidates:
+        first_run = run_dir
+        output_files = candidates
+        break
+
+if first_run is None:
+    print('ERROR: No output files found in any run directory', file=sys.stderr)
+    sys.exit(1)
+
+for output_name in output_files:
+    stats_base = output_name.replace('.dat', '')
+    print(f'Processing {output_name}...')
+
+    # Read header
+    with open(os.path.join(first_run, output_name), 'r') as f:
+        header_line = f.readline().strip()
+
+    # Collect data from all runs
+    all_data = []
+    for i in range(1, num_runs + 1):
+        run_file = os.path.join(ensemble_dir, 'run_%03d' % i, output_name)
+        if not os.path.isfile(run_file):
+            continue
+        try:
+            data = np.loadtxt(run_file, skiprows=1)
+            if data.ndim == 1:
+                data = data.reshape(1, -1)
+            all_data.append(data)
+        except Exception as e:
+            print(f'  WARNING: Could not read {run_file}: {e}', file=sys.stderr)
+
+    if len(all_data) == 0:
+        print(f'  ERROR: No valid data for {output_name}', file=sys.stderr)
+        continue
+
+    min_rows = min(d.shape[0] for d in all_data)
+    stacked = np.stack([d[:min_rows, :] for d in all_data], axis=0)
+
+    mean_data = np.mean(stacked, axis=0)
+    std_data  = np.std(stacked, axis=0)
+    min_data  = np.min(stacked, axis=0)
+    max_data  = np.max(stacked, axis=0)
+
+    def write_stats_file(filepath, header, data):
+        with open(filepath, 'w') as f:
+            f.write(header + '\n')
+            for row in data:
+                f.write('%5d' % int(round(row[0])))
+                for j in range(1, len(row)):
+                    f.write('%12.2f' % row[j])
+                f.write('\n')
+
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_mean.dat'), header_line, mean_data)
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_std.dat'),  header_line, std_data)
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_min.dat'),  header_line, min_data)
+    write_stats_file(os.path.join(ensemble_dir, stats_base + '_max.dat'),  header_line, max_data)
+    print(f'  Wrote {stats_base}_mean.dat, {stats_base}_std.dat, {stats_base}_min.dat, {stats_base}_max.dat')
+    print(f'  Used {len(all_data)} of {num_runs} runs, {min_rows} timesteps')
+
+    # Compute per-timestep aggregated quantities
+    headers = header_line.split()
+    infected_cols = ['PS/PI', 'S/PI/NH', 'S/PI/H', 'PS/I', 'S/I/NH', 'S/I/H', 'A/PI', 'A/I', 'H/NI', 'H/I']
+    hosp_cols = ['H/NI', 'H/I', 'ICU', 'V']
+
+    infected_idx = [headers.index(c) for c in infected_cols if c in headers]
+    hosp_idx     = [headers.index(c) for c in hosp_cols     if c in headers]
+    death_idx    = headers.index('D') if 'D' in headers else None
+    recov_idx    = headers.index('R') if 'R' in headers else None
+
+    if infected_idx and hosp_idx and death_idx is not None and recov_idx is not None:
+        total_infected = np.sum(stacked[:, :, infected_idx], axis=2)
+        total_hosp     = np.sum(stacked[:, :, hosp_idx],     axis=2)
+        deaths         = stacked[:, :, death_idx]
+        recovered      = stacked[:, :, recov_idx]
+        days           = stacked[0, :, 0]
+
+        presymp_cols = ['PS/PI', 'PS/I']
+        asymp_cols   = ['A/PI', 'A/I']
+        symp_cols    = ['S/PI/NH', 'S/PI/H', 'S/I/NH', 'S/I/H']
+        presymp_idx = [headers.index(c) for c in presymp_cols if c in headers]
+        asymp_idx   = [headers.index(c) for c in asymp_cols   if c in headers]
+        symp_idx    = [headers.index(c) for c in symp_cols    if c in headers]
+
+        presymp   = np.sum(stacked[:, :, presymp_idx], axis=2) if presymp_idx else np.zeros_like(deaths)
+        asymp     = np.sum(stacked[:, :, asymp_idx],   axis=2) if asymp_idx   else np.zeros_like(deaths)
+        symp      = np.sum(stacked[:, :, symp_idx],    axis=2) if symp_idx    else np.zeros_like(deaths)
+
+        newh_idx = headers.index('NewH') if 'NewH' in headers else None
+        icu_idx  = headers.index('ICU')  if 'ICU'  in headers else None
+        new_hosp  = stacked[:, :, newh_idx] if newh_idx is not None else np.zeros_like(deaths)
+        icu       = stacked[:, :, icu_idx]  if icu_idx  is not None else np.zeros_like(deaths)
+
+        derived = np.stack([total_infected, presymp, asymp, symp,
+                            total_hosp, new_hosp, icu,
+                            deaths, recovered], axis=2)
+        derived_mean = np.mean(derived, axis=0)
+        derived_std  = np.std(derived, axis=0)
+        derived_min  = np.min(derived, axis=0)
+        derived_max  = np.max(derived, axis=0)
+
+        col_names = ['TotalInfected', 'Presymptomatic', 'Asymptomatic', 'Symptomatic',
+                     'TotalHospitalized', 'NewAdmissions', 'ICU',
+                     'Deaths', 'Recovered']
+        summary_header = '%5s' % 'Day' + ''.join(' %16s' % c for c in col_names)
+
+        def write_summary_file(filepath, header, days, data):
+            with open(filepath, 'w') as f:
+                f.write(header + '\n')
+                for k in range(len(days)):
+                    f.write('%5d' % int(round(days[k])))
+                    for j in range(data.shape[1]):
+                        f.write(' %16.2f' % data[k, j])
+                    f.write('\n')
+
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_mean.dat'), summary_header, days, derived_mean)
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_std.dat'),  summary_header, days, derived_std)
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_min.dat'),  summary_header, days, derived_min)
+        write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_max.dat'),  summary_header, days, derived_max)
+        print(f'  Wrote {stats_base}_summary_mean.dat, {stats_base}_summary_std.dat, {stats_base}_summary_min.dat, {stats_base}_summary_max.dat')
+    else:
+        print('  WARNING: Could not find infected/hospitalized/death columns; skipping summary', file=sys.stderr)
+
+print('Ensemble statistics computation complete!')
+PYEOF
+    local exit_code=$?
+    cd - > /dev/null
+    return $exit_code
+}
+
+#------------------------------------------------------------------------------
 # Main execution
 #------------------------------------------------------------------------------
 
@@ -1433,14 +1655,61 @@ process_ensemble_case() {
         walltime="$OVERRIDE_WALLTIME"
     fi
 
-    # Create ensemble directory
+    # Create ensemble directory (preserve if exists for incremental runs)
     local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
-    if [[ -d "$ensemble_dir" ]]; then
-        print_verbose "Removing existing ensemble directory: ${ensemble_dir}"
-        rm -rf "$ensemble_dir"
-    fi
     print_verbose "Creating ensemble directory: ${ensemble_dir}"
     mkdir -p "$ensemble_dir"
+
+    # Check for existing completed runs
+    local agent_exe_mtime=0
+    if [[ -f "$agent_exe" ]]; then
+        agent_exe_mtime=$(stat -c %Y "$agent_exe" 2>/dev/null || stat -f %m "$agent_exe" 2>/dev/null || echo "0")
+    fi
+
+    local completed_count=0
+    local outdated_count=0
+    for i in $(seq 1 ${num_runs}); do
+        local run_dir_check="${ensemble_dir}/run_$(printf '%03d' $i)"
+        if [[ -d "$run_dir_check" ]]; then
+            # Check for output files
+            local has_output=false
+            for output_file in "${run_dir_check}"/output*.dat; do
+                if [[ -f "$output_file" ]]; then
+                    has_output=true
+                    # Check if output is newer than agent executable
+                    local output_mtime=$(stat -c %Y "$output_file" 2>/dev/null || stat -f %m "$output_file" 2>/dev/null || echo "0")
+                    if [[ $output_mtime -gt $agent_exe_mtime ]]; then
+                        completed_count=$((completed_count + 1))
+                    else
+                        outdated_count=$((outdated_count + 1))
+                    fi
+                    break
+                fi
+            done
+        fi
+    done
+
+    if [[ $completed_count -gt 0 ]]; then
+        print_info "Found ${completed_count} completed run(s) (up-to-date)"
+    fi
+    if [[ $outdated_count -gt 0 ]]; then
+        print_info "Found ${outdated_count} outdated run(s) (will re-run)"
+    fi
+    local runs_to_do=$((num_runs - completed_count))
+    if [[ $runs_to_do -eq 0 ]]; then
+        print_success "All ${num_runs} runs already completed and up-to-date!"
+        print_info "Computing ensemble statistics..."
+        # Directly compute statistics without re-running
+        if compute_ensemble_statistics "$ensemble_dir" "$num_runs"; then
+            print_success "Ensemble statistics computed successfully!"
+            print_info "Statistics files: ${ensemble_dir}/output_*_mean.dat, etc."
+        else
+            print_error "Failed to compute ensemble statistics"
+            return 1
+        fi
+        return 0
+    fi
+    print_info "Will run ${runs_to_do} simulation(s)"
 
     # Copy data files using the existing setup machinery (reuse setup_run_directory logic)
     # Extract and copy data files
