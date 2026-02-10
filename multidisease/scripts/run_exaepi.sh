@@ -1286,8 +1286,6 @@ echo "All runs processed at $(date)"
 echo "Skipped (up-to-date): $SKIPPED"
 echo "Newly completed: $COMPLETED"
 echo "Failed: $FAILED"
-EOF
-
 
 # Compute ensemble statistics
 echo ""
