@@ -105,7 +105,7 @@ disease.hospital_stay_type = "constant"
 disease.hospitalization_days = 3 3 3 3 8 7
 
 ## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-disease.CHR = 0.0104 0.0104 0.070 0.28 0.28 1.0
+disease.CHR = 0.0 0.0 0.0 0.0 0.0 0.0
 disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
 disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
 disease.hospCVF = 0 0 0 0 0 0
