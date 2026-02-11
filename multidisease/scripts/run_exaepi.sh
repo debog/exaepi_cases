@@ -365,7 +365,7 @@ check_exaepi_build() {
 get_case_specific_resources() {
     local case_name="$1"
     local platform="$2"
-    local resource_type="$3"  # "tasks" or "gpus"
+    local resource_type="$3"  # "tasks", "nodes", or "gpus"
 
     # Extract base case name (e.g., "bay_01D_Cov19S1" -> "bay")
     local base_case=$(echo "$case_name" | cut -d'_' -f1 | tr '[:upper:]' '[:lower:]')
@@ -376,21 +376,56 @@ get_case_specific_resources() {
             dane)
                 if [[ "$resource_type" == "tasks" ]]; then
                     echo "25"
-                else
+                elif [[ "$resource_type" == "nodes" ]]; then
                     echo "1"
                 fi
                 ;;
             perlmutter|matrix|tuolumne|linux-gpu)
                 if [[ "$resource_type" == "tasks" ]]; then
                     echo "1"
-                else
+                elif [[ "$resource_type" == "nodes" ]]; then
                     echo "1"
                 fi
                 ;;
             linux)
                 if [[ "$resource_type" == "tasks" ]]; then
                     echo "4"
-                else
+                elif [[ "$resource_type" == "nodes" ]]; then
+                    echo "1"
+                fi
+                ;;
+            *)
+                echo ""
+                ;;
+        esac
+    # US case-specific overrides: 8 nodes with GPUs (32 tasks) or 8*112 MPI ranks on Dane
+    elif [[ "$base_case" == "us" ]]; then
+        case "$platform" in
+            dane)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "896"
+                elif [[ "$resource_type" == "nodes" ]]; then
+                    echo "8"
+                fi
+                ;;
+            perlmutter|matrix|tuolumne)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "32"
+                elif [[ "$resource_type" == "nodes" ]]; then
+                    echo "8"
+                fi
+                ;;
+            linux-gpu)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "1"
+                elif [[ "$resource_type" == "nodes" ]]; then
+                    echo "1"
+                fi
+                ;;
+            linux)
+                if [[ "$resource_type" == "tasks" ]]; then
+                    echo "4"
+                elif [[ "$resource_type" == "nodes" ]]; then
                     echo "1"
                 fi
                 ;;
@@ -419,7 +454,9 @@ find_data_file() {
     local filename="$1"
     local search_dirs=()
 
-    # Build list of directories to search
+    # Build list of directories to search (local project data first)
+    search_dirs+=("${PROJECT_DIR}/data")
+
     if [[ -n "${EXAEPI_DIR}" ]]; then
         search_dirs+=("${EXAEPI_DIR}/data" "${EXAEPI_DIR}/Data" "${EXAEPI_DIR}")
     fi
@@ -1292,7 +1329,7 @@ for i in $(seq 1 $NUM_RUNS); do
     cd "${RUN_DIR}"
 
     # Copy input file and data files into run directory
-    for f in "${ENSEMBLE_DIR}"/inputs_* "${ENSEMBLE_DIR}"/*.dat "${ENSEMBLE_DIR}"/*.bin; do
+    for f in "${ENSEMBLE_DIR}"/inputs_* "${ENSEMBLE_DIR}"/*.dat "${ENSEMBLE_DIR}"/*.bin "${ENSEMBLE_DIR}"/*.cases; do
         if [ -f "$f" ]; then
             ln -sf "$f" "${RUN_DIR}/" 2>/dev/null || cp "$f" "${RUN_DIR}/"
         fi
@@ -1663,8 +1700,9 @@ process_ensemble_case() {
     print_success "Found input file: ${input_file}"
 
     # Get platform defaults, with case-specific overrides
-    local case_tasks
+    local case_tasks case_nodes
     case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
+    case_nodes=$(get_case_specific_resources "${case_name}" "${platform}" "nodes")
     local ntasks nnodes queue walltime
 
     if [[ -z "$OVERRIDE_NTASKS" ]]; then
@@ -1677,7 +1715,15 @@ process_ensemble_case() {
         ntasks="$OVERRIDE_NTASKS"
     fi
 
-    nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
+    if [[ -z "$OVERRIDE_NNODES" ]]; then
+        if [[ -n "$case_nodes" ]]; then
+            nnodes="$case_nodes"
+        else
+            nnodes="${PLATFORM_DEFAULTS_NODES[$platform]:-1}"
+        fi
+    else
+        nnodes="$OVERRIDE_NNODES"
+    fi
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
 
     # Override queue to batch for ensemble mode on LC systems (ensemble is always batch)
@@ -1911,8 +1957,9 @@ process_single_case() {
     print_success "Found input file: ${input_file}"
 
     # Get platform defaults, with case-specific overrides
-    local case_tasks
+    local case_tasks case_nodes
     case_tasks=$(get_case_specific_resources "${case_name}" "${platform}" "tasks")
+    case_nodes=$(get_case_specific_resources "${case_name}" "${platform}" "nodes")
     local ntasks nnodes queue walltime
 
     if [[ -z "$OVERRIDE_NTASKS" ]]; then
@@ -1925,7 +1972,15 @@ process_single_case() {
         ntasks="$OVERRIDE_NTASKS"
     fi
 
-    nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
+    if [[ -z "$OVERRIDE_NNODES" ]]; then
+        if [[ -n "$case_nodes" ]]; then
+            nnodes="$case_nodes"
+        else
+            nnodes="${PLATFORM_DEFAULTS_NODES[$platform]:-1}"
+        fi
+    else
+        nnodes="$OVERRIDE_NNODES"
+    fi
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
 
     # Override queue to batch for batch mode on LC systems
