@@ -72,6 +72,10 @@ def load_cases(run_dir, step, disease=None):
         fname = os.path.join(run_dir, f"cases_{disease}_{step:05d}")
         if os.path.exists(fname):
             return np.loadtxt(fname)
+        # Try new format: casesNNNNN_<disease>
+        fname = os.path.join(run_dir, f"cases{step:05d}_{disease}")
+        if os.path.exists(fname):
+            return np.loadtxt(fname)
         # Try disease subdirectory: <disease>/casesNNNNN
         fname = os.path.join(run_dir, disease, f"cases{step:05d}")
         if os.path.exists(fname):
@@ -337,9 +341,10 @@ def find_run_directories(platform=None):
             if platform and dir_platform != platform:
                 continue
 
-            # Check for cases* files
+            # Check for cases* files (multiple formats)
             if glob.glob(os.path.join(run_dir, "cases?????")) or \
-               glob.glob(os.path.join(run_dir, "cases_*_?????")):
+               glob.glob(os.path.join(run_dir, "cases_*_?????")) or \
+               glob.glob(os.path.join(run_dir, "cases?????_*")):
                 run_dirs.append((run_dir, case_name, dir_platform))
 
     return sorted(run_dirs, key=lambda x: x[1])
@@ -366,19 +371,26 @@ def list_cases(platform=None):
         print(f"  {case_name}_{dir_platform}")
         print(f"    Directory: {run_dir}")
 
-        # Count cases files
+        # Count cases files (check multiple formats)
         cases_files = glob.glob(os.path.join(run_dir, "cases?????"))
-        disease_cases = glob.glob(os.path.join(run_dir, "cases_*_?????"))
+        disease_cases_old = glob.glob(os.path.join(run_dir, "cases_*_?????"))
+        disease_cases_new = glob.glob(os.path.join(run_dir, "cases?????_*"))
+        disease_cases = disease_cases_old + disease_cases_new
 
         if disease_cases:
             # Extract unique disease names
             diseases = set()
             for f in disease_cases:
                 basename = os.path.basename(f)
-                # cases_<disease>_NNNNN
-                parts = basename.split("_")
-                if len(parts) >= 3:
-                    diseases.add(parts[1])
+                if "_" in basename:
+                    # Try format: cases_<disease>_NNNNN
+                    parts = basename.split("_")
+                    if len(parts) >= 3 and parts[0] == "cases":
+                        diseases.add(parts[1])
+                    # Try format: casesNNNNN_<disease>
+                    elif len(parts) >= 2 and parts[0].startswith("cases"):
+                        disease = "_".join(parts[1:])
+                        diseases.add(disease)
             print(f"    Diseases: {', '.join(sorted(diseases))}")
             print(f"    Cases files: {len(disease_cases)} (multidisease)")
         elif cases_files:
