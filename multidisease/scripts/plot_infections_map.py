@@ -131,6 +131,7 @@ def plot_step(counties_gdf, county_cases, step, run_label, outdir, vmax=None):
 
     ax.set_xlim(CONUS_XLIM)
     ax.set_ylim(CONUS_YLIM)
+    ax.set_aspect("equal")
     ax.set_axis_off()
 
     total = county_cases["cases"].sum()
@@ -163,8 +164,8 @@ def main():
         help="Fixed upper limit for color scale (default: auto per step)"
     )
     parser.add_argument(
-        "--global-vmax", action="store_true",
-        help="Use a single color scale across all steps (max over all steps)"
+        "--per-step-vmax", action="store_true",
+        help="Use a separate color scale per step instead of a global one"
     )
     args = parser.parse_args()
 
@@ -208,9 +209,9 @@ def main():
     # Determine run label
     run_label = detect_run_label(run_dir)
 
-    # If global-vmax, pre-scan all steps
+    # Compute global color scale unless --per-step-vmax is set
     vmax = args.vmax
-    if args.global_vmax and vmax is None:
+    if not args.per_step_vmax and vmax is None:
         print("Computing global color scale...")
         global_max = 0
         for step in steps:
