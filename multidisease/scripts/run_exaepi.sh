@@ -1315,8 +1315,8 @@ EOF
         COMPLETED=$((COMPLETED + 1))
     fi
 
-    # Remove plt* directories to save space
-    rm -rf "${RUN_DIR}"/plt?????
+    # Remove plt* and cases* directories to save space
+    rm -rf "${RUN_DIR}"/plt????? "${RUN_DIR}"/cases*
 
     cd "${ENSEMBLE_DIR}"
     echo "--- Run $i/$NUM_RUNS finished ---"
