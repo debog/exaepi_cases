@@ -90,9 +90,9 @@ PLATFORM_DEFAULTS_NODES=(
 
 PLATFORM_DEFAULTS_QUEUE=(
     ["perlmutter"]="regular"
-    ["dane"]="pdebug"
-    ["matrix"]="pdebug"
-    ["tuolumne"]="pdebug"
+    ["dane"]="batch"
+    ["matrix"]="batch"
+    ["tuolumne"]="batch"
     ["linux"]=""
     ["linux-gpu"]=""
     ["desktop"]=""
@@ -820,6 +820,7 @@ EOF
             cat >> "$job_script" << EOF
 #SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
+#SBATCH --account=asccasc
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
 EOF
@@ -864,6 +865,7 @@ EOF
 #SBATCH --ntasks=${ntasks}
 #SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
+#SBATCH --account=asccasc
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
 
@@ -1126,6 +1128,7 @@ EOF
 #SBATCH --ntasks=${ntasks}
 #SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
+#SBATCH --account=asccasc
 #SBATCH --output=ensemble_%j.out
 #SBATCH --error=ensemble_%j.err
 EOF
@@ -1148,6 +1151,7 @@ EOF
 #SBATCH --ntasks=${ntasks}
 #SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
+#SBATCH --account=asccasc
 #SBATCH --output=ensemble_%j.out
 #SBATCH --error=ensemble_%j.err
 
@@ -1662,11 +1666,18 @@ process_ensemble_case() {
     nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
 
-    # Set walltime based on platform (shorter for LC systems)
+    # Set walltime based on platform and case size
     if [[ -z "$OVERRIDE_WALLTIME" ]]; then
         case "$platform" in
             tuolumne|matrix|dane)
-                walltime="01:00:00"
+                # Check if Bay or CA case
+                if [[ "$case_name" =~ [Bb]ay ]]; then
+                    walltime="02:00:00"
+                elif [[ "$case_name" =~ CA ]]; then
+                    walltime="06:00:00"
+                else
+                    walltime="02:00:00"  # Default to Bay time for LC systems
+                fi
                 ;;
             *)
                 walltime="06:00:00"
