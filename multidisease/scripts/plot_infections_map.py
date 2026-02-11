@@ -267,7 +267,7 @@ def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vma
 
 
 def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, platform, outdir, vmax_dict=None, verbose=False):
-    """Create and save a map with multiple diseases overlaid using transparency.
+    """Create and save a map with multiple diseases in separate subplots.
 
     Args:
         counties_gdf: GeoDataFrame with county geometries
@@ -278,11 +278,6 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
         outdir: Output directory
         vmax_dict: Optional dict mapping disease name -> vmax value
     """
-    fig, ax = plt.subplots(1, 1, figsize=(14, 8))
-
-    # Plot background (all counties)
-    counties_gdf.plot(ax=ax, color="#f0f0f0", edgecolor="#cccccc", linewidth=0.2)
-
     # Color palette for diseases
     disease_colors = {
         'Cov19S1': '#ff4444',  # Red
@@ -294,69 +289,82 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
 
     # Get ordered list of diseases
     diseases = sorted(disease_county_cases.keys())
+    n_diseases = len(diseases)
     total_infections = {}
-    legend_handles = []
 
-    # Plot each disease with transparency
+    # Determine subplot layout
+    if n_diseases <= 2:
+        nrows, ncols = 1, n_diseases
+        figsize = (7 * ncols, 4.5)
+    elif n_diseases <= 4:
+        nrows, ncols = 2, 2
+        figsize = (14, 9)
+    else:
+        ncols = 3
+        nrows = (n_diseases + ncols - 1) // ncols
+        figsize = (7 * ncols, 4.5 * nrows)
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+
+    # Ensure axes is always a flat array
+    if n_diseases == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+
+    # Plot each disease in its own subplot
     for idx, disease in enumerate(diseases):
+        ax = axes[idx]
         county_cases = disease_county_cases[disease]
         merged = counties_gdf.merge(county_cases, on="GEOID", how="left")
         merged["cases"] = merged["cases"].fillna(0)
 
-        has_cases = merged[merged["cases"] > 0]
-        if len(has_cases) == 0:
-            total_infections[disease] = 0
-            continue
+        # Plot background (counties with 0 cases)
+        merged[merged["cases"] == 0].plot(
+            ax=ax, color="#f0f0f0", edgecolor="#cccccc", linewidth=0.2
+        )
 
+        has_cases = merged[merged["cases"] > 0]
         total_infections[disease] = county_cases["cases"].sum()
 
-        # Get base color for this disease
-        base_color = disease_colors.get(disease, default_colors[idx % len(default_colors)])
+        if len(has_cases) > 0:
+            # Get base color for this disease
+            base_color = disease_colors.get(disease, default_colors[idx % len(default_colors)])
 
-        # Create a custom colormap from white to the disease color
-        from matplotlib.colors import LinearSegmentedColormap
-        cmap = LinearSegmentedColormap.from_list(
-            f"{disease}_cmap",
-            ["#ffffff", base_color],
-            N=256
-        )
+            # Determine vmax
+            if vmax_dict and disease in vmax_dict:
+                vmax = vmax_dict[disease]
+            else:
+                vmax = has_cases["cases"].max()
 
-        # Determine vmax
-        if vmax_dict and disease in vmax_dict:
-            vmax = vmax_dict[disease]
-        else:
-            vmax = has_cases["cases"].max()
+            # Plot with standard colormap
+            norm = LogNorm(vmin=1, vmax=max(vmax, 2))
+            has_cases.plot(
+                ax=ax, column="cases", cmap="YlOrRd", norm=norm,
+                edgecolor="#cccccc", linewidth=0.2, legend=True,
+                legend_kwds={"label": "Infections", "shrink": 0.6}
+            )
 
-        # Plot with transparency
-        norm = LogNorm(vmin=1, vmax=max(vmax, 2))
-        has_cases.plot(
-            ax=ax, column="cases", cmap=cmap, norm=norm,
-            edgecolor=None, linewidth=0,
-            alpha=0.6
-        )
+        ax.set_xlim(CONUS_XLIM)
+        ax.set_ylim(CONUS_YLIM)
+        ax.set_aspect("equal")
+        ax.set_axis_off()
+        ax.set_title(f"{disease}: {total_infections[disease]:,.0f} infections",
+                     fontsize=12, fontweight="bold")
 
-        # Create legend entry manually
-        from matplotlib.patches import Patch
-        legend_handles.append(
-            Patch(facecolor=base_color, alpha=0.6,
-                  label=f"{disease} ({total_infections[disease]:,.0f})")
-        )
+    # Hide unused subplots
+    for idx in range(n_diseases, len(axes)):
+        axes[idx].axis('off')
 
-    ax.set_xlim(CONUS_XLIM)
-    ax.set_ylim(CONUS_YLIM)
-    ax.set_aspect("equal")
-    ax.set_axis_off()
-
-    # Add legend only if there are diseases with data
-    if legend_handles:
-        ax.legend(handles=legend_handles, loc='lower right', fontsize=10, framealpha=0.9)
-
-    # Title with all disease totals
+    # Overall title
     total_all = sum(total_infections.values())
-    ax.set_title(
+    fig.suptitle(
         f"{case_name} — Day {step}  (total infections: {total_all:,.0f})",
-        fontsize=14, fontweight="bold",
+        fontsize=16, fontweight="bold", y=0.98
     )
+
+    # Adjust layout
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
 
     # Save as PNG
     outpath_png = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
