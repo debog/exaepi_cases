@@ -90,9 +90,9 @@ PLATFORM_DEFAULTS_NODES=(
 
 PLATFORM_DEFAULTS_QUEUE=(
     ["perlmutter"]="regular"
-    ["dane"]="batch"
-    ["matrix"]="batch"
-    ["tuolumne"]="batch"
+    ["dane"]="pdebug"
+    ["matrix"]="pdebug"
+    ["tuolumne"]="pdebug"
     ["linux"]=""
     ["linux-gpu"]=""
     ["desktop"]=""
@@ -1666,6 +1666,15 @@ process_ensemble_case() {
     nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
 
+    # Override queue to batch for ensemble mode on LC systems (ensemble is always batch)
+    if [[ -z "$OVERRIDE_QUEUE" ]]; then
+        case "$platform" in
+            tuolumne|matrix|dane)
+                queue="batch"
+                ;;
+        esac
+    fi
+
     # Set walltime based on platform and case size
     if [[ -z "$OVERRIDE_WALLTIME" ]]; then
         case "$platform" in
@@ -1896,6 +1905,16 @@ process_single_case() {
 
     nnodes="${OVERRIDE_NNODES:-${PLATFORM_DEFAULTS_NODES[$platform]:-1}}"
     queue="${OVERRIDE_QUEUE:-${PLATFORM_DEFAULTS_QUEUE[$platform]:-}}"
+
+    # Override queue to batch for batch mode on LC systems
+    if [[ "$mode" == "batch" ]] && [[ -z "$OVERRIDE_QUEUE" ]]; then
+        case "$platform" in
+            tuolumne|matrix|dane)
+                queue="batch"
+                ;;
+        esac
+    fi
+
     walltime="${OVERRIDE_WALLTIME:-${PLATFORM_DEFAULTS_WALLTIME[$platform]:-01:00:00}}"
 
     # Setup run directory and copy data files
