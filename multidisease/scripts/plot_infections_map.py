@@ -323,8 +323,9 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
     ax.set_aspect("equal")
     ax.set_axis_off()
 
-    # Add legend
-    ax.legend(loc='lower right', fontsize=10, framealpha=0.9)
+    # Add legend only if there are diseases with data
+    if total_infections:
+        ax.legend(loc='lower right', fontsize=10, framealpha=0.9)
 
     # Title with all disease totals
     total_all = sum(total_infections.values())
@@ -683,6 +684,11 @@ def process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, s
                 cases = load_cases(run_dir, step, disease=disease)
                 if cases is not None:
                     disease_county_cases[disease] = aggregate_by_county(cases, fips_list)
+                    if args.verbose:
+                        total = disease_county_cases[disease]["cases"].sum()
+                        print(f"    Step {step}, {disease}: {total:,.0f} total cases")
+                elif args.verbose:
+                    print(f"    Step {step}, {disease}: file not found")
             if disease_county_cases:
                 plot_multidisease_step(
                     counties_gdf, disease_county_cases, step, case_name, platform, outdir,
