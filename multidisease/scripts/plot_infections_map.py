@@ -151,6 +151,35 @@ def load_counties_shapefile(cache_dir):
     return gdf
 
 
+def detect_diseases_from_files(run_dir):
+    """Detect diseases by examining actual case files in the directory.
+
+    Returns:
+        list: Disease names found in case files
+    """
+    diseases = set()
+
+    # Check for cases?????_* format (step first)
+    pattern = os.path.join(run_dir, "cases?????_*")
+    for f in glob.glob(pattern):
+        base = os.path.basename(f)
+        if "_" in base:
+            # Extract disease name after the underscore
+            disease = base[11:]  # Skip "cases00000_"
+            diseases.add(disease)
+
+    # Check for cases_*_????? format (disease first)
+    pattern = os.path.join(run_dir, "cases_*_?????")
+    for f in glob.glob(pattern):
+        base = os.path.basename(f)
+        parts = base.split("_")
+        if len(parts) >= 3:
+            disease = parts[1]
+            diseases.add(disease)
+
+    return sorted(list(diseases))
+
+
 def detect_run_info(run_dir):
     """Extract case name and platform from the run directory name.
 
@@ -172,11 +201,8 @@ def detect_run_info(run_dir):
     # Everything before platform is case name
     case_name = "_".join(parts[:-1]) if len(parts) > 1 else name
 
-    # Extract disease names (parts starting with Cov or Flu)
-    diseases = []
-    for p in parts:
-        if p.startswith("Cov") or p.startswith("Flu"):
-            diseases.append(p)
+    # Detect diseases from actual files in the directory
+    diseases = detect_diseases_from_files(run_dir)
 
     return case_name, platform, diseases
 
