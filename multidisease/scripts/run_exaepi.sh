@@ -1719,7 +1719,12 @@ process_ensemble_case() {
     mkdir -p "$ensemble_dir"
 
     # Extract expected number of steps from input file
-    local expected_nsteps=$(grep -E "^agent\.nsteps\s*=" "$input_file" | sed -E 's/.*=\s*([0-9]+).*/\1/')
+    # Use ensemble directory's input file if it exists (from previous run), otherwise use original
+    local check_input_file="${ensemble_dir}/inputs_${case_name}"
+    if [[ ! -f "$check_input_file" ]]; then
+        check_input_file="$input_file"
+    fi
+    local expected_nsteps=$(grep -E "^agent\.nsteps\s*=" "$check_input_file" | sed -E 's/.*=\s*([0-9]+).*/\1/')
     if [[ -z "$expected_nsteps" ]]; then
         expected_nsteps=0
     fi
