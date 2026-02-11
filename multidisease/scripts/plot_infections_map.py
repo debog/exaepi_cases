@@ -97,16 +97,41 @@ def aggregate_by_county(cases, fips_list):
 
 def detect_steps(run_dir):
     """Auto-detect available timestep numbers from cases* files."""
+    steps_set = set()
+
+    # Pattern 1: cases????? (single disease)
     pattern = os.path.join(run_dir, "cases?????")
-    files = sorted(glob.glob(pattern))
-    steps = []
-    for f in files:
+    for f in glob.glob(pattern):
         base = os.path.basename(f)
         try:
-            steps.append(int(base.replace("cases", "")))
+            step = int(base.replace("cases", ""))
+            steps_set.add(step)
         except ValueError:
             continue
-    return steps
+
+    # Pattern 2: cases_*_????? (multidisease, disease first)
+    pattern = os.path.join(run_dir, "cases_*_?????")
+    for f in glob.glob(pattern):
+        base = os.path.basename(f)
+        try:
+            # Extract last 5 digits
+            step = int(base[-5:])
+            steps_set.add(step)
+        except ValueError:
+            continue
+
+    # Pattern 3: cases?????_* (multidisease, step first)
+    pattern = os.path.join(run_dir, "cases?????_*")
+    for f in glob.glob(pattern):
+        base = os.path.basename(f)
+        try:
+            # Extract digits after "cases" and before "_"
+            step = int(base[5:10])
+            steps_set.add(step)
+        except ValueError:
+            continue
+
+    return sorted(list(steps_set))
 
 
 def load_counties_shapefile(cache_dir):
