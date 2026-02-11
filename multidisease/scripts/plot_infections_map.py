@@ -172,11 +172,12 @@ def main():
     if not os.path.isdir(run_dir):
         sys.exit(f"Error: {run_dir} is not a directory")
 
-    # Output directory
+    # Directories
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     if args.outdir:
         outdir = args.outdir
     else:
-        outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
+        outdir = os.path.join(os.path.dirname(script_dir), "plots")
     os.makedirs(outdir, exist_ok=True)
 
     # Detect available steps
@@ -201,8 +202,8 @@ def main():
     fips_list = load_fips_mapping(run_dir)
     print(f"  {len(fips_list)} locations, {len(set(fips_list))} counties")
 
-    # Load county shapefile
-    counties_gdf = load_counties_shapefile(outdir)
+    # Load county shapefile (cached in scripts/ dir, not in plots/)
+    counties_gdf = load_counties_shapefile(script_dir)
 
     # Determine run label
     run_label = detect_run_label(run_dir)
