@@ -56,13 +56,14 @@ def load_fips_mapping(run_dir):
     return fips_list
 
 
-def load_cases(run_dir, step, disease=None):
+def load_cases(run_dir, step, disease=None, verbose=False):
     """Load a casesNNNNN file and return a 1-D numpy array of counts.
 
     Args:
         run_dir: Path to run directory
         step: Timestep number
         disease: Optional disease name. If provided, looks for disease-specific file.
+        verbose: If True, print which file is loaded
 
     Returns:
         numpy array of case counts, or None if file not found
@@ -71,15 +72,24 @@ def load_cases(run_dir, step, disease=None):
         # Try disease-specific file: cases_<disease>_NNNNN
         fname = os.path.join(run_dir, f"cases_{disease}_{step:05d}")
         if os.path.exists(fname):
-            return np.loadtxt(fname)
+            data = np.loadtxt(fname)
+            if verbose:
+                print(f"      Loaded {os.path.basename(fname)}: sum={data.sum():,.0f}")
+            return data
         # Try new format: casesNNNNN_<disease>
         fname = os.path.join(run_dir, f"cases{step:05d}_{disease}")
         if os.path.exists(fname):
-            return np.loadtxt(fname)
+            data = np.loadtxt(fname)
+            if verbose:
+                print(f"      Loaded {os.path.basename(fname)}: sum={data.sum():,.0f}")
+            return data
         # Try disease subdirectory: <disease>/casesNNNNN
         fname = os.path.join(run_dir, disease, f"cases{step:05d}")
         if os.path.exists(fname):
-            return np.loadtxt(fname)
+            data = np.loadtxt(fname)
+            if verbose:
+                print(f"      Loaded {disease}/{os.path.basename(fname)}: sum={data.sum():,.0f}")
+            return data
         return None
     else:
         # Single disease: standard filename
@@ -687,15 +697,17 @@ def process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, s
             print("  Generating multidisease maps...")
         for step in steps:
             disease_county_cases = {}
+            if args.verbose:
+                print(f"    Loading data for step {step}...")
             for disease in diseases:
-                cases = load_cases(run_dir, step, disease=disease)
+                cases = load_cases(run_dir, step, disease=disease, verbose=args.verbose)
                 if cases is not None:
                     disease_county_cases[disease] = aggregate_by_county(cases, fips_list)
                     if args.verbose:
                         total = disease_county_cases[disease]["cases"].sum()
-                        print(f"    Step {step}, {disease}: {total:,.0f} total cases")
+                        print(f"      {disease}: {total:,.0f} total cases")
                 elif args.verbose:
-                    print(f"    Step {step}, {disease}: file not found")
+                    print(f"      {disease}: file not found")
             if disease_county_cases:
                 plot_multidisease_step(
                     counties_gdf, disease_county_cases, step, case_name, platform, outdir,
