@@ -1683,8 +1683,11 @@ process_ensemble_case() {
     # Override queue to batch for ensemble mode on LC systems (ensemble is always batch)
     if [[ -z "$OVERRIDE_QUEUE" ]]; then
         case "$platform" in
-            tuolumne|matrix|dane)
+            tuolumne)
                 queue="batch"
+                ;;
+            matrix|dane)
+                queue="pbatch"
                 ;;
         esac
     fi
@@ -1923,8 +1926,11 @@ process_single_case() {
     # Override queue to batch for batch mode on LC systems
     if [[ "$mode" == "batch" ]] && [[ -z "$OVERRIDE_QUEUE" ]]; then
         case "$platform" in
-            tuolumne|matrix|dane)
+            tuolumne)
                 queue="batch"
+                ;;
+            matrix|dane)
+                queue="pbatch"
                 ;;
         esac
     fi
