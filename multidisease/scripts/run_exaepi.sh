@@ -155,8 +155,9 @@ Options:
   -c, --case=NAME       Input case name (can be specified multiple times)
   -a, --all             Run or submit jobs for all available cases
   -m, --mode=MODE       Execution mode: interactive (default) or batch
-  -e, --ensemble        Run ensemble of ${ENSEMBLE_SIZE} simulations with different seeds
+  -e, --ensemble        Run ensemble of simulations with different seeds
                          (requires batch mode). Computes statistics across runs.
+  --ensemble-size=N     Number of ensemble runs (default: ${ENSEMBLE_SIZE})
   -n, --ntasks=N        Override number of MPI tasks
   -N, --nnodes=N        Override number of nodes
   -q, --queue=NAME      Override queue/partition name
@@ -192,6 +193,9 @@ Examples:
 
   # Run ensemble of 100 simulations (batch mode only)
   ./run_exaepi.sh --case=bay_01D_Cov19S1 --mode=batch --ensemble
+
+  # Run ensemble with custom size (e.g., 50 runs)
+  ./run_exaepi.sh --case=bay_01D_Cov19S1 --mode=batch --ensemble --ensemble-size=50
 
   # Dry run to see what would be executed for all cases
   ./run_exaepi.sh --all --dry-run
@@ -1102,6 +1106,10 @@ parse_args() {
                 ;;
             -e|--ensemble)
                 ENSEMBLE=true
+                shift
+                ;;
+            --ensemble-size=*)
+                ENSEMBLE_SIZE="${1#*=}"
                 shift
                 ;;
             -d|--dry-run)
