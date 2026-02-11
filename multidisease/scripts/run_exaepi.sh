@@ -693,40 +693,61 @@ srun --cpu-bind=cores -n \$NGPU bash -c "
 EOF
             ;;
         dane)
-            cat >> "$run_script" << EOF
+            cat >> "$run_script" << 'EOF'
 
 export OMP_NUM_THREADS=1
+
+# Set output file
+OUTFILE=out.${LCHOST:-dane}.log
+
+EOF
+            cat >> "$run_script" << EOF
 
 echo "Running ExaEpi on Dane..."
 echo "Command: srun -N ${nnodes} -n ${ntasks} -p ${queue} ${agent_exe} ${input_file}"
+echo "Output will be saved to: \$OUTFILE"
 echo ""
 
-srun -N ${nnodes} -n ${ntasks} -p ${queue} ${agent_exe} ${input_file}
+srun -N ${nnodes} -n ${ntasks} -p ${queue} ${agent_exe} ${input_file} 2>&1 | tee \$OUTFILE
 EOF
             ;;
         matrix)
-            cat >> "$run_script" << EOF
+            cat >> "$run_script" << 'EOF'
 
 export OMP_NUM_THREADS=1
 
+# Set output file
+OUTFILE=out.${LCHOST:-matrix}.log
+
+EOF
+            cat >> "$run_script" << EOF
+
 echo "Running ExaEpi on Matrix..."
 echo "Command: srun -n ${ntasks} -G ${ntasks} -N ${nnodes} -p ${queue} ${agent_exe} ${input_file}"
+echo "Output will be saved to: \$OUTFILE"
 echo ""
 
-srun -n ${ntasks} -G ${ntasks} -N ${nnodes} -p ${queue} ${agent_exe} ${input_file}
+srun -n ${ntasks} -G ${ntasks} -N ${nnodes} -p ${queue} ${agent_exe} ${input_file} 2>&1 | tee \$OUTFILE
 EOF
             ;;
         tuolumne)
-            cat >> "$run_script" << EOF
+            cat >> "$run_script" << 'EOF'
 
 export OMP_NUM_THREADS=1
 export MPICH_GPU_SUPPORT_ENABLED=1
 
+# Set output file
+OUTFILE=out.${LCHOST:-tuolumne}.log
+
+EOF
+            cat >> "$run_script" << EOF
+
 echo "Running ExaEpi on Tuolumne..."
 echo "Command: flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 -q=${queue} ${agent_exe} ${input_file}"
+echo "Output will be saved to: \$OUTFILE"
 echo ""
 
-flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 -q=${queue} ${agent_exe} ${input_file}
+flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 -q=${queue} ${agent_exe} ${input_file} 2>&1 | tee \$OUTFILE
 EOF
             ;;
         linux|linux-gpu|desktop)
@@ -740,38 +761,53 @@ EOF
                 mpi_cmd=""
             fi
 
-            cat >> "$run_script" << EOF
+            cat >> "$run_script" << 'EOF'
 
 export OMP_NUM_THREADS=1
+
+# Set output file
+OUTFILE=out.${HOSTNAME:-linux}.log
+
+EOF
+            cat >> "$run_script" << EOF
 
 echo "Running ExaEpi on ${platform}..."
 EOF
             if [[ -n "$mpi_cmd" ]]; then
                 cat >> "$run_script" << EOF
 echo "Command: ${mpi_cmd} ${agent_exe} ${input_file}"
+echo "Output will be saved to: \$OUTFILE"
 echo ""
 
-${mpi_cmd} ${agent_exe} ${input_file}
+${mpi_cmd} ${agent_exe} ${input_file} 2>&1 | tee \$OUTFILE
 EOF
             else
                 cat >> "$run_script" << EOF
 echo "Command: ${agent_exe} ${input_file}"
+echo "Output will be saved to: \$OUTFILE"
 echo ""
 
-${agent_exe} ${input_file}
+${agent_exe} ${input_file} 2>&1 | tee \$OUTFILE
 EOF
             fi
             ;;
         *)
-            cat >> "$run_script" << EOF
+            cat >> "$run_script" << 'EOF'
 
 export OMP_NUM_THREADS=1
 
+# Set output file
+OUTFILE=out.${HOSTNAME:-unknown}.log
+
+EOF
+            cat >> "$run_script" << EOF
+
 echo "Running ExaEpi..."
 echo "Command: mpirun -n ${ntasks} ${agent_exe} ${input_file}"
+echo "Output will be saved to: \$OUTFILE"
 echo ""
 
-mpirun -n ${ntasks} ${agent_exe} ${input_file}
+mpirun -n ${ntasks} ${agent_exe} ${input_file} 2>&1 | tee \$OUTFILE
 EOF
             ;;
     esac
