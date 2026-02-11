@@ -278,6 +278,7 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
     # Get ordered list of diseases
     diseases = sorted(disease_county_cases.keys())
     total_infections = {}
+    legend_handles = []
 
     # Plot each disease with transparency
     for idx, disease in enumerate(diseases):
@@ -314,8 +315,14 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
         has_cases.plot(
             ax=ax, column="cases", cmap=cmap, norm=norm,
             edgecolor=None, linewidth=0,
-            alpha=0.6,
-            label=f"{disease} ({total_infections[disease]:,.0f})"
+            alpha=0.6
+        )
+
+        # Create legend entry manually
+        from matplotlib.patches import Patch
+        legend_handles.append(
+            Patch(facecolor=base_color, alpha=0.6,
+                  label=f"{disease} ({total_infections[disease]:,.0f})")
         )
 
     ax.set_xlim(CONUS_XLIM)
@@ -324,8 +331,8 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
     ax.set_axis_off()
 
     # Add legend only if there are diseases with data
-    if total_infections:
-        ax.legend(loc='lower right', fontsize=10, framealpha=0.9)
+    if legend_handles:
+        ax.legend(handles=legend_handles, loc='lower right', fontsize=10, framealpha=0.9)
 
     # Title with all disease totals
     total_all = sum(total_infections.values())
