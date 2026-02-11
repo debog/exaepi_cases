@@ -252,11 +252,18 @@ def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vma
         fontsize=14, fontweight="bold",
     )
 
-    outpath = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
-    fig.savefig(outpath, dpi=150, bbox_inches="tight", facecolor="white")
+    # Save as PNG
+    outpath_png = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
+    fig.savefig(outpath_png, dpi=150, bbox_inches="tight", facecolor="white")
+
+    # Save as PDF for LaTeX documents
+    outpath_pdf = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.pdf")
+    fig.savefig(outpath_pdf, bbox_inches="tight", facecolor="white")
+
     plt.close(fig)
     if verbose:
-        print(f"    Saved {outpath}")
+        print(f"    Saved {outpath_png}")
+        print(f"    Saved {outpath_pdf}")
 
 
 def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, platform, outdir, vmax_dict=None, verbose=False):
@@ -351,11 +358,18 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
         fontsize=14, fontweight="bold",
     )
 
-    outpath = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
-    fig.savefig(outpath, dpi=150, bbox_inches="tight", facecolor="white")
+    # Save as PNG
+    outpath_png = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
+    fig.savefig(outpath_png, dpi=150, bbox_inches="tight", facecolor="white")
+
+    # Save as PDF for LaTeX documents
+    outpath_pdf = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.pdf")
+    fig.savefig(outpath_pdf, bbox_inches="tight", facecolor="white")
+
     plt.close(fig)
     if verbose:
-        print(f"    Saved {outpath}")
+        print(f"    Saved {outpath_png}")
+        print(f"    Saved {outpath_pdf}")
 
 
 def detect_platform():
