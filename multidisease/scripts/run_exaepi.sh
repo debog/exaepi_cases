@@ -863,11 +863,18 @@ EOF
 #SBATCH --job-name=exaepi_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks=${ntasks}
-#SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
 #SBATCH --account=asccasc
 #SBATCH --output=exaepi_%j.out
 #SBATCH --error=exaepi_%j.err
+EOF
+            # Only add queue for pdebug, not for batch (Flux doesn't recognize 'batch' queue)
+            if [[ "$queue" == "pdebug" ]]; then
+                cat >> "$job_script" << EOF
+#SBATCH --partition=${queue}
+EOF
+            fi
+            cat >> "$job_script" << EOF
 
 echo "Job started at: \$(date)"
 echo "Running on host: \$(hostname)"
@@ -1149,11 +1156,18 @@ EOF
 #SBATCH --job-name=ens_${case_name}
 #SBATCH --nodes=${nnodes}
 #SBATCH --ntasks=${ntasks}
-#SBATCH --partition=${queue}
 #SBATCH --time=${walltime}
 #SBATCH --account=asccasc
 #SBATCH --output=ensemble_%j.out
 #SBATCH --error=ensemble_%j.err
+EOF
+            # Only add queue for pdebug, not for batch (Flux doesn't recognize 'batch' queue)
+            if [[ "$queue" == "pdebug" ]]; then
+                cat >> "$job_script" << EOF
+#SBATCH --partition=${queue}
+EOF
+            fi
+            cat >> "$job_script" << EOF
 
 export OMP_NUM_THREADS=1
 export MPICH_GPU_SUPPORT_ENABLED=1
