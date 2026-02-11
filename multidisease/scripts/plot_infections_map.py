@@ -152,7 +152,7 @@ def detect_run_info(run_dir):
     return case_name, platform, diseases
 
 
-def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vmax=None):
+def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vmax=None, verbose=False):
     """Create and save a single map for one timestep (single disease)."""
     merged = counties_gdf.merge(county_cases, on="GEOID", how="left")
     merged["cases"] = merged["cases"].fillna(0)
@@ -190,10 +190,11 @@ def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vma
     outpath = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
     fig.savefig(outpath, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    print(f"  Saved {outpath}")
+    if verbose:
+        print(f"    Saved {outpath}")
 
 
-def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, platform, outdir, vmax_dict=None):
+def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, platform, outdir, vmax_dict=None, verbose=False):
     """Create and save a map with multiple diseases overlaid using transparency.
 
     Args:
@@ -280,21 +281,181 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
     outpath = os.path.join(outdir, f"infections_{case_name}_{platform}_day{step:05d}.png")
     fig.savefig(outpath, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close(fig)
-    print(f"  Saved {outpath}")
+    if verbose:
+        print(f"    Saved {outpath}")
+
+
+def detect_platform():
+    """Detect the current platform from environment variables."""
+    import socket
+
+    # Check for LLNL systems (LCHOST environment variable)
+    lchost = os.environ.get("LCHOST", "").lower()
+    if lchost:
+        return lchost
+
+    # Check for NERSC systems
+    if os.environ.get("NERSC_HOST"):
+        return "perlmutter"
+
+    # Check for GPU availability on Linux
+    try:
+        import subprocess
+        result = subprocess.run(["nvidia-smi"], capture_output=True, timeout=2)
+        if result.returncode == 0:
+            return "linux-gpu"
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # Default to generic Linux
+    return "linux"
+
+
+def find_run_directories(platform=None):
+    """Find all .run_* directories, optionally filtering by platform.
+
+    Returns list of (run_dir_path, case_name, dir_platform) tuples.
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.abspath(os.path.join(script_dir, ".."))
+
+    run_dirs = []
+    pattern = os.path.join(project_dir, ".run_*")
+
+    for run_dir in glob.glob(pattern):
+        if not os.path.isdir(run_dir):
+            continue
+
+        basename = os.path.basename(run_dir)
+        # Extract case_name and platform from .run_<case_name>_<platform>
+        if basename.startswith(".run_"):
+            name_parts = basename[5:].split("_")
+            dir_platform = name_parts[-1] if len(name_parts) > 1 else "unknown"
+            case_name = "_".join(name_parts[:-1]) if len(name_parts) > 1 else basename[5:]
+
+            # Filter by platform if specified
+            if platform and dir_platform != platform:
+                continue
+
+            # Check for cases* files
+            if glob.glob(os.path.join(run_dir, "cases?????")) or \
+               glob.glob(os.path.join(run_dir, "cases_*_?????")):
+                run_dirs.append((run_dir, case_name, dir_platform))
+
+    return sorted(run_dirs, key=lambda x: x[1])
+
+
+def list_cases(platform=None):
+    """List all available cases with cases* files."""
+    run_dirs = find_run_directories(platform)
+
+    if not run_dirs:
+        if platform:
+            print(f"No cases with cases* files found for platform: {platform}")
+        else:
+            print("No cases with cases* files found")
+        print("Run simulations first using run_exaepi.sh")
+        return
+
+    if platform:
+        print(f"Available cases with cases* files for platform: {platform}\n")
+    else:
+        print("Available cases with cases* files (all platforms):\n")
+
+    for run_dir, case_name, dir_platform in run_dirs:
+        print(f"  {case_name}_{dir_platform}")
+        print(f"    Directory: {run_dir}")
+
+        # Count cases files
+        cases_files = glob.glob(os.path.join(run_dir, "cases?????"))
+        disease_cases = glob.glob(os.path.join(run_dir, "cases_*_?????"))
+
+        if disease_cases:
+            # Extract unique disease names
+            diseases = set()
+            for f in disease_cases:
+                basename = os.path.basename(f)
+                # cases_<disease>_NNNNN
+                parts = basename.split("_")
+                if len(parts) >= 3:
+                    diseases.add(parts[1])
+            print(f"    Diseases: {', '.join(sorted(diseases))}")
+            print(f"    Cases files: {len(disease_cases)} (multidisease)")
+        elif cases_files:
+            print(f"    Cases files: {len(cases_files)}")
+
+        # Get timestep range
+        all_case_files = cases_files + disease_cases
+        if all_case_files:
+            steps = []
+            for f in all_case_files:
+                basename = os.path.basename(f)
+                try:
+                    # Extract step number (last 5 digits)
+                    step = int(basename[-5:])
+                    steps.append(step)
+                except ValueError:
+                    pass
+            if steps:
+                print(f"    Timesteps: {min(steps)} to {max(steps)}")
+        print()
+
+    print(f"Total: {len(run_dirs)} case(s) with cases* files")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot ExaEpi infections on a US county map"
+        description="Plot ExaEpi infections on a US county map",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Plot specific case
+  %(prog)s -c bay_01D_Cov19S1
+
+  # Plot multiple cases
+  %(prog)s -c bay_01D_Cov19S1 CA_01D_Cov19S1
+
+  # Plot all cases for current platform
+  %(prog)s -a
+
+  # List available cases
+  %(prog)s -l
+
+  # Specify timesteps
+  %(prog)s -c US_01D_Cov19S1 --steps 0 10 30 50 70
+
+Output:
+  Maps saved to plots/ directory with naming:
+    infections_<case_name>_<platform>_day<step>.png
+"""
     )
-    parser.add_argument("run_dir", help="Path to a .run_* simulation directory")
+
+    # Main arguments
+    parser.add_argument(
+        "-c", "--case", dest="cases", action="append", default=[],
+        help="Plot specific case(s) (can be specified multiple times)"
+    )
+    parser.add_argument(
+        "-a", "--all", action="store_true",
+        help="Plot all available cases for current/specified platform"
+    )
+    parser.add_argument(
+        "-l", "--list-cases", action="store_true",
+        help="List available cases with cases* files"
+    )
+
+    # Options
+    parser.add_argument(
+        "-P", "--platform", default=None,
+        help="Specify platform (default: auto-detect)"
+    )
     parser.add_argument(
         "--steps", type=int, nargs="+", default=None,
         help="Timesteps to plot (default: 0, then every 10th, plus last)"
     )
     parser.add_argument(
         "--outdir", default=None,
-        help="Output directory for PNGs (default: plots/ next to this script)"
+        help="Output directory for PNGs (default: plots/)"
     )
     parser.add_argument(
         "--vmax", type=float, default=None,
@@ -304,11 +465,63 @@ def main():
         "--per-step-vmax", action="store_true",
         help="Use a separate color scale per step instead of a global one"
     )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true",
+        help="Enable verbose output"
+    )
+
     args = parser.parse_args()
 
-    run_dir = os.path.abspath(args.run_dir)
-    if not os.path.isdir(run_dir):
-        sys.exit(f"Error: {run_dir} is not a directory")
+    # Detect platform if not specified
+    platform = args.platform or detect_platform()
+
+    # Handle --list-cases
+    if args.list_cases:
+        list_cases(platform)
+        return
+
+    # Determine which cases to plot
+    if args.all:
+        run_dirs = find_run_directories(platform)
+        if not run_dirs:
+            print(f"ERROR: No cases found for platform: {platform}")
+            sys.exit(1)
+        cases_to_plot = [(rd, cn, dp) for rd, cn, dp in run_dirs]
+    elif args.cases:
+        cases_to_plot = []
+        for case_spec in args.cases:
+            # Check if case_spec includes platform
+            if "_" in case_spec:
+                parts = case_spec.split("_")
+                possible_platform = parts[-1]
+                # Try as full name first
+                run_dirs = find_run_directories()
+                found = False
+                for rd, cn, dp in run_dirs:
+                    if f"{cn}_{dp}" == case_spec or cn == case_spec:
+                        cases_to_plot.append((rd, cn, dp))
+                        found = True
+                        break
+
+                if not found:
+                    print(f"ERROR: Case not found: {case_spec}")
+                    sys.exit(1)
+            else:
+                # Try with detected platform
+                run_dirs = find_run_directories(platform)
+                found = False
+                for rd, cn, dp in run_dirs:
+                    if cn == case_spec:
+                        cases_to_plot.append((rd, cn, dp))
+                        found = True
+                        break
+
+                if not found:
+                    print(f"ERROR: Case not found: {case_spec} for platform {platform}")
+                    sys.exit(1)
+    else:
+        parser.print_help()
+        sys.exit(0)
 
     # Directories
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -318,10 +531,34 @@ def main():
         outdir = os.path.join(os.path.dirname(script_dir), "plots")
     os.makedirs(outdir, exist_ok=True)
 
+    print(f"Platform: {platform}")
+    print(f"Output directory: {outdir}")
+    print(f"Cases to plot: {len(cases_to_plot)}")
+    print()
+
+    # Load county shapefile once (cached in scripts/ dir)
+    counties_gdf = load_counties_shapefile(script_dir)
+
+    # Process each case
+    for run_dir, case_name, dir_platform in cases_to_plot:
+        print(f"Processing case: {case_name}_{dir_platform}")
+        process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, script_dir)
+        print()
+
+    print("Done!")
+
+
+def process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, script_dir):
+    """Process a single case and generate all requested plots."""
+    if not os.path.isdir(run_dir):
+        print(f"  ERROR: {run_dir} is not a directory")
+        return
+
     # Detect available steps
     all_steps = detect_steps(run_dir)
     if not all_steps:
-        sys.exit(f"Error: no cases* files found in {run_dir}")
+        print(f"  ERROR: no cases* files found in {run_dir}")
+        return
 
     if args.steps is not None:
         steps = args.steps
@@ -331,31 +568,31 @@ def main():
         if all_steps[-1] not in steps:
             steps.append(all_steps[-1])
 
-    print(f"Run directory: {run_dir}")
-    print(f"Timesteps to plot: {steps}")
-    print(f"Output directory: {outdir}")
+    if args.verbose:
+        print(f"  Run directory: {run_dir}")
+        print(f"  Timesteps to plot: {steps}")
 
     # Load FIPS mapping
-    print("Loading FIPS mapping from US.dat...")
+    if args.verbose:
+        print("  Loading FIPS mapping from US.dat...")
     fips_list = load_fips_mapping(run_dir)
-    print(f"  {len(fips_list)} locations, {len(set(fips_list))} counties")
+    if args.verbose:
+        print(f"    {len(fips_list)} locations, {len(set(fips_list))} counties")
 
-    # Load county shapefile (cached in scripts/ dir, not in plots/)
-    counties_gdf = load_counties_shapefile(script_dir)
-
-    # Determine case name, platform, and diseases
-    case_name, platform, diseases = detect_run_info(run_dir)
-    print(f"Case name: {case_name}")
-    print(f"Platform: {platform}")
-    print(f"Diseases: {diseases if diseases else ['single disease']}")
+    # Determine diseases
+    _, _, diseases = detect_run_info(run_dir)
+    if args.verbose:
+        print(f"  Diseases: {diseases if diseases else ['single disease']}")
 
     is_multidisease = len(diseases) > 1
+    platform = dir_platform  # Use the platform from directory name
 
     if is_multidisease:
         # Multidisease: compute global color scale per disease
         vmax_dict = {}
         if not args.per_step_vmax and args.vmax is None:
-            print("Computing global color scale per disease...")
+            if args.verbose:
+                print("  Computing global color scale per disease...")
             for disease in diseases:
                 disease_max = 0
                 for step in steps:
@@ -367,14 +604,16 @@ def main():
                     if step_max > disease_max:
                         disease_max = step_max
                 vmax_dict[disease] = disease_max
-                print(f"  {disease} vmax: {disease_max:,.0f}")
+                if args.verbose:
+                    print(f"    {disease} vmax: {disease_max:,.0f}")
         elif args.vmax is not None:
             # Use same vmax for all diseases
             for disease in diseases:
                 vmax_dict[disease] = args.vmax
 
         # Generate multidisease plots
-        print("Generating multidisease maps...")
+        if args.verbose:
+            print("  Generating multidisease maps...")
         for step in steps:
             disease_county_cases = {}
             for disease in diseases:
@@ -384,13 +623,14 @@ def main():
             if disease_county_cases:
                 plot_multidisease_step(
                     counties_gdf, disease_county_cases, step, case_name, platform, outdir,
-                    vmax_dict=vmax_dict if vmax_dict else None
+                    vmax_dict=vmax_dict if vmax_dict else None, verbose=args.verbose
                 )
     else:
         # Single disease: compute global color scale
         vmax = args.vmax
         if not args.per_step_vmax and vmax is None:
-            print("Computing global color scale...")
+            if args.verbose:
+                print("  Computing global color scale...")
             global_max = 0
             for step in steps:
                 cases = load_cases(run_dir, step)
@@ -399,16 +639,16 @@ def main():
                 if step_max > global_max:
                     global_max = step_max
             vmax = global_max
-            print(f"  Global vmax: {vmax:,.0f}")
+            if args.verbose:
+                print(f"    Global vmax: {vmax:,.0f}")
 
         # Generate single disease plots
-        print("Generating maps...")
+        if args.verbose:
+            print("  Generating maps...")
         for step in steps:
             cases = load_cases(run_dir, step)
             county_cases = aggregate_by_county(cases, fips_list)
-            plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vmax=vmax)
-
-    print("Done!")
+            plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vmax=vmax, verbose=args.verbose)
 
 
 if __name__ == "__main__":
