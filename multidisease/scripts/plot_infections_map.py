@@ -48,7 +48,7 @@ REGION_BOUNDS = {
 REGION_DATA_FILES = {
     'US': 'US.dat',
     'CA': 'CA.dat',
-    'bay': 'bay.dat',
+    'bay': 'BayArea.dat',
 }
 
 
