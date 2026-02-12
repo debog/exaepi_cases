@@ -118,7 +118,7 @@ disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
 ## FluS1: initial cases from file
 disease_FluS1.initial_case_type = "file"
 disease_FluS1.case_filename = "July4.cases"
-disease_FluS1.p_trans = 0.09
+disease_FluS1.p_trans = 0.12
 disease_FluS1.p_asymp = 0.16
 disease_FluS1.asymp_relative_inf = 0.5
 disease_FluS1.latent_length_alpha = 6.0

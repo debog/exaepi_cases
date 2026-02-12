@@ -54,15 +54,15 @@ agent.number_of_diseases = 1
 agent.disease_names = "FluS2"
 
 ## Initial infection
-## ~2.2 per million (Bay Area pop 6.78M). H1N1pdm09 had fewer introduction
+## ~3.7 per million (Bay Area pop 6.78M). H1N1pdm09 had fewer introduction
 ## points than seasonal flu (first 2 CA cases Apr 17, 2009) [S8,S9]. R0≈1.3
-## gives single-case extinction prob ~0.73; 15 seeds give P(epidemic)~98% [S3].
+## gives single-case extinction prob ~0.73; 25 seeds give P(epidemic)>99.9% [S3].
 disease.initial_case_type = "random"
-disease.num_initial_cases = 15
+disease.num_initial_cases = 25
 
 ## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-## p_trans lowered from 0.15 to 0.09 (with longer infectious period) to preserve R0~1.25 [1]
-disease.p_trans = 0.09
+## p_trans increased from 0.09 to 0.12 after fixing worker assignment bug [1]
+disease.p_trans = 0.12
 disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
 disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
 disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4

@@ -117,8 +117,8 @@ disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
 ## ============================================================
 ## FluS1: ~4.4/million; R0≈1.3, needs more seeds (extinction prob ~0.73/case [S3])
 disease_FluS1.initial_case_type = "random"
-disease_FluS1.num_initial_cases = 15
-disease_FluS1.p_trans = 0.09
+disease_FluS1.num_initial_cases = 25
+disease_FluS1.p_trans = 0.12
 disease_FluS1.p_asymp = 0.16
 disease_FluS1.asymp_relative_inf = 0.5
 disease_FluS1.latent_length_alpha = 6.0
