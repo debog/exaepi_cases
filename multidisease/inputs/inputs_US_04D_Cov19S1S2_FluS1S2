@@ -166,7 +166,7 @@ disease_Cov19S2.ventCVF = 0.25 0.25 0.25 0.55 0.55 1.0
 ## FluS1: ~2.2/million; cases clustered in Southeast US (GA/Carolinas)
 disease_FluS1.initial_case_type = "file"
 disease_FluS1.case_filename = "Jan1_FluS1.cases"
-disease_FluS1.p_trans = 0.12
+disease_FluS1.p_trans = 0.16
 disease_FluS1.p_asymp = 0.16
 disease_FluS1.asymp_relative_inf = 0.5
 disease_FluS1.latent_length_alpha = 4.0
@@ -191,7 +191,7 @@ disease_FluS1.ventCVF = 0.05 0.10 0.15 0.25 0.30 0.50
 ## FluS2: ~2.2/million; cases clustered in Southwest US (SoCal/AZ)
 disease_FluS2.initial_case_type = "file"
 disease_FluS2.case_filename = "Jan1_FluS2.cases"
-disease_FluS2.p_trans = 0.12
+disease_FluS2.p_trans = 0.16
 disease_FluS2.p_asymp = 0.12
 disease_FluS2.asymp_relative_inf = 0.5
 disease_FluS2.latent_length_alpha = 4.0
