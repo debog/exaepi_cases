@@ -36,9 +36,8 @@ between pre-Delta and Delta periods [C7].
 ## Influenza: Parameter Differences S1 (H3N2) vs S2 (H1N1pdm09)
 
 Both strains share the same transmission and disease period parameters (similar R0 ~1.3,
-similar incubation ~2 days, similar infectious period ~7.5 days). They differ primarily in
-severity profile and age distribution of outcomes. Note: infectious period was extended
-from 4.5 to 7.5 days for more realistic peak timing; p_trans was adjusted from 0.15 to
+similar incubation ~2 days, similar infectious period ~4.5 days). They differ primarily in
+severity profile and age distribution of outcomes. p_trans was adjusted from 0.15 to
 0.12 after fixing worker assignment bug (commit 8f732ee) that inflated effective R0.
 
 | Parameter | S1 (H3N2)                            | S2 (H1N1pdm09)                      | Rationale                                                |
@@ -57,8 +56,8 @@ from 4.5 to 7.5 days for more realistic peak timing; p_trans was adjusted from 0
 | `p_trans`                | 0.20          | 0.12                 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1]                |
 | `p_asymp`                | 0.30          | 0.16                 | COVID has higher asymptomatic fraction [C5,F4]       |
 | `asymp_relative_inf`     | 0.7           | 0.5                  | COVID asymptomatics relatively more infectious [F5]  |
-| `latent_length` (mean)   | 3.9 days      | 3.0 days             | Matches SimFI shedding onset (incubation+1) [P1]     |
-| `infectious_length` (mn) | 6.0 days      | 7.5 days             | Extended from 4.5d to slow peak timing [C4,F3]       |
+| `latent_length` (mean)   | 3.9 days      | 2.0 days             | Contagious from day 2 post-infection [F2,F3]         |
+| `infectious_length` (mn) | 6.0 days      | 4.5 days             | Culture-positive shedding duration [F3]              |
 | `incubation_length` (mn) | 4.9 days      | 2.0 days             | Flu incubation roughly half of COVID [C2,F2]         |
 | `immune_length` (mean)   | 178 days      | 270 days             | Flu immunity somewhat longer [C7,F7]                 |
 | `CHR` (65+)              | 1.0           | 0.15                 | COVID far more severe in elderly                     |
@@ -79,8 +78,8 @@ calibrated with US epidemiological data.
 | `p_trans`                | 0.06            | 0.12           | 0.20          | Lower per-contact prob; endemic R0~2.0 [P3]          |
 | `p_asymp`                | 0.80            | 0.16           | 0.30          | Most colonizations asymptomatic [P1,P5]              |
 | `asymp_relative_inf`     | 0.8             | 0.5            | 0.7           | Carriers shed effectively from day 0 [P2]            |
-| `latent_length` (mean)   | 1.0 days        | 3.0 days       | 3.9 days      | SimFI: shedding at incubation+1 [P1,P2]              |
-| `infectious_length` (mn) | 23 days         | 7.5 days       | 6.0 days      | Long carriage duration [P1,P4]                       |
+| `latent_length` (mean)   | 1.0 days        | 2.0 days       | 3.9 days      | SimFI: shedding at incubation+1 [P1,P2]              |
+| `infectious_length` (mn) | 23 days         | 4.5 days       | 6.0 days      | Long carriage duration [P1,P4]                       |
 | `incubation_length` (mn) | 21 days         | 2.0 days       | 4.9 days      | Prolonged asymptomatic carriage [P1]                 |
 | `immune_length` (mean)   | 300 days        | 270 days       | 178 days      | Serotype-specific immunity [P1,P2]                   |
 | `CHR` (65+)              | 0.20            | 0.15           | 1.0           | U-shaped age distribution [P6,P7]                    |

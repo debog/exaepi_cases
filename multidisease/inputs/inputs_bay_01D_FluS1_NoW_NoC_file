@@ -75,12 +75,12 @@ disease.child_compliance = 0.5
 disease.child_hh_closure = 2.0
 
 ## Disease period distributions (gamma distribution: alpha, beta; mean = alpha*beta)
-## Latent period: mean ~3.0 days; matches SimFI shedding onset (incubation+1) [3]
-disease.latent_length_alpha = 6.0
+## Latent period: mean ~2.0 days; contagious from day 2 post-infection [2,3]
+disease.latent_length_alpha = 4.0
 disease.latent_length_beta = 0.5
-## Infectious period: mean ~7.5 days; extended from 4.5d to slow epidemic peak timing [3]
+## Infectious period: mean ~4.5 days; culture-positive shedding duration [3]
 disease.infectious_length_alpha = 15.0
-disease.infectious_length_beta = 0.5
+disease.infectious_length_beta = 0.3
 ## Incubation period: mean ~2.0 days [2]
 disease.incubation_length_alpha = 4.0
 disease.incubation_length_beta = 0.5
