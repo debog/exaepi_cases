@@ -1,20 +1,22 @@
 #!/usr/bin/env python
-"""Plot ExaEpi infection counts on a US county map at various timesteps.
+"""Plot ExaEpi infection counts on a county map at various timesteps.
 
-Supports both single disease and multidisease cases. For multidisease cases,
-plots all diseases on the same map using transparency with different colors.
+Supports US, California (CA), and Bay Area (bay) regions. For multidisease cases,
+plots all diseases in separate subplots.
 
 Usage:
     python plot_infections_map.py <run_directory> [options]
 
 Examples:
-    # Single disease
+    # US single disease
     python plot_infections_map.py .run_US_01D_Cov19S1_perlmutter
     python plot_infections_map.py .run_US_01D_Cov19S1_perlmutter --steps 0 10 30 50 70
 
-    # Multidisease
+    # Bay Area multidisease
     python plot_infections_map.py .run_bay_02D_Cov19S1_FluS1_tuolumne
-    python plot_infections_map.py .run_bay_02D_Cov19S1_FluS1_tuolumne --outdir my_plots
+
+    # California single disease
+    python plot_infections_map.py .run_CA_01D_Cov19S1_perlmutter --outdir my_plots
 """
 
 import argparse
@@ -35,19 +37,68 @@ CENSUS_COUNTIES_URL = (
     "https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_county_5m.zip"
 )
 
-# Continental US bounding box
-CONUS_XLIM = (-125, -66)
-CONUS_YLIM = (24, 50)
+# Regional bounding boxes (lon_min, lon_max), (lat_min, lat_max)
+REGION_BOUNDS = {
+    'US': {'xlim': (-125, -66), 'ylim': (24, 50)},      # Continental US
+    'CA': {'xlim': (-124.5, -114), 'ylim': (32.5, 42)}, # California
+    'bay': {'xlim': (-123, -121.2), 'ylim': (36.9, 38.9)}, # Bay Area
+}
+
+# Region data file mappings
+REGION_DATA_FILES = {
+    'US': 'US.dat',
+    'CA': 'CA.dat',
+    'bay': 'BayArea.dat',
+}
 
 
-def load_fips_mapping(run_dir):
-    """Read US.dat and return a Series mapping location index to 5-digit FIPS string."""
-    us_dat = os.path.join(run_dir, "US.dat")
-    if not os.path.exists(us_dat):
-        sys.exit(f"Error: {us_dat} not found")
+def detect_region(run_dir):
+    """Detect region (US, CA, bay) from directory name or available data files.
+
+    Returns:
+        str: Region identifier ('US', 'CA', or 'bay')
+    """
+    # Try to detect from directory name
+    basename = os.path.basename(os.path.normpath(run_dir))
+    name_lower = basename.lower()
+
+    if 'bay' in name_lower or '_ba_' in name_lower:
+        return 'bay'
+    elif '_ca_' in name_lower or name_lower.startswith('ca_'):
+        return 'CA'
+    elif '_us_' in name_lower or name_lower.startswith('us_'):
+        return 'US'
+
+    # Try to detect from available data files
+    for region, datafile in REGION_DATA_FILES.items():
+        if os.path.exists(os.path.join(run_dir, datafile)):
+            return region
+
+    # Default to US
+    return 'US'
+
+
+def load_fips_mapping(run_dir, region=None):
+    """Read region data file and return a list mapping location index to 5-digit FIPS string.
+
+    Args:
+        run_dir: Path to run directory
+        region: Region identifier ('US', 'CA', 'bay'). If None, auto-detect.
+
+    Returns:
+        list: FIPS codes as 5-digit strings
+    """
+    if region is None:
+        region = detect_region(run_dir)
+
+    datafile = REGION_DATA_FILES.get(region, 'US.dat')
+    data_path = os.path.join(run_dir, datafile)
+
+    if not os.path.exists(data_path):
+        sys.exit(f"Error: {data_path} not found")
 
     fips_list = []
-    with open(us_dat) as f:
+    with open(data_path) as f:
         f.readline()  # skip header (count of locations)
         for line in f:
             parts = line.split()
@@ -217,8 +268,20 @@ def detect_run_info(run_dir):
     return case_name, platform, diseases
 
 
-def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vmax=None, verbose=False):
-    """Create and save a single map for one timestep (single disease)."""
+def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, region='US', vmax=None, verbose=False):
+    """Create and save a single map for one timestep (single disease).
+
+    Args:
+        counties_gdf: GeoDataFrame with county geometries
+        county_cases: DataFrame with columns [GEOID, cases]
+        step: Timestep number
+        case_name: Case name for title and filename
+        platform: Platform name for filename
+        outdir: Output directory
+        region: Region identifier ('US', 'CA', 'bay')
+        vmax: Optional maximum value for color scale
+        verbose: Print progress messages
+    """
     merged = counties_gdf.merge(county_cases, on="GEOID", how="left")
     merged["cases"] = merged["cases"].fillna(0)
 
@@ -241,8 +304,10 @@ def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vma
             legend_kwds={"label": "Infection count", "shrink": 0.6},
         )
 
-    ax.set_xlim(CONUS_XLIM)
-    ax.set_ylim(CONUS_YLIM)
+    # Set bounds based on region
+    bounds = REGION_BOUNDS.get(region, REGION_BOUNDS['US'])
+    ax.set_xlim(bounds['xlim'])
+    ax.set_ylim(bounds['ylim'])
     ax.set_aspect("equal")
     ax.set_axis_off()
 
@@ -266,7 +331,7 @@ def plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vma
         print(f"    Saved {outpath_pdf}")
 
 
-def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, platform, outdir, vmax_dict=None, verbose=False):
+def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, platform, outdir, region='US', vmax_dict=None, verbose=False):
     """Create and save a map with multiple diseases in separate subplots.
 
     Args:
@@ -276,7 +341,9 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
         case_name: Case name for title and filename
         platform: Platform name for filename
         outdir: Output directory
+        region: Region identifier ('US', 'CA', 'bay')
         vmax_dict: Optional dict mapping disease name -> vmax value
+        verbose: Print progress messages
     """
     # Color palette for diseases
     disease_colors = {
@@ -345,8 +412,10 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
                 legend_kwds={"label": "Infections", "shrink": 0.6}
             )
 
-        ax.set_xlim(CONUS_XLIM)
-        ax.set_ylim(CONUS_YLIM)
+        # Set bounds based on region
+        bounds = REGION_BOUNDS.get(region, REGION_BOUNDS['US'])
+        ax.set_xlim(bounds['xlim'])
+        ax.set_ylim(bounds['ylim'])
         ax.set_aspect("equal")
         ax.set_axis_off()
         ax.set_title(f"{disease}: {total_infections[disease]:,.0f} infections",
@@ -508,12 +577,14 @@ def list_cases(platform=None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot ExaEpi infections on a US county map",
+        description="Plot ExaEpi infections on a county map (supports US, CA, Bay Area)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Plot specific case
+  # Plot specific case (auto-detects region: US, CA, or bay)
   %(prog)s -c bay_01D_Cov19S1
+  %(prog)s -c CA_01D_Cov19S1
+  %(prog)s -c US_01D_Cov19S1
 
   # Plot multiple cases
   %(prog)s -c bay_01D_Cov19S1 CA_01D_Cov19S1
@@ -530,6 +601,7 @@ Examples:
 Output:
   Maps saved to plots/ directory with naming:
     infections_<case_name>_<platform>_day<step>.png
+    infections_<case_name>_<platform>_day<step>.pdf
 """
     )
 
@@ -671,14 +743,19 @@ def process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, s
         if all_steps[-1] not in steps:
             steps.append(all_steps[-1])
 
+    # Detect region
+    region = detect_region(run_dir)
+
     if args.verbose:
         print(f"  Run directory: {run_dir}")
+        print(f"  Region: {region}")
         print(f"  Timesteps to plot: {steps}")
 
     # Load FIPS mapping
     if args.verbose:
-        print("  Loading FIPS mapping from US.dat...")
-    fips_list = load_fips_mapping(run_dir)
+        datafile = REGION_DATA_FILES.get(region, 'US.dat')
+        print(f"  Loading FIPS mapping from {datafile}...")
+    fips_list = load_fips_mapping(run_dir, region)
     if args.verbose:
         print(f"    {len(fips_list)} locations, {len(set(fips_list))} counties")
 
@@ -733,7 +810,7 @@ def process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, s
             if disease_county_cases:
                 plot_multidisease_step(
                     counties_gdf, disease_county_cases, step, case_name, platform, outdir,
-                    vmax_dict=vmax_dict if vmax_dict else None, verbose=args.verbose
+                    region=region, vmax_dict=vmax_dict if vmax_dict else None, verbose=args.verbose
                 )
     else:
         # Single disease: compute global color scale
@@ -758,7 +835,7 @@ def process_case(run_dir, case_name, dir_platform, counties_gdf, outdir, args, s
         for step in steps:
             cases = load_cases(run_dir, step)
             county_cases = aggregate_by_county(cases, fips_list)
-            plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, vmax=vmax, verbose=args.verbose)
+            plot_step(counties_gdf, county_cases, step, case_name, platform, outdir, region=region, vmax=vmax, verbose=args.verbose)
 
 
 if __name__ == "__main__":

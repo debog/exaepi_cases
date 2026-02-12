@@ -49,6 +49,10 @@ diag.output_filename = "output_Cov19S1.dat" "output_Cov19S2.dat" "output_FluS1.d
 ## Air travel (disabled)
 agent.air_travel_int = -1
 
+## Random travel (enabled: every 7 days, 0.01% probability)
+agent.random_travel_int = 7
+agent.random_travel_prob = 0.0001
+
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
 agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
 agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
