@@ -37,8 +37,9 @@ between pre-Delta and Delta periods [C7].
 
 Both strains share the same transmission and disease period parameters (similar R0 ~1.3,
 similar incubation ~2 days, similar infectious period ~4.5 days). They differ primarily in
-severity profile and age distribution of outcomes. p_trans was adjusted from 0.15 to
-0.12 after fixing worker assignment bug (commit 8f732ee) that inflated effective R0.
+severity profile and age distribution of outcomes. p_trans was increased to 0.16 after
+fixing worker assignment bug (commit 8f732ee) to achieve realistic epidemic dynamics with
+R0 ~1.3, attack rates 5-20%, and doubling times 4-7 days.
 
 | Parameter | S1 (H3N2)                            | S2 (H1N1pdm09)                      | Rationale                                                |
 |-----------|--------------------------------------|--------------------------------------|----------------------------------------------------------|
@@ -53,7 +54,7 @@ severity profile and age distribution of outcomes. p_trans was adjusted from 0.1
 
 | Parameter                | COVID-19 S1   | Influenza S1 (H3N2) | Notes                                                |
 |--------------------------|---------------|----------------------|------------------------------------------------------|
-| `p_trans`                | 0.20          | 0.12                 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1]                |
+| `p_trans`                | 0.20          | 0.16                 | COVID R0 ~2.5 vs flu R0 ~1.3 [C1,F1]                |
 | `p_asymp`                | 0.30          | 0.16                 | COVID has higher asymptomatic fraction [C5,F4]       |
 | `asymp_relative_inf`     | 0.7           | 0.5                  | COVID asymptomatics relatively more infectious [F5]  |
 | `latent_length` (mean)   | 3.9 days      | 2.0 days             | Contagious from day 2 post-infection [F2,F3]         |
@@ -334,7 +335,7 @@ bootstrap endemic circulation.
   - Table 5: H1N1 seasonal — median R = 1.25 (IQR: 1.18-1.35).
   - Table 5: All seasonal influenza — median R = 1.28 (IQR: 1.19-1.37).
   - Methods: 79% of seasonal influenza studies "relied on unconfirmed illnesses or deaths."
-  - Used for: `p_trans` = 0.15 (calibrated to R0 ~1.3 in agent-based model).
+  - Used for: `p_trans` = 0.16 (calibrated to R0 ~1.3 in agent-based model after fixing worker assignment bug).
 - [F2] Lessler J et al. (2009). Incubation periods of acute respiratory viral infections: a systematic review. *Lancet Infect Dis*. [PMC4327893](https://pmc.ncbi.nlm.nih.gov/articles/PMC4327893/)
   - Table 3: Influenza A incubation — median 1.4 days (95% CI: 1.3-1.5), dispersion 1.51 (95% CI: 1.43-1.60).
   - Table 3: 5th percentile 0.7 days (95% CI: 0.6-0.8), 95th percentile 2.8 days (95% CI: 2.5-3.2).
