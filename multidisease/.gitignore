@@ -1,0 +1,27 @@
+# Run directories
+.run_*/
+
+# Plot outputs
+plots/
+
+# Shapefile cache (auto-downloaded by plot_infections_map.py)
+scripts/cb_2020_us_county_5m/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Temporary files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Output logs
+*.log
+out.*.log
+
+# Analysis artifacts
+BUG_ANALYSIS.md
+monitor.sh

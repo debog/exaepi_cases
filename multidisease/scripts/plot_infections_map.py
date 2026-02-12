@@ -345,31 +345,40 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
         vmax_dict: Optional dict mapping disease name -> vmax value
         verbose: Print progress messages
     """
-    # Color palette for diseases
+    # Color palette for diseases - each disease gets its own colormap
+    from matplotlib.colors import LinearSegmentedColormap
+
     disease_colors = {
-        'Cov19S1': '#ff4444',  # Red
-        'Cov19S2': '#ff8844',  # Orange
-        'FluS1': '#4444ff',    # Blue
-        'FluS2': '#44ff44',    # Green
+        'Cov19S1': '#cc3333',  # Red
+        'Cov19S2': '#ff7733',  # Orange
+        'FluS1': '#3366cc',    # Blue
+        'FluS2': '#33aa33',    # Green
+        'PneuS1': '#9933cc',   # Purple
     }
-    default_colors = ['#ff4444', '#4444ff', '#44ff44', '#ffaa00', '#ff44ff', '#44ffff']
+    default_colors = ['#cc3333', '#3366cc', '#33aa33', '#ff7733', '#9933cc', '#33cccc']
+
+    # Create custom colormaps for each disease (white -> disease color)
+    disease_cmaps = {}
+    for disease, color in disease_colors.items():
+        cmap = LinearSegmentedColormap.from_list(f'{disease}_cmap', ['#ffffff', color])
+        disease_cmaps[disease] = cmap
 
     # Get ordered list of diseases
     diseases = sorted(disease_county_cases.keys())
     n_diseases = len(diseases)
     total_infections = {}
 
-    # Determine subplot layout
+    # Determine subplot layout - adjusted for better aspect ratio
     if n_diseases <= 2:
         nrows, ncols = 1, n_diseases
-        figsize = (7 * ncols, 4.5)
+        figsize = (6 * ncols, 4.5)
     elif n_diseases <= 4:
         nrows, ncols = 2, 2
-        figsize = (14, 9)
+        figsize = (12, 10)  # Better aspect ratio: ~6x5 per subplot
     else:
         ncols = 3
         nrows = (n_diseases + ncols - 1) // ncols
-        figsize = (7 * ncols, 4.5 * nrows)
+        figsize = (6 * ncols, 5 * nrows)
 
     fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
 
@@ -395,8 +404,13 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
         total_infections[disease] = county_cases["cases"].sum()
 
         if len(has_cases) > 0:
-            # Get base color for this disease
-            base_color = disease_colors.get(disease, default_colors[idx % len(default_colors)])
+            # Get disease-specific colormap
+            if disease in disease_cmaps:
+                cmap = disease_cmaps[disease]
+            else:
+                # Create colormap for unknown diseases
+                color = default_colors[idx % len(default_colors)]
+                cmap = LinearSegmentedColormap.from_list(f'{disease}_cmap', ['#ffffff', color])
 
             # Determine vmax
             if vmax_dict and disease in vmax_dict:
@@ -404,10 +418,10 @@ def plot_multidisease_step(counties_gdf, disease_county_cases, step, case_name, 
             else:
                 vmax = has_cases["cases"].max()
 
-            # Plot with standard colormap
+            # Plot with disease-specific colormap
             norm = LogNorm(vmin=1, vmax=max(vmax, 2))
             has_cases.plot(
-                ax=ax, column="cases", cmap="YlOrRd", norm=norm,
+                ax=ax, column="cases", cmap=cmap, norm=norm,
                 edgecolor="#cccccc", linewidth=0.2, legend=True,
                 legend_kwds={"label": "Infections", "shrink": 0.6}
             )
