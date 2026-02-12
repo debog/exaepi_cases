@@ -41,20 +41,31 @@ disease.case_filename = "<filename>"
 
 ### Jan1_FluS1.cases — Seasonal Influenza A/H3N2
 
-- **Total cases**: 759 across 29 counties (~2.3 per million US pop)
-- **Geographic cluster**: Southeast US (Georgia / Carolinas)
-- **Rationale**: Seasonal flu seeds via multiple independent introductions.
-  H3N2 seasons often begin in the Southeast. Cases concentrated in Atlanta
-  metro (Fulton Co. 85, DeKalb Co. 60, Gwinnett Co. 55), Charlotte-Raleigh
-  corridor in NC, and upstate SC.
+- **Total cases**: 1,085 across 48 counties (~3.3 per million US pop)
+- **Geographic clusters**:
+  - **Primary — Southeast US (GA/NC/SC/TN)**: Atlanta metro (Fulton Co. 85,
+    DeKalb Co. 60, Gwinnett Co. 55), Charlotte-Raleigh corridor in NC, upstate SC,
+    Nashville and Knoxville TN
+  - **Florida**: Miami-Dade (30), Broward (20), Tampa (15), Orlando (15), Jacksonville (10)
+  - **Midwest**: Chicago (Cook Co. 40, DuPage 15), Detroit (Wayne 20, Oakland 12),
+    Minneapolis (Hennepin 18, Ramsey 10), Indianapolis (15), Columbus (15), Cleveland (12)
+  - **Northeast**: Philadelphia (25), Boston (Suffolk 15, Middlesex 12), Pittsburgh (12)
+- **Rationale**: Seasonal flu seeds via multiple independent introductions across
+  major metro areas. H3N2 seasons often begin in the Southeast.
 - **References**: [S4] CDC FluView regional data; [S7] Garten et al. (2018)
 
 ### Jan1_FluS2.cases — Influenza A/H1N1pdm09
 
-- **Total cases**: 710 across 23 counties (~2.2 per million US pop)
-- **Geographic cluster**: Southwest US (Southern California / Arizona)
-- **Rationale**: H1N1pdm09 first identified in Southern California (April 2009).
-  Cases concentrated in Los Angeles Co. (130), Orange Co. (65), San Diego Co. (55),
-  Maricopa Co. AZ (85), with secondary spread across the Inland Empire,
-  Central Valley, and southern NV/NM.
+- **Total cases**: 977 across 41 counties (~3.0 per million US pop)
+- **Geographic clusters**:
+  - **Primary — Southwest US (SoCal/AZ)**: Los Angeles Co. (130), Maricopa Co. AZ (85),
+    Orange Co. (65), San Diego (55), Inland Empire, Central Valley, southern NV/NM
+  - **Bay Area**: Alameda (20), Santa Clara (18), San Francisco (15), Sacramento (15)
+  - **Pacific Northwest**: Seattle (King Co. 25, Pierce 10, Snohomish 8),
+    Portland (Multnomah 15, Washington Co. 10)
+  - **Colorado**: Denver (18), Arapahoe (10), Jefferson (8)
+  - **Utah**: Salt Lake (15), Utah Co. (8)
+  - **Texas**: Houston (Harris 25), Dallas (20), San Antonio (Bexar 15), Austin (Travis 12)
+- **Rationale**: H1N1pdm09 first identified in Southern California (April 2009),
+  with subsequent spread to western US metro areas and Texas.
 - **References**: [S8] CDC (2019), 2009 H1N1 Pandemic summary; [S9] Fraser et al. (2009), Science
