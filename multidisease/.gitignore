@@ -1,6 +1,12 @@
 # Run directories
 .run_*/
 
+# Ensemble directories
+.ensemble_*/
+
+# Sensitivity analysis directories
+.sensitivity_*/
+
 # Plot outputs
 plots/
 

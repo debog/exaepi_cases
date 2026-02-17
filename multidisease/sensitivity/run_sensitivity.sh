@@ -128,6 +128,10 @@ for case_name in "${CASES[@]}"; do
     fi
 done
 
+# Determine ensemble parent directory based on sweep
+ENSEMBLE_PARENT=".sensitivity_${SWEEP}"
+mkdir -p "${PROJECT_DIR}/${ENSEMBLE_PARENT}"
+
 # Submit each case
 SUCCESS=0
 FAIL=0
@@ -136,7 +140,8 @@ for case_name in "${CASES[@]}"; do
     MAX_STEP_ARG=""
     [[ -n "$MAX_STEP" ]] && MAX_STEP_ARG="--max-step=${MAX_STEP}"
     if "$RUN_SCRIPT" --case="${case_name}" --mode=batch --ensemble \
-       --ensemble-size="${ENSEMBLE_SIZE}" ${MAX_STEP_ARG} ${DRY_RUN} ${VERBOSE} ${EXTRA_ARGS}; then
+       --ensemble-size="${ENSEMBLE_SIZE}" --ensemble-parent-dir="${ENSEMBLE_PARENT}" \
+       ${MAX_STEP_ARG} ${DRY_RUN} ${VERBOSE} ${EXTRA_ARGS}; then
         SUCCESS=$((SUCCESS + 1))
     else
         echo -e "${YELLOW}WARNING:${NC} Failed to submit ${case_name}" >&2

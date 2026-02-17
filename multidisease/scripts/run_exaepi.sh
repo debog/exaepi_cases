@@ -59,6 +59,7 @@ VERBOSE=false
 RUN_ALL=false
 ENSEMBLE=false
 ENSEMBLE_SIZE=100
+ENSEMBLE_PARENT_DIR=""
 
 # Platform-specific defaults (from machines.yaml)
 declare -A PLATFORM_DEFAULTS_TASKS
@@ -158,6 +159,7 @@ Options:
   -e, --ensemble        Run ensemble of simulations with different seeds
                          (requires batch mode). Computes statistics across runs.
   --ensemble-size=N     Number of ensemble runs (default: ${ENSEMBLE_SIZE})
+  --ensemble-parent-dir=DIR  Parent directory for ensemble subdirectories (default: project root)
   -n, --ntasks=N        Override number of MPI tasks
   -N, --nnodes=N        Override number of nodes
   -q, --queue=NAME      Override queue/partition name
@@ -1112,6 +1114,10 @@ parse_args() {
                 ENSEMBLE_SIZE="${1#*=}"
                 shift
                 ;;
+            --ensemble-parent-dir=*)
+                ENSEMBLE_PARENT_DIR="${1#*=}"
+                shift
+                ;;
             -d|--dry-run)
                 DRY_RUN=true
                 shift
@@ -1804,7 +1810,12 @@ process_ensemble_case() {
     fi
 
     # Create ensemble directory (preserve if exists for incremental runs)
-    local ensemble_dir="${PROJECT_DIR}/.ensemble_${case_name}_${platform}"
+    local parent_dir="${PROJECT_DIR}"
+    if [[ -n "$ENSEMBLE_PARENT_DIR" ]]; then
+        parent_dir="${PROJECT_DIR}/${ENSEMBLE_PARENT_DIR}"
+        mkdir -p "$parent_dir"
+    fi
+    local ensemble_dir="${parent_dir}/.ensemble_${case_name}_${platform}"
     print_verbose "Creating ensemble directory: ${ensemble_dir}"
     mkdir -p "$ensemble_dir"
 
