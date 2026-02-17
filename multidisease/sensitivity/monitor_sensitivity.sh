@@ -2,8 +2,9 @@
 #
 # monitor_sensitivity.sh - Monitor sensitivity analysis ensemble runs
 #
-# This script monitors the progress of all sensitivity analysis cases
+# This script monitors the progress of sensitivity analysis cases
 # by checking the output files in the sensitivity subdirectories.
+# Only shows ensemble runs for the current platform (from LCHOST).
 #
 # Usage:
 #   ./monitor_sensitivity.sh [SWEEP]
@@ -14,6 +15,15 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# Detect current platform
+if [[ -n "${LCHOST}" ]]; then
+    CURRENT_PLATFORM=$(echo "${LCHOST}" | tr '[:upper:]' '[:lower:]')
+elif [[ -n "${NERSC_HOST}" ]]; then
+    CURRENT_PLATFORM="perlmutter"
+else
+    CURRENT_PLATFORM="unknown"
+fi
 
 # Determine which sweeps to monitor
 SWEEPS=()
@@ -67,18 +77,18 @@ for iteration in {1..1000000}; do
         fi
 
         echo -e "${BOLD}${BLUE}========================================${NC}"
-        echo -e "${BOLD}${BLUE}Sweep: ${sweep}${NC}"
+        echo -e "${BOLD}${BLUE}Sweep: ${sweep} [${CURRENT_PLATFORM}]${NC}"
         echo -e "${BOLD}${BLUE}========================================${NC}"
         echo ""
 
-        # Find all ensemble directories in this sensitivity directory
+        # Find all ensemble directories for current platform in this sensitivity directory
         ensemble_dirs=()
         while IFS= read -r -d '' edir; do
             ensemble_dirs+=("$edir")
-        done < <(find "$sens_dir" -maxdepth 1 -type d -name ".ensemble_*" -print0 | sort -z)
+        done < <(find "$sens_dir" -maxdepth 1 -type d -name ".ensemble_*_${CURRENT_PLATFORM}" -print0 | sort -z)
 
         if [[ ${#ensemble_dirs[@]} -eq 0 ]]; then
-            echo -e "${YELLOW}No ensemble directories found in ${sens_dir}${NC}"
+            echo -e "${YELLOW}No ensemble directories found for platform '${CURRENT_PLATFORM}' in ${sens_dir}${NC}"
             echo ""
             continue
         fi
