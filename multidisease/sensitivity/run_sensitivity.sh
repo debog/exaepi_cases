@@ -17,9 +17,10 @@
 #   ./run_sensitivity.sh [OPTIONS]
 #
 # Options:
-#   -n, --dry-run         Show commands without executing
+#   -d, --dry-run         Show commands without executing
 #   -e, --ensemble-size=N Number of ensemble runs (default: 100)
 #   -s, --sweep=NAME      Run only one sweep: "coimm" or "cosus" (default: both)
+#   -n, --max-step=N      Override number of timesteps (uses input file default if unset)
 #   -v, --verbose         Enable verbose output
 #   -h, --help            Show this help message
 
@@ -34,6 +35,7 @@ INPUTS_DIR="${SCRIPT_DIR}/inputs"
 DRY_RUN=""
 ENSEMBLE_SIZE=100
 SWEEP="both"
+MAX_STEP=""
 VERBOSE=""
 EXTRA_ARGS=""
 
@@ -53,11 +55,13 @@ show_help() {
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -n|--dry-run)       DRY_RUN="--dry-run"; shift ;;
+        -d|--dry-run)       DRY_RUN="--dry-run"; shift ;;
         -e|--ensemble-size) ENSEMBLE_SIZE="$2"; shift 2 ;;
         --ensemble-size=*)  ENSEMBLE_SIZE="${1#*=}"; shift ;;
         -s|--sweep)         SWEEP="$2"; shift 2 ;;
         --sweep=*)          SWEEP="${1#*=}"; shift ;;
+        -n|--max-step)      MAX_STEP="$2"; shift 2 ;;
+        --max-step=*)       MAX_STEP="${1#*=}"; shift ;;
         -v|--verbose)       VERBOSE="--verbose"; shift ;;
         -h|--help)          show_help ;;
         *)                  EXTRA_ARGS="$EXTRA_ARGS $1"; shift ;;
@@ -129,8 +133,10 @@ SUCCESS=0
 FAIL=0
 for case_name in "${CASES[@]}"; do
     echo -e "${GREEN}>>> Submitting: ${case_name}${NC}"
+    MAX_STEP_ARG=""
+    [[ -n "$MAX_STEP" ]] && MAX_STEP_ARG="--max-step=${MAX_STEP}"
     if "$RUN_SCRIPT" --case="${case_name}" --mode=batch --ensemble \
-       --ensemble-size="${ENSEMBLE_SIZE}" ${DRY_RUN} ${VERBOSE} ${EXTRA_ARGS}; then
+       --ensemble-size="${ENSEMBLE_SIZE}" ${MAX_STEP_ARG} ${DRY_RUN} ${VERBOSE} ${EXTRA_ARGS}; then
         SUCCESS=$((SUCCESS + 1))
     else
         echo -e "${YELLOW}WARNING:${NC} Failed to submit ${case_name}" >&2
