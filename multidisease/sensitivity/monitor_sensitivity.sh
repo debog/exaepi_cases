@@ -87,32 +87,35 @@ for iteration in {1..1000000}; do
             dir_basename=$(basename "$ensemble_dir")
             case_name=$(echo "$dir_basename" | sed -E 's/^\.ensemble_(.*)_[^_]+$/\1/')
             platform=$(echo "$dir_basename" | sed -E 's/^\.ensemble_.*_([^_]+)$/\1/')
-            echo -e "${CYAN}${case_name}${NC} ${BOLD}[${platform}]${NC}"
 
-            # Check if job is queued/running
-            if [[ -f "${ensemble_dir}/job_id.txt" ]]; then
-                job_id=$(cat "${ensemble_dir}/job_id.txt" 2>/dev/null)
-                if [[ -n "$job_id" ]] && command -v squeue &>/dev/null; then
-                    job_status=$(squeue -j "$job_id" -h -o "%T" 2>/dev/null)
-                    if [[ -n "$job_status" ]]; then
-                        echo -e "  Status: ${GREEN}${job_status}${NC}"
+            # Check for completion statistics first
+            if compgen -G "${ensemble_dir}"/output_*_mean.dat > /dev/null 2>&1; then
+                # Completed - show concise output
+                echo -e "${CYAN}${case_name}${NC} ${BOLD}[${platform}]${NC} ${GREEN}✓ Completed${NC}"
+            else
+                # In progress - show detailed output
+                echo -e "${CYAN}${case_name}${NC} ${BOLD}[${platform}]${NC}"
+
+                # Check if job is queued/running
+                if [[ -f "${ensemble_dir}/job_id.txt" ]]; then
+                    job_id=$(cat "${ensemble_dir}/job_id.txt" 2>/dev/null)
+                    if [[ -n "$job_id" ]] && command -v squeue &>/dev/null; then
+                        job_status=$(squeue -j "$job_id" -h -o "%T" 2>/dev/null)
+                        if [[ -n "$job_status" ]]; then
+                            echo -e "  Status: ${GREEN}${job_status}${NC}"
+                        fi
                     fi
                 fi
-            fi
 
-            # Show progress from output files
-            if compgen -G "${ensemble_dir}/*.out" > /dev/null 2>&1; then
-                cat "${ensemble_dir}"/*.out 2>/dev/null | grep "Run" | tail -n 3 | sed 's/^/  /'
-            else
-                echo -e "  ${YELLOW}(no output yet)${NC}"
-            fi
+                # Show progress from output files
+                if compgen -G "${ensemble_dir}/*.out" > /dev/null 2>&1; then
+                    cat "${ensemble_dir}"/*.out 2>/dev/null | grep "Run" | tail -n 3 | sed 's/^/  /'
+                else
+                    echo -e "  ${YELLOW}(no output yet)${NC}"
+                fi
 
-            # Check for completion statistics
-            if compgen -G "${ensemble_dir}"/output_*_mean.dat > /dev/null 2>&1; then
-                echo -e "  ${GREEN}✓ Statistics computed${NC}"
+                echo ""
             fi
-
-            echo ""
         done
     done
 
