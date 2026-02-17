@@ -1,0 +1,128 @@
+## Sensitivity study: co-immunity = 0.85 (baseline cross-variant immunity)
+## 2-disease case: COVID-19 wild-type (Cov19S1) + COVID-19 Delta (Cov19S2)
+##
+## disease.* sets Cov19S1 (wild-type) as the default for both diseases.
+## disease_Cov19S2.* overrides only the parameters that differ for Delta.
+##
+## Coupling matrix references:
+##   [M1] Goldberg et al. (2021), JAMA Intern Med, PMC8690283
+##        - Prior infection protection against Delta reinfection: 85.4% (95% CI: 80.0-89.3)
+##   [M2] Planas et al. (2021), Nature, doi:10.1038/s41586-021-03777-9
+##        - Delta neutralization by convalescent sera reduced 3-5 fold vs wild-type
+##   [M3] Bobrovitz et al. (2023), Lancet, doi:10.1016/S0140-6736(22)02465-5
+##        - Protection against severe disease: 90.2% for ancestral/alpha/delta at 40 weeks
+##   [M4] Dee et al. (2024), PLoS Pathog, doi:10.1371/journal.ppat.1012017
+##        - Viral interference between SARS-CoV-2 and influenza A via IFN response
+
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "CA.dat"
+agent.workerflow_filename = "CA-wf.bin"
+
+## Simulation control
+agent.nsteps = 730
+agent.max_box_size = 16
+
+## Output control
+agent.plot_int = 10
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output_Cov19S1.dat" "output_Cov19S2.dat"
+## Air travel (disabled)
+agent.air_travel_int = -1
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
+agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
+agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+
+## Multi-disease setup
+agent.number_of_diseases = 2
+agent.disease_names = "Cov19S1" "Cov19S2"
+
+## Disease coupling (2x2 matrices, row-major)
+## Coimmunity: baseline value 0.85 — prior wild-type infection provides ~85%
+## protection against Delta reinfection [M1]; neutralization titers reduced
+## 3-5 fold but clinical protection remains high [M2,M3]. Using 0.85 (symmetric,
+## as Delta infection also protects against wild-type reinfection).
+disease_coupling.coimmunity_matrix = \
+    1.0   0.85 \
+    0.85  1.0
+## Cosusceptibility: limited direct evidence for increased susceptibility to one
+## COVID variant during active infection with another. Set to 1.0 (neutral) as
+## viral interference studies show no clear enhancement between variants [M4].
+disease_coupling.cosusceptibility_matrix = \
+    1.0  1.0 \
+    1.0  1.0
+
+## ============================================================
+## Default disease parameters (Cov19S1: wild-type COVID-19)
+## ============================================================
+
+## Initial infection (Cov19S1: ~3/million; ~100 confirmed CA cases at onset [S1,S2])
+disease.initial_case_type = "random"
+disease.num_initial_cases = 100
+
+## Transmission probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.p_trans = 0.20
+disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
+disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
+disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
+disease.xmit_hh_child = 0.6 0.6 0.3 0.3 0.3 0.3
+disease.xmit_nc_adult = 0.0528 0.0528 0.066 0.066 0.066 0.066
+disease.xmit_nc_child = 0.1 0.1 0.0528 0.0528 0.0528 0.0528
+disease.xmit_work = 0.0575
+
+## School transmission (by school type: none, college, high, middle, elementary, daycare)
+disease.xmit_school = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_a2c = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_c2a = 0 0.0315 0.0315 0.0375 0.0435 0.15
+
+## Disease characteristics
+disease.p_asymp = 0.30
+disease.asymp_relative_inf = 0.7
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+
+## Disease period distributions (gamma distribution: alpha, beta)
+disease.latent_length_alpha = 5.2
+disease.latent_length_beta = 0.75
+disease.infectious_length_alpha = 26.2
+disease.infectious_length_beta = 0.23
+disease.incubation_length_alpha = 7.5
+disease.incubation_length_beta = 0.65
+disease.immune_length_alpha = 540.0
+disease.immune_length_beta = 0.33
+
+## Hospitalization delay distribution (gamma distribution: alpha, beta)
+disease.hospital_delay_length_alpha = 1.0
+disease.hospital_delay_length_beta = 1.0
+
+## Hospital stay model
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 3 3 3 3 8 7
+
+## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+disease.CHR = 0.0104 0.0104 0.070 0.28 0.28 1.0
+disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
+disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
+disease.hospCVF = 0 0 0 0 0 0
+disease.icuCVF = 0 0 0 0 0 0.26
+disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
+
+## ============================================================
+## Cov19S2 overrides (Delta variant - only parameters that differ)
+## ============================================================
+## Cov19S2: ~0.7/million; Delta 0% to 95% in CA Apr-Jul 2021 [S5]
+disease_Cov19S2.num_initial_cases = 25
+disease_Cov19S2.p_trans = 0.35
+disease_Cov19S2.p_asymp = 0.15
+disease_Cov19S2.latent_length_alpha = 4.7
+disease_Cov19S2.infectious_length_beta = 0.27
+disease_Cov19S2.incubation_length_alpha = 4.43
+disease_Cov19S2.incubation_length_beta = 1.01
+disease_Cov19S2.CHR = 0.0201 0.0201 0.135 0.54 0.54 1.0
+disease_Cov19S2.icuCVF = 0 0 0 0 0 0.30
+disease_Cov19S2.ventCVF = 0.25 0.25 0.25 0.55 0.55 1.0
