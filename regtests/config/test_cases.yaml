@@ -106,8 +106,7 @@ test_cases:
     data_files:
       - NM_TX_2010.dat
       - US-wf.bin
-      - urbanpop_nm.csv.gz
-      - urbanpop_nm.idx
+      - urbanpop_nm.bin
       - nm-july4.cases
     nsteps: 120
     tags: [regional, urban_pop, variant]

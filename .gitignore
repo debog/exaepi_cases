@@ -11,4 +11,5 @@ Backtrace*
 std*
 .run*
 .ensemble*
+urbanpop*.bin
 __pycache__/
