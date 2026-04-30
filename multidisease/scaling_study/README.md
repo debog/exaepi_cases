@@ -39,7 +39,10 @@ LC platforms have been validated:
 - **Matrix** (Dell, 4 NVIDIA H100 GPUs per node, vanilla SLURM).
   Job scripts use `#SBATCH --partition=pbatch`,
   `#SBATCH --gpus-per-task=1`, `#SBATCH --exclusive`, and launch with
-  `srun --exclusive -N nodes -n ntasks -G ntasks`.
+  `srun --exclusive -N nodes -n ntasks -G ntasks`. The US sweep
+  (16- and 32-node jobs) is not runnable on Matrix and is skipped
+  automatically; an explicit `--scenario=US` invocation on Matrix
+  errors out.
 
 The platform branch is selected from `$LCHOST` (set automatically in
 the LC user environment).

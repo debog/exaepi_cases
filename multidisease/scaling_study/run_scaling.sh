@@ -102,6 +102,33 @@ case "$SCENARIO" in
     *)          echo -e "${RED}ERROR:${NC} Unknown scenario: $SCENARIO" >&2; exit 1 ;;
 esac
 
+# Platform-specific node-count limits.  Matrix does not allow jobs at
+# 16 or 32 nodes, which the US sweep requires (64- and 128-GPU points).
+# Skip the US sweep entirely on Matrix; warn if the user explicitly
+# asked for it.
+if [[ "$PLATFORM" == "matrix" ]]; then
+    if [[ "$SCENARIO" =~ ^(US|us)$ ]]; then
+        echo -e "${RED}ERROR:${NC} The US sweep is not runnable on Matrix " \
+                "(requires 16- and 32-node jobs, which the partition does not allow)." >&2
+        exit 1
+    fi
+    if [[ ${#CONFIGS[@]} -gt 0 ]]; then
+        FILTERED=()
+        for cfg in "${CONFIGS[@]}"; do
+            case_name=$(echo "$cfg" | awk '{print $1}')
+            if [[ "$case_name" == US_04D_scale ]]; then
+                continue
+            fi
+            FILTERED+=("$cfg")
+        done
+        if [[ ${#FILTERED[@]} -lt ${#CONFIGS[@]} ]]; then
+            echo -e "${YELLOW}NOTE:${NC} skipping US sweep on Matrix" \
+                    "(16- and 32-node jobs not allowed)."
+        fi
+        CONFIGS=("${FILTERED[@]}")
+    fi
+fi
+
 # Symlink input files into main inputs/ so the agent finds the data files.
 MAIN_INPUTS="${PROJECT_DIR}/inputs"
 for cfg in "${CONFIGS[@]}"; do
