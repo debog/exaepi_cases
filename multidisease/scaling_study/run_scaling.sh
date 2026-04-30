@@ -141,6 +141,30 @@ write_jobscript() {
     local rundir=$4
     local walltime=$(estimate_walltime "$case" "$ntasks")
 
+    # Platform-specific SLURM directives and launcher.
+    # Tuolumne (Flux scheduler under SLURM): no partition, launch via flux run.
+    # Matrix (vanilla SLURM with GPUs):     --partition=pbatch, --gpus-per-task,
+    #                                       --exclusive, launch via srun.
+    local extra_sbatch=""
+    local launcher=""
+    case "$PLATFORM" in
+        tuolumne)
+            extra_sbatch=""
+            launcher="flux run --exclusive --nodes=${nodes} --ntasks ${ntasks} --gpus-per-task 1"
+            ;;
+        matrix|dane|ruby)
+            extra_sbatch="#SBATCH --partition=pbatch
+#SBATCH --gpus-per-task=1
+#SBATCH --exclusive"
+            launcher="srun --exclusive -N ${nodes} -n ${ntasks} -G ${ntasks}"
+            ;;
+        *)
+            # Generic fallback: best-effort srun
+            extra_sbatch=""
+            launcher="srun -N ${nodes} -n ${ntasks}"
+            ;;
+    esac
+
     cat > "${rundir}/exaepi.job" <<EOF
 #!/bin/bash
 #SBATCH --job-name=scale_${case}_${ntasks}gpu
@@ -150,17 +174,18 @@ write_jobscript() {
 #SBATCH --account=asccasc
 #SBATCH --output=scale_%j.out
 #SBATCH --error=scale_%j.err
+${extra_sbatch}
 
 echo "Job started at: \$(date)"
 echo "Running on host: \$(hostname)"
 echo "Working directory: \$(pwd)"
-echo "Configuration: ${case}, nodes=${nodes}, ntasks=${ntasks}"
+echo "Configuration: ${case}, nodes=${nodes}, ntasks=${ntasks}, platform=${PLATFORM}"
 echo ""
 
 export OMP_NUM_THREADS=1
 export MPICH_GPU_SUPPORT_ENABLED=1
 
-flux run --exclusive --nodes=${nodes} --ntasks ${ntasks} --gpus-per-task 1 \\
+${launcher} \\
     ${AGENT_EXE} inputs_${case}
 
 echo ""
