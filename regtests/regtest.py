@@ -572,7 +572,7 @@ class RegtestOrchestrator:
 
         print(f"\nTest directories created in: {test_dir}")
 
-    def run_baselines(self, cases: List[str] = None, machine: str = None):
+    def run_baselines(self, cases: List[str] = None, machine: str = None, sequential: bool = False):
         """Run baseline tests"""
         if machine is None:
             machine = self.current_machine
@@ -606,6 +606,7 @@ class RegtestOrchestrator:
 
         print(f"Running baselines for machine: {machine}")
         print(f"Batch mode: {batch_mode}")
+        print(f"Sequential mode: {sequential}")
         print()
 
         for test_dir in baseline_dirs:
@@ -625,9 +626,29 @@ class RegtestOrchestrator:
 
                 job_script = job_scripts[0]
                 print(f"  Submitting {job_script.name}")
-                subprocess.run(['sbatch', job_script.name], cwd=test_dir)
+                result = subprocess.run(['sbatch', job_script.name], cwd=test_dir, capture_output=True, text=True)
+
+                if sequential:
+                    # Extract job ID and wait for completion
+                    # sbatch output format: "Submitted batch job <job_id>"
+                    if result.returncode == 0 and result.stdout:
+                        try:
+                            job_id = result.stdout.strip().split()[-1]
+                            print(f"  Job ID: {job_id}, waiting for completion...")
+                            # Wait for job to complete
+                            import time
+                            while True:
+                                check_result = subprocess.run(['squeue', '-j', job_id],
+                                                            capture_output=True, text=True)
+                                # If job not in queue, it's done
+                                if job_id not in check_result.stdout:
+                                    print(f"  Job {job_id} completed")
+                                    break
+                                time.sleep(10)  # Check every 10 seconds
+                        except (IndexError, ValueError):
+                            print(f"  WARNING: Could not parse job ID from: {result.stdout}")
             else:
-                # Run directly in background
+                # Run directly
                 run_scripts = list(test_dir.glob(f"run.*.{machine}.sh"))
                 if not run_scripts:
                     print(f"  WARNING: No run script found")
@@ -636,17 +657,28 @@ class RegtestOrchestrator:
                 run_script = run_scripts[0]
                 print(f"  Launching {run_script.name}")
                 log_file = test_dir / "run.log"
-                with open(log_file, 'w') as log:
-                    subprocess.Popen([f'./{run_script.name}'],
-                                   cwd=test_dir,
-                                   stdout=log,
-                                   stderr=subprocess.STDOUT)
 
-        if not batch_mode:
+                if sequential:
+                    # Run and wait for completion
+                    with open(log_file, 'w') as log:
+                        result = subprocess.run([f'./{run_script.name}'],
+                                              cwd=test_dir,
+                                              stdout=log,
+                                              stderr=subprocess.STDOUT)
+                    print(f"  Completed with exit code: {result.returncode}")
+                else:
+                    # Run in background
+                    with open(log_file, 'w') as log:
+                        subprocess.Popen([f'./{run_script.name}'],
+                                       cwd=test_dir,
+                                       stdout=log,
+                                       stderr=subprocess.STDOUT)
+
+        if not batch_mode and not sequential:
             print("\nWaiting for processes to finish...")
             print("(You may need to monitor jobs manually)")
 
-    def run_tests(self, cases: List[str] = None, machine: str = None):
+    def run_tests(self, cases: List[str] = None, machine: str = None, sequential: bool = False):
         """Run test cases"""
         if machine is None:
             machine = self.current_machine
@@ -680,6 +712,7 @@ class RegtestOrchestrator:
 
         print(f"Running tests for machine: {machine}")
         print(f"Batch mode: {batch_mode}")
+        print(f"Sequential mode: {sequential}")
         print()
 
         for tdir in test_dirs:
@@ -699,9 +732,29 @@ class RegtestOrchestrator:
 
                 job_script = job_scripts[0]
                 print(f"  Submitting {job_script.name}")
-                subprocess.run(['sbatch', job_script.name], cwd=tdir)
+                result = subprocess.run(['sbatch', job_script.name], cwd=tdir, capture_output=True, text=True)
+
+                if sequential:
+                    # Extract job ID and wait for completion
+                    # sbatch output format: "Submitted batch job <job_id>"
+                    if result.returncode == 0 and result.stdout:
+                        try:
+                            job_id = result.stdout.strip().split()[-1]
+                            print(f"  Job ID: {job_id}, waiting for completion...")
+                            # Wait for job to complete
+                            import time
+                            while True:
+                                check_result = subprocess.run(['squeue', '-j', job_id],
+                                                            capture_output=True, text=True)
+                                # If job not in queue, it's done
+                                if job_id not in check_result.stdout:
+                                    print(f"  Job {job_id} completed")
+                                    break
+                                time.sleep(10)  # Check every 10 seconds
+                        except (IndexError, ValueError):
+                            print(f"  WARNING: Could not parse job ID from: {result.stdout}")
             else:
-                # Run directly in background
+                # Run directly
                 run_scripts = list(tdir.glob(f"run.*.{machine}.sh"))
                 if not run_scripts:
                     print(f"  WARNING: No run script found")
@@ -710,13 +763,24 @@ class RegtestOrchestrator:
                 run_script = run_scripts[0]
                 print(f"  Launching {run_script.name}")
                 log_file = tdir / "run.log"
-                with open(log_file, 'w') as log:
-                    subprocess.Popen([f'./{run_script.name}'],
-                                   cwd=tdir,
-                                   stdout=log,
-                                   stderr=subprocess.STDOUT)
 
-        if not batch_mode:
+                if sequential:
+                    # Run and wait for completion
+                    with open(log_file, 'w') as log:
+                        result = subprocess.run([f'./{run_script.name}'],
+                                              cwd=tdir,
+                                              stdout=log,
+                                              stderr=subprocess.STDOUT)
+                    print(f"  Completed with exit code: {result.returncode}")
+                else:
+                    # Run in background
+                    with open(log_file, 'w') as log:
+                        subprocess.Popen([f'./{run_script.name}'],
+                                       cwd=tdir,
+                                       stdout=log,
+                                       stderr=subprocess.STDOUT)
+
+        if not batch_mode and not sequential:
             print("\nWaiting for processes to finish...")
             print("(You may need to monitor jobs manually)")
 
@@ -898,9 +962,16 @@ Examples:
   # Run baselines for specific cases
   %(prog)s run-baseline --cases ca,bay --machine perlmutter
 
+  # Run baselines sequentially (one-by-one)
+  %(prog)s run-baseline --cases ca,bay --sequential
+  %(prog)s run-baseline --cases ca,bay -s
+
   # Create and run tests
   %(prog)s create-test --cases all
   %(prog)s run-test --cases all
+
+  # Run tests sequentially
+  %(prog)s run-test --cases all -s
 
   # Compare results
   %(prog)s compare
@@ -934,6 +1005,12 @@ Examples:
         '--config-dir',
         type=Path,
         help='Path to configuration directory (default: ./config)'
+    )
+
+    parser.add_argument(
+        '-s', '--sequential',
+        action='store_true',
+        help='Run cases one-by-one, waiting for each to complete before starting the next (default: submit all at once)'
     )
 
     args = parser.parse_args()
@@ -995,13 +1072,13 @@ Examples:
         orch.create_baselines(cases, machine)
 
     elif args.action == 'run-baseline':
-        orch.run_baselines(cases, machine)
+        orch.run_baselines(cases, machine, args.sequential)
 
     elif args.action == 'create-test':
         orch.create_tests(cases, machine)
 
     elif args.action == 'run-test':
-        orch.run_tests(cases, machine)
+        orch.run_tests(cases, machine, args.sequential)
 
     elif args.action == 'compare':
         orch.compare_results(machine)
