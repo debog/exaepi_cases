@@ -63,8 +63,12 @@ for iteration in {1..1000000}; do
             if [[ -n "$done_marker" ]]; then
                 # Parse total time and ranks from the most recent log
                 logf=$(ls -t "${rd}"/scale_*.out 2>/dev/null | head -1)
+                # Line format:
+                #   TinyProfiler total time across processes [min...avg...max]: 1594 ... 1594 ... 1595
+                # Split on '[' or ']' -> field 3 is ': 1594 ... 1594 ... 1595';
+                # split that on '...' -> field 3 is the max value.
                 total=$(grep "TinyProfiler total time" "$logf" 2>/dev/null | head -1 |
-                        awk -F'[][]' '{print $2}' | awk -F'\\.\\.\\.' '{print $3}' | tr -d ' ')
+                        awk -F'[][]' '{print $3}' | awk -F'\\.\\.\\.' '{print $3}' | tr -d ' :')
                 ranks=$(grep "MPI initialized with" "$logf" 2>/dev/null | head -1 |
                         awk '{print $4}')
                 echo -e "${CYAN}${name}${NC} ${GREEN}✓ Completed${NC}  ranks=${ranks:-?}  total=${total:-?}s"
