@@ -30,6 +30,20 @@ short enough to keep compute bounded). Plot output disabled.
 CA baseline in the paper is 4 GPUs / 1 node; US baseline is 32 GPUs /
 8 nodes. The sweeps span 1/2x to 4x the baseline GPU count for each.
 
+The runner emits platform-specific Flux/SLURM job scripts. Two LLNL
+LC platforms have been validated:
+
+- **Tuolumne** (HPE Cray, 4 AMD MI300A APUs per node, Flux scheduler
+  under SLURM). Job scripts launch with `flux run --exclusive
+  --nodes=N --ntasks M --gpus-per-task 1`.
+- **Matrix** (Dell, 4 NVIDIA H100 GPUs per node, vanilla SLURM).
+  Job scripts use `#SBATCH --partition=pbatch`,
+  `#SBATCH --gpus-per-task=1`, `#SBATCH --exclusive`, and launch with
+  `srun --exclusive -N nodes -n ntasks -G ntasks`.
+
+The platform branch is selected from `$LCHOST` (set automatically in
+the LC user environment).
+
 Lower-GPU configurations (CA at 1 GPU; US at 8 and 16 GPUs) were
 dropped because the per-GPU memory footprint exceeds device limits
 and the runs out-of-memory at agent initialization. The corresponding
@@ -101,7 +115,8 @@ be read off the resulting CSV.
 ## Reference data
 
 For comparison, the paper's existing US 4-disease 730-day run on
-32 GPUs (Tuolumne) has the following profiler breakdown:
+Tuolumne (32 AMD MI300A GPUs, 8 nodes) has the following profiler
+breakdown:
 
 | Category | Excl. avg time (s) | Fraction |
 |----------|-------------------:|---------:|
@@ -114,3 +129,9 @@ For comparison, the paper's existing US 4-disease 730-day run on
 I/O is large because the production run wrote 74 plotfiles. The
 scaling-study runs disable plot output, so I/O drops to negligible
 and the compute/MPI split is sharper.
+
+A corresponding reference point on Matrix (NVIDIA H100) will be
+established once the scaling-study runs complete; the per-step
+cost differs from Tuolumne and the compute / MPI ratio will reflect
+the H100's compute throughput and the Matrix interconnect rather
+than the MI300A and Tuolumne's HPE Slingshot.
