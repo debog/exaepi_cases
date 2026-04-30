@@ -4,29 +4,35 @@
 # Default variables
 # MACHINE: auto-detected (falls back to 'linux' on standard Linux PCs)
 # CASES: uses machine-specific defaults (linux defaults to 'quick' = bay, ma)
+# SEQUENTIAL: set to 1 to run cases one-by-one instead of all at once
 MACHINE ?=
 CASES ?=
+SEQUENTIAL ?=
 PYTHON ?= python3
 
 # Build command line arguments conditionally
 MACHINE_ARG = $(if $(MACHINE),--machine $(MACHINE),)
 CASES_ARG = $(if $(CASES),--cases $(CASES),)
+SEQUENTIAL_ARG = $(if $(filter 1,$(SEQUENTIAL)),--sequential,)
 
 .PHONY: help
 help:
 	@echo "ExaEpi Regression Test Makefile"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make baseline [CASES=<cases>] [MACHINE=<machine>]  - Create and run baseline tests"
-	@echo "  make test [CASES=<cases>] [MACHINE=<machine>]       - Create and run tests"
-	@echo "  make compare [MACHINE=<machine>]                    - Compare test results against baselines"
-	@echo "  make plot [CASES=<cases>] [MACHINE=<machine>]       - Generate comparison plots"
-	@echo "  make clean                                          - Remove test directories"
-	@echo "  make clean-baselines                                - Remove baseline directories"
-	@echo "  make clean-all                                      - Remove all generated directories"
-	@echo "  make list-cases                                     - List available test cases"
-	@echo "  make list-machines                                  - List available machines"
-	@echo "  make validate                                       - Validate environment setup"
+	@echo "  make baseline [CASES=<cases>] [MACHINE=<machine>] [SEQUENTIAL=1]  - Create and run baseline tests"
+	@echo "  make test [CASES=<cases>] [MACHINE=<machine>] [SEQUENTIAL=1]       - Create and run tests"
+	@echo "  make compare [MACHINE=<machine>]                                   - Compare test results against baselines"
+	@echo "  make plot [CASES=<cases>] [MACHINE=<machine>]                      - Generate comparison plots"
+	@echo "  make clean                                                         - Remove test directories"
+	@echo "  make clean-baselines                                               - Remove baseline directories"
+	@echo "  make clean-all                                                     - Remove all generated directories"
+	@echo "  make list-cases                                                    - List available test cases"
+	@echo "  make list-machines                                                 - List available machines"
+	@echo "  make validate                                                      - Validate environment setup"
+	@echo ""
+	@echo "Options:"
+	@echo "  SEQUENTIAL=1  - Run cases one-by-one instead of submitting all at once"
 	@echo ""
 	@echo "Machines:"
 	@echo "  HPC systems (auto-detected): perlmutter, dane, matrix, tuolumne"
@@ -36,9 +42,10 @@ help:
 	@echo "  Override with CASES=standard to run all tests."
 	@echo ""
 	@echo "Examples:"
-	@echo "  make baseline                          # Auto-detect machine, use defaults"
+	@echo "  make baseline                                    # Auto-detect machine, use defaults"
 	@echo "  make baseline CASES=ca,bay MACHINE=perlmutter"
-	@echo "  make test CASES=standard               # Run all standard tests"
+	@echo "  make test CASES=standard                         # Run all standard tests"
+	@echo "  make test CASES=ca,bay SEQUENTIAL=1              # Run cases one-by-one"
 	@echo "  make compare"
 	@echo ""
 	@echo "Common test case groups:"
@@ -66,7 +73,7 @@ create-baseline:
 
 .PHONY: run-baseline
 run-baseline:
-	@$(PYTHON) regtest.py run-baseline $(CASES_ARG) $(MACHINE_ARG)
+	@$(PYTHON) regtest.py run-baseline $(CASES_ARG) $(MACHINE_ARG) $(SEQUENTIAL_ARG)
 
 .PHONY: baseline
 baseline: create-baseline run-baseline
@@ -80,7 +87,7 @@ create-test:
 
 .PHONY: run-test
 run-test:
-	@$(PYTHON) regtest.py run-test $(CASES_ARG) $(MACHINE_ARG)
+	@$(PYTHON) regtest.py run-test $(CASES_ARG) $(MACHINE_ARG) $(SEQUENTIAL_ARG)
 
 .PHONY: test
 test: create-test run-test
