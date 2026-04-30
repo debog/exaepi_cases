@@ -228,14 +228,17 @@ def main():
             print(f'plot requires numpy + matplotlib: {e}', file=sys.stderr)
             sys.exit(1)
 
-        # Group by scenario (run-dir prefix before _Ngpu)
+        # Group by scenario (run-dir prefix before _Ngpu).  Also extract the
+        # platform suffix so x-tick labels can disambiguate Matrix vs Tuolumne
+        # runs at the same GPU count.
         groups = {}
+        run_re = re.compile(r'(run_.+?_scale)_(\d+)gpu_(\S+)$')
         for s in summaries:
             run = os.path.basename(os.path.dirname(s['path']))
-            # run_CA_03D_scale_4gpu_tuolumne -> scenario: run_CA_03D_scale; ranks from name or banner
-            m = re.match(r'(run_.+?_scale)_(\d+)gpu', run)
+            m = run_re.match(run)
             if not m: continue
-            scen = m.group(1)
+            scen, _, platform = m.group(1), m.group(2), m.group(3)
+            s['_platform'] = platform
             groups.setdefault(scen, []).append(s)
 
         n_groups = len(groups)
@@ -243,11 +246,18 @@ def main():
             print('No identifiable scenarios for plotting.', file=sys.stderr)
             sys.exit(1)
 
+        # Map platform name to a single-character tick suffix.
+        plat_short = {'matrix': 'M', 'tuolumne': 'T', 'dane': 'D',
+                      'ruby': 'R', 'linux': 'L'}
+
         fig, axes = plt.subplots(1, n_groups, figsize=(6*n_groups, 5),
                                  squeeze=False)
         for ax, (scen, lst) in zip(axes[0], sorted(groups.items())):
-            lst.sort(key=lambda s: s['mpi_ranks'] or 0)
+            # Sort by rank count first, then by platform so paired bars sit
+            # adjacent and in a consistent order.
+            lst.sort(key=lambda s: (s['mpi_ranks'] or 0, s.get('_platform', '')))
             ranks = [s['mpi_ranks'] for s in lst]
+            plats = [s.get('_platform', '?') for s in lst]
             comp = [s['compute'] for s in lst]
             mpi  = [s['mpi'] for s in lst]
             io_  = [s['io'] for s in lst]
@@ -259,7 +269,9 @@ def main():
                    label='I/O', color='#5e8c61')
             ax.bar(x, oth,  bottom=[c+m+i for c,m,i in zip(comp,mpi,io_)],
                    label='other', color='#999999')
-            ax.set_xticks(x); ax.set_xticklabels([str(r) for r in ranks])
+            tick_labels = [f"{r}({plat_short.get(p, p[:1].upper())})"
+                           for r, p in zip(ranks, plats)]
+            ax.set_xticks(x); ax.set_xticklabels(tick_labels)
             ax.set_xlabel('GPUs (= MPI ranks)')
             ax.set_ylabel('Excl. avg time per kernel category (s)')
             ax.set_title(scen)
