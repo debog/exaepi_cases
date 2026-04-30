@@ -168,6 +168,44 @@ echo "Job finished at: \$(date)"
 EOF
 }
 
+extract_data_deps() {
+    # Print the list of data filenames referenced from an input file:
+    # agent.census_filename, agent.workerflow_filename, disease.case_filename,
+    # disease_<NAME>.case_filename, and any *.initial_case_filename / *.cases_filename.
+    local input="$1"
+    grep -E '^(agent\.(census|workerflow)_filename|disease(_[A-Za-z0-9]+)?\.(case|initial_case|cases)_filename)' "$input" | \
+        awk -F'=' '{print $2}' | tr -d ' ' | tr '"' '\n' | grep -v '^$'
+}
+
+resolve_data_file() {
+    # Locate a single data filename in the standard search paths.
+    # ExaEpi source tree is expected to live at $EXAEPI_DIR (set in the
+    # user's shell environment on every machine they work on).
+    local filename="$1"
+    local agent_dir; agent_dir=$(dirname "$AGENT_EXE")
+    local search_dirs=("${PROJECT_DIR}/data")
+    if [[ -n "${EXAEPI_DIR}" ]]; then
+        search_dirs+=(
+            "${EXAEPI_DIR}/data/CensusData"
+            "${EXAEPI_DIR}/data"
+            "${EXAEPI_DIR}"
+        )
+    fi
+    search_dirs+=(
+        "${agent_dir}/../data/CensusData"
+        "${agent_dir}/../data"
+        "${agent_dir}/../../data/CensusData"
+        "${agent_dir}/../../data"
+    )
+    for d in "${search_dirs[@]}"; do
+        if [[ -f "${d}/${filename}" ]]; then
+            echo "${d}/${filename}"
+            return 0
+        fi
+    done
+    return 1
+}
+
 stage_run_dir() {
     local case=$1
     local nodes=$2
@@ -175,15 +213,29 @@ stage_run_dir() {
     local rundir="${PARENT_DIR}/run_${case}_${ntasks}gpu_${PLATFORM}"
 
     mkdir -p "$rundir"
-    # Copy input file (so each scaling run is self-contained for reproduction)
-    cp "${INPUTS_DIR}/inputs_${case}" "${rundir}/inputs_${case}"
-    # Symlink data files needed by the agent (population data lives in the main inputs/data area)
-    for data_dep in BayArea.dat BayArea-wf.bin CA.dat CA-wf.bin US.dat US-wf.bin; do
-        src="${PROJECT_DIR}/inputs/${data_dep}"
-        if [[ -e "$src" && ! -e "${rundir}/${data_dep}" ]]; then
-            ln -sfn "$src" "${rundir}/${data_dep}"
+    # Copy input file (so each scaling run is self-contained for reproduction).
+    local input_src="${INPUTS_DIR}/inputs_${case}"
+    cp "$input_src" "${rundir}/inputs_${case}"
+
+    # Parse the input file for every data dependency and symlink each into the
+    # rundir. Missing files are reported but not fatal -- the agent will fail
+    # at startup with a clear message.
+    local missing=()
+    while IFS= read -r dep; do
+        [[ -z "$dep" ]] && continue
+        if [[ -e "${rundir}/${dep}" ]]; then continue; fi
+        local src
+        if src=$(resolve_data_file "$dep"); then
+            ln -sfn "$src" "${rundir}/${dep}"
+        else
+            missing+=("$dep")
         fi
-    done
+    done < <(extract_data_deps "$input_src")
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo -e "  ${YELLOW}WARN:${NC} could not resolve data files for ${case}: ${missing[*]}" >&2
+    fi
+
     write_jobscript "$case" "$nodes" "$ntasks" "$rundir"
     echo "$rundir"
 }
