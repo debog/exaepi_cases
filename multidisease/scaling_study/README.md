@@ -22,13 +22,18 @@ parses the profiler output to report compute vs. MPI vs. I/O costs.
 50-day simulations (enough for representative TinyProfiler statistics,
 short enough to keep compute bounded). Plot output disabled.
 
-| Scenario | Population | GPUs (= MPI ranks) | Nodes (Tuolumne; 4 GPU/node) |
-|----------|-----------:|-------------------:|------------------------------:|
-| CA 3-disease | 33.9M  | 1, 2, 4, 8        | 1, 1, 1, 2                  |
-| US 4-disease | 281M   | 8, 16, 32, 64     | 2, 4, 8, 16                 |
+| Scenario | Population | GPUs (= MPI ranks) | Nodes (4 GPU/node) |
+|----------|-----------:|-------------------:|-------------------:|
+| CA 3-disease | 33.9M  | 2, 4, 8, 16        | 1, 1, 2, 4         |
+| US 4-disease | 281M   | 32, 64, 128        | 8, 16, 32          |
 
 CA baseline in the paper is 4 GPUs / 1 node; US baseline is 32 GPUs /
-8 nodes. The sweeps span 1/4× to 2× the baseline GPU count for each.
+8 nodes. The sweeps span 1/2x to 4x the baseline GPU count for each.
+
+Lower-GPU configurations (CA at 1 GPU; US at 8 and 16 GPUs) were
+dropped because the per-GPU memory footprint exceeds device limits
+and the runs out-of-memory at agent initialization. The corresponding
+points were replaced by larger-GPU configurations on the high end.
 
 ## Files
 

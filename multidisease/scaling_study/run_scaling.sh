@@ -76,19 +76,22 @@ echo -e "${GREEN}Platform: ${PLATFORM}${NC}"
 echo ""
 
 # Define scaling configurations: (case, nodes, ntasks)
-# ntasks = number of GPUs across all nodes (1 GPU per task)
+# ntasks = number of GPUs across all nodes (1 GPU per task).
+# Lower-GPU configurations were dropped because the per-GPU memory
+# footprint exceeds the device limit (CA at 1 GPU; US at 8 and 16 GPUs)
+# and the runs OOM at agent initialization.  Replaced with larger-GPU
+# configurations on the high end.
 declare -a CONFIGS_CA=(
-    "CA_03D_scale 1 1"
     "CA_03D_scale 1 2"
     "CA_03D_scale 1 4"
     "CA_03D_scale 2 8"
+    "CA_03D_scale 4 16"
 )
 
 declare -a CONFIGS_US=(
-    "US_04D_scale 2 8"
-    "US_04D_scale 4 16"
     "US_04D_scale 8 32"
     "US_04D_scale 16 64"
+    "US_04D_scale 32 128"
 )
 
 CONFIGS=()
@@ -118,9 +121,8 @@ estimate_walltime() {
     local case=$1; local ntasks=$2
     case "$case" in
         CA_03D_scale)
-            # ~3 s/day at 4 GPUs; ~12 s/day at 1 GPU; 50 days => 600 s + buffer
-            if   (( ntasks == 1 )); then echo "01:00:00"
-            elif (( ntasks == 2 )); then echo "00:40:00"
+            # ~3 s/day at 4 GPUs; 50 days => ~150 s + buffer
+            if   (( ntasks == 2 )); then echo "00:40:00"
             elif (( ntasks == 4 )); then echo "00:30:00"
             else                          echo "00:30:00"
             fi ;;
