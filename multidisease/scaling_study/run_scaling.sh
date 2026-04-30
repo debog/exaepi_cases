@@ -237,7 +237,14 @@ stage_run_dir() {
     local ntasks=$3
     local rundir="${PARENT_DIR}/run_${case}_${ntasks}gpu_${PLATFORM}"
 
+    # Wipe any prior outputs from a previous submission of the same
+    # configuration so the analyzer cannot pick up stale logs.  Matches
+    # the convention in scripts/run_exaepi.sh's setup_run_directory().
+    if [[ -d "$rundir" ]]; then
+        rm -rf "$rundir"
+    fi
     mkdir -p "$rundir"
+
     # Copy input file (so each scaling run is self-contained for reproduction).
     local input_src="${INPUTS_DIR}/inputs_${case}"
     cp "$input_src" "${rundir}/inputs_${case}"
