@@ -48,6 +48,26 @@ test_cases:
     nsteps: 120
     tags: [regional, multi_strain, variant]
 
+  ca.urbanpop:
+    name: "California (urban population)"
+    description: "California simulation with urban population data"
+    input_file: inputs.ca.urbanpop
+    data_files:
+      - urbanpop_ca.bin
+      - July4.cases
+    nsteps: 120
+    tags: [regional, urban_pop, variant]
+
+  ca.urbanpop.2d:
+    name: "California (urban population, 2 diseases)"
+    description: "California simulation with urban population and 2 disease strains"
+    input_file: inputs.ca.urbanpop.2d
+    data_files:
+      - urbanpop_ca.bin
+      - July4.cases
+    nsteps: 120
+    tags: [regional, urban_pop, multi_disease, variant]
+
   bay:
     name: "Bay Area"
     description: "Bay Area simulation with 2 disease strains"
@@ -111,10 +131,22 @@ test_cases:
     nsteps: 120
     tags: [regional, urban_pop, variant]
 
+  nm.urbanpop.3d:
+    name: "New Mexico (urban population, 3 diseases)"
+    description: "New Mexico simulation with urban population and 3 disease strains"
+    input_file: inputs.nm.urbanpop.3d
+    data_files:
+      - urbanpop_nm.bin
+    nsteps: 120
+    tags: [regional, urban_pop, multi_disease, variant]
+
 # Test groups for batch operations
 test_groups:
   standard: [ca, bay, ma, nm]
-  all_ca: [ca, ca.noair, ca.random, ca.2dc1c2]
-  all_variants: [ca.noair, ca.random, ca.2dc1c2, nm.urbanpop]
+  all_ca: [ca, ca.noair, ca.random, ca.2dc1c2, ca.urbanpop, ca.urbanpop.2d]
+  all_nm: [nm, nm.urbanpop, nm.urbanpop.3d]
+  all_variants: [ca.noair, ca.random, ca.2dc1c2, ca.urbanpop, ca.urbanpop.2d, nm.urbanpop, nm.urbanpop.3d]
+  urbanpop: [ca.urbanpop, ca.urbanpop.2d, nm.urbanpop, nm.urbanpop.3d]
+  multi_disease: [ca.2dc1c2, bay, ca.urbanpop.2d, nm.urbanpop.3d]
   quick: [bay, ma]
-  full: [ca, ca.noair, ca.random, ca.2dc1c2, bay, ma, nm, nm.urbanpop]
+  full: [ca, ca.noair, ca.random, ca.2dc1c2, ca.urbanpop, ca.urbanpop.2d, bay, ma, nm, nm.urbanpop, nm.urbanpop.3d]

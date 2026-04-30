@@ -1,0 +1,33 @@
+##
+agent.number_of_diseases = 3
+agent.disease_names = "covid" "flu" "rsv"
+
+agent.ic_type = "urbanpop"
+agent.urbanpop_filename = "urbanpop_nm.bin"
+
+agent.nsteps = 120
+agent.plot_int = 10
+
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+
+disease_covid.initial_case_type = "random"
+disease_covid.num_initial_cases = 500
+disease_flu.initial_case_type = "random"
+disease_flu.num_initial_cases = 300
+disease_rsv.initial_case_type = "random"
+disease_rsv.num_initial_cases = 200
+
+disease.p_trans = 0.20
+disease.p_asymp = 0.40
+disease_flu.p_trans = 0.25
+disease_rsv.p_trans = 0.18
+
+disease_coupling.coimmunity_matrix = \
+    1.0  0.5  0.6 \
+    0.5  1.0  0.4 \
+    0.6  0.4  1.0 \
+disease_coupling.cosusceptibility_matrix = \
+    1.0  1.5  1.3 \
+    1.5  1.0  1.2 \
+    1.3  1.2  1.0 \

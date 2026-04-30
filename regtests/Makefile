@@ -22,17 +22,16 @@ help:
 	@echo "Usage:"
 	@echo "  make baseline [CASES=<cases>] [MACHINE=<machine>] [SEQUENTIAL=1]  - Create and run baseline tests"
 	@echo "  make test [CASES=<cases>] [MACHINE=<machine>] [SEQUENTIAL=1]       - Create and run tests"
-	@echo "  make compare [MACHINE=<machine>]                                   - Compare test results against baselines"
-	@echo "  make plot [CASES=<cases>] [MACHINE=<machine>]                      - Generate comparison plots"
-	@echo "  make clean                                                         - Remove test directories"
-	@echo "  make clean-baselines                                               - Remove baseline directories"
-	@echo "  make clean-all                                                     - Remove all generated directories"
-	@echo "  make list-cases                                                    - List available test cases"
-	@echo "  make list-machines                                                 - List available machines"
-	@echo "  make validate                                                      - Validate environment setup"
-	@echo ""
-	@echo "Options:"
-	@echo "  SEQUENTIAL=1  - Run cases one-by-one instead of submitting all at once"
+	@echo "  make compare [MACHINE=<machine>]                    - Compare test results against baselines"
+	@echo "  make check-baseline [MACHINE=<machine>]             - Check baseline simulations for completion"
+	@echo "  make check-test [MACHINE=<machine>]                 - Check test simulations for completion"
+	@echo "  make plot [CASES=<cases>] [MACHINE=<machine>]       - Generate comparison plots"
+	@echo "  make clean                                          - Remove test directories"
+	@echo "  make clean-baselines                                - Remove baseline directories"
+	@echo "  make clean-all                                      - Remove all generated directories"
+	@echo "  make list-cases                                     - List available test cases"
+	@echo "  make list-machines                                  - List available machines"
+	@echo "  make validate                                       - Validate environment setup"
 	@echo ""
 	@echo "Machines:"
 	@echo "  HPC systems (auto-detected): perlmutter, dane, matrix, tuolumne"
@@ -98,6 +97,20 @@ test: create-test run-test
 .PHONY: compare
 compare:
 	@$(PYTHON) regtest.py compare $(MACHINE_ARG)
+
+.PHONY: check-baseline
+check-baseline:
+	@./check_simulations.sh baseline $(MACHINE)
+
+.PHONY: check-test
+check-test:
+	@./check_simulations.sh test $(MACHINE)
+
+.PHONY: check
+check: check-test
+	@echo ""
+	@echo "Use 'make check-baseline' to check baseline simulations"
+	@echo "Use 'make check-test' to check test simulations"
 
 .PHONY: plot
 plot:
