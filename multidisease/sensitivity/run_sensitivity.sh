@@ -122,8 +122,11 @@ for case_name in "${CASES[@]}"; do
         echo -e "${RED}ERROR:${NC} Input file not found: $src" >&2
         exit 1
     fi
-    if [[ ! -e "$dst" ]]; then
-        ln -s "$src" "$dst"
+    # Create or refresh the symlink. -L catches existing symlinks (including
+    # broken ones from a different filesystem); -e by itself would miss them.
+    # Real files at $dst are left alone.
+    if [[ -L "$dst" || ! -e "$dst" ]]; then
+        ln -sfn "$src" "$dst"
         LINKED+=("$dst")
     fi
 done
