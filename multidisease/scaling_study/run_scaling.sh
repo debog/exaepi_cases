@@ -169,7 +169,7 @@ write_jobscript() {
 
     cat > "${rundir}/exaepi.job" <<EOF
 #!/bin/bash
-#SBATCH --job-name=scale_${case}_${ntasks}gpu
+#SBATCH --job-name=scale_${case}_$(printf '%03d' "${ntasks}")gpu
 #SBATCH --nodes=${nodes}
 #SBATCH --ntasks=${ntasks}
 #SBATCH --time=${walltime}
@@ -237,7 +237,10 @@ stage_run_dir() {
     local case=$1
     local nodes=$2
     local ntasks=$3
-    local rundir="${PARENT_DIR}/run_${case}_${ntasks}gpu_${PLATFORM}"
+    # Zero-pad GPU count to 3 digits so directory listings sort numerically.
+    local ngpu_pad
+    ngpu_pad=$(printf '%03d' "${ntasks}")
+    local rundir="${PARENT_DIR}/run_${case}_${ngpu_pad}gpu_${PLATFORM}"
 
     # Wipe any prior outputs from a previous submission of the same
     # configuration so the analyzer cannot pick up stale logs.  Matches
