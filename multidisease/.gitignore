@@ -7,6 +7,19 @@
 # Sensitivity analysis directories
 .sensitivity_*/
 
+# Other sweep / scaling parent directories
+.seed_sensitivity/
+.joint_sensitivity/
+.scaling_study/
+
+# Sweep-input symlinks regenerated on demand by the runner scripts
+# (the canonical files live under <sweep_dir>/inputs/; the symlinks are
+# only created so that run_exaepi.sh's find_input_file() can locate them).
+inputs/inputs_*_cosus*
+inputs/inputs_*_coimm*
+inputs/inputs_*_seed_*
+inputs/inputs_*_scale
+
 # Plot outputs
 plots/
 
