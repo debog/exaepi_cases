@@ -42,6 +42,7 @@ serves as the reference.
 - `inputs/inputs_bay_02D_Cov19S1S2_seed_half`
 - `inputs/inputs_bay_02D_Cov19S1S2_seed_double`
 - `run_seed_sensitivity.sh` — submits all three cases as ensembles
+- `monitor_seed_sensitivity.sh` — watches running ensembles for the current platform
 
 The runner symlinks the input files into the main `inputs/`
 directory (matching `sensitivity/run_sensitivity.sh`'s convention)
@@ -60,6 +61,18 @@ in the project root.
 # Verbose
 ./run_seed_sensitivity.sh --verbose
 ```
+
+## Monitoring
+
+```bash
+# Watch ensembles in .seed_sensitivity/ for the current platform.
+# Refreshes every 2 minutes; Ctrl+C to exit.
+./monitor_seed_sensitivity.sh
+```
+
+Per-case states: `✓ Completed` (output statistics present), or
+in-progress with the SLURM status (read from `job_id.txt`) and the
+last 3 `Run` lines from the ensemble `.out` file.
 
 ## Analysis
 
