@@ -313,7 +313,17 @@ class RegtestOrchestrator:
         # Create symlinks to common data files
         data_files = case_config.get('data_files', [])
         for data_file in data_files:
-            src = self.common_dir / data_file
+            # Check if this is an urbanpop file - use EXAEPI_URBANPOP_DATA if available
+            if data_file.startswith('urbanpop_') and data_file.endswith('.bin'):
+                urbanpop_data = os.environ.get('EXAEPI_URBANPOP_DATA')
+                if urbanpop_data:
+                    src = Path(urbanpop_data) / data_file
+                else:
+                    # Fall back to common directory
+                    src = self.common_dir / data_file
+            else:
+                src = self.common_dir / data_file
+
             dst = test_dir / data_file
 
             if not src.exists():
