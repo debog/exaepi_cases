@@ -8,12 +8,14 @@ Unified, configuration-driven regression testing for ExaEpi across HPC systems a
 # Setup
 export EXAEPI_BUILD=/path/to/exaepi/build
 export EXAEPI_DIR=/path/to/exaepi/source
+export EXAEPI_URBANPOP_DATA=/path/to/urbanpop/data  # Optional, for urbanpop tests
 pip install -r requirements.txt
 
-# Validate environment
+# Validate environment (auto-populates common/ directory if empty)
 ./regtest.py validate
 
 # Run tests (auto-detects HPC machines, specify for Linux)
+# Note: common/ directory is automatically populated on first run
 make baseline CASES=standard              # HPC auto-detect
 make baseline CASES=standard MACHINE=linux   # Linux workstation
 make test CASES=ca,bay MACHINE=linux
@@ -65,6 +67,7 @@ make bay MACHINE=linux   # Run just Bay Area
    ```bash
    export EXAEPI_BUILD=/path/to/exaepi/build
    export EXAEPI_DIR=/path/to/exaepi/source
+   export EXAEPI_URBANPOP_DATA=/path/to/urbanpop/data  # Optional, for urbanpop tests
    ```
 
 3. **Build directory structure:**
@@ -73,7 +76,17 @@ make bay MACHINE=linux   # Run just Bay Area
 
    The system auto-detects your structure.
 
-4. **MPI (Linux systems only):**
+4. **Common data directory:**
+   The `common/` directory is **automatically populated** on first run from `$EXAEPI_DIR/data/` and `$EXAEPI_DIR/examples/`.
+
+   - Census data copied from `$EXAEPI_DIR/data/CensusData/`
+   - Case data copied from `$EXAEPI_DIR/data/CaseData/`
+   - Input files copied from `$EXAEPI_DIR/examples/`
+   - Urbanpop files symlinked from `$EXAEPI_URBANPOP_DATA` (if set)
+
+   You can also manually run: `./scripts/setup_common_data.sh`
+
+5. **MPI (Linux systems only):**
    - MPICH: `mpiexec` in PATH
    - OpenMPI: `mpirun` in PATH
 

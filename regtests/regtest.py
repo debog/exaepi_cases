@@ -63,6 +63,114 @@ class RegtestOrchestrator:
 
         return None
 
+    def _setup_common_directory(self) -> bool:
+        """
+        Populate common directory from EXAEPI_DIR if empty or missing files.
+        Returns True if setup was performed, False if skipped.
+        """
+        # Check if common directory exists and has files
+        if self.common_dir.exists():
+            existing_files = list(self.common_dir.glob('*'))
+            # Filter out hidden files and directories
+            existing_files = [f for f in existing_files if f.is_file() and not f.name.startswith('.')]
+            if len(existing_files) > 5:  # Arbitrary threshold - if we have some files, assume it's set up
+                return False
+
+        if 'EXAEPI_DIR' not in os.environ:
+            print("WARNING: EXAEPI_DIR not set - cannot auto-populate common directory")
+            return False
+
+        exaepi_dir = Path(os.environ['EXAEPI_DIR'])
+        if not exaepi_dir.exists():
+            print(f"WARNING: EXAEPI_DIR directory does not exist: {exaepi_dir}")
+            return False
+
+        print("=" * 60)
+        print("Setting up common data directory from EXAEPI_DIR...")
+        print("=" * 60)
+        print()
+
+        # Create common directory
+        self.common_dir.mkdir(parents=True, exist_ok=True)
+
+        copied_count = 0
+
+        # Copy census data files
+        print("[1/4] Copying census data files...")
+        census_dir = exaepi_dir / "data" / "CensusData"
+        if census_dir.exists():
+            for pattern in ['*.dat', '*.bin']:
+                for src_file in census_dir.glob(pattern):
+                    dst_file = self.common_dir / src_file.name
+                    shutil.copy2(src_file, dst_file)
+                    print(f"  Copied: {src_file.name}")
+                    copied_count += 1
+        else:
+            print(f"  WARNING: {census_dir} not found")
+
+        # Copy case data files
+        print("\n[2/4] Copying case data files...")
+        case_dir = exaepi_dir / "data" / "CaseData"
+        if case_dir.exists():
+            for src_file in case_dir.glob('*.cases'):
+                dst_file = self.common_dir / src_file.name
+                shutil.copy2(src_file, dst_file)
+                print(f"  Copied: {src_file.name}")
+                copied_count += 1
+        else:
+            print(f"  WARNING: {case_dir} not found")
+
+        # Copy input files from examples
+        print("\n[3/4] Copying input files...")
+        examples_dir = exaepi_dir / "examples"
+        if examples_dir.exists():
+            for src_file in examples_dir.glob('inputs*'):
+                if src_file.is_file():
+                    dst_file = self.common_dir / src_file.name
+                    shutil.copy2(src_file, dst_file)
+                    print(f"  Copied: {src_file.name}")
+                    copied_count += 1
+        else:
+            print(f"  WARNING: {examples_dir} not found")
+
+        # Copy air traffic data
+        print("\n[4/4] Copying air traffic data...")
+        air_traffic_file = exaepi_dir / "data" / "CA_CY23AirTraffic.dat"
+        if air_traffic_file.exists():
+            dst_file = self.common_dir / air_traffic_file.name
+            shutil.copy2(air_traffic_file, dst_file)
+            print(f"  Copied: {air_traffic_file.name}")
+            copied_count += 1
+
+        # Handle urbanpop data - create symlinks if EXAEPI_URBANPOP_DATA is set
+        print("\nSetting up urbanpop data files...")
+        urbanpop_data = os.environ.get('EXAEPI_URBANPOP_DATA')
+        if urbanpop_data:
+            urbanpop_dir = Path(urbanpop_data)
+            if urbanpop_dir.exists():
+                print(f"  Using EXAEPI_URBANPOP_DATA: {urbanpop_data}")
+                for src_file in urbanpop_dir.glob('urbanpop_*.bin'):
+                    dst_file = self.common_dir / src_file.name
+                    # Remove existing symlink/file if present
+                    if dst_file.exists() or dst_file.is_symlink():
+                        dst_file.unlink()
+                    # Create symlink
+                    dst_file.symlink_to(src_file)
+                    print(f"  Linked: {src_file.name}")
+                    copied_count += 1
+            else:
+                print(f"  WARNING: EXAEPI_URBANPOP_DATA directory doesn't exist: {urbanpop_data}")
+        else:
+            print("  EXAEPI_URBANPOP_DATA not set - urbanpop tests will not work")
+
+        print()
+        print("=" * 60)
+        print(f"Setup complete! Copied/linked {copied_count} files.")
+        print("=" * 60)
+        print()
+
+        return True
+
     def _find_build_dir(self, machine: str = None) -> Optional[Path]:
         """
         Find the build directory, checking for machine-specific subdirectories.
@@ -124,7 +232,7 @@ class RegtestOrchestrator:
                     f"      - Machine subdirectory: {base_dir}/{machine_name}/bin/"
                 )
 
-        # Check for EXAEPI_DIR (needed for comparison tool)
+        # Check for EXAEPI_DIR (needed for comparison tool and common data)
         if 'EXAEPI_DIR' not in os.environ:
             errors.append("EXAEPI_DIR environment variable not set")
         else:
@@ -133,9 +241,16 @@ class RegtestOrchestrator:
             if not chkdiff.exists():
                 errors.append(f"Comparison tool not found: {chkdiff}")
 
-        # Check common directory exists
+        # Auto-setup common directory if empty or missing
+        if not self.common_dir.exists() or not any(self.common_dir.glob('*.dat')):
+            print("Common directory is empty or missing data files.")
+            self._setup_common_directory()
+
+        # Verify common directory has data
         if not self.common_dir.exists():
             errors.append(f"Common directory not found: {self.common_dir}")
+        elif not any(self.common_dir.glob('*.dat')):
+            errors.append(f"Common directory exists but contains no data files: {self.common_dir}")
 
         if errors:
             print("Environment validation failed:")
