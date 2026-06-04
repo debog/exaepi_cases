@@ -741,7 +741,8 @@ class RegtestOrchestrator:
 
                 job_script = job_scripts[0]
                 print(f"  Submitting {job_script.name}")
-                result = subprocess.run(['sbatch', job_script.name], cwd=test_dir, capture_output=True, text=True)
+                result = subprocess.run(['sbatch', job_script.name], cwd=test_dir,
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
                 if sequential:
                     # Extract job ID and wait for completion
@@ -754,7 +755,7 @@ class RegtestOrchestrator:
                             import time
                             while True:
                                 check_result = subprocess.run(['squeue', '-j', job_id],
-                                                            capture_output=True, text=True)
+                                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                                 # If job not in queue, it's done
                                 if job_id not in check_result.stdout:
                                     print(f"  Job {job_id} completed")
@@ -847,7 +848,8 @@ class RegtestOrchestrator:
 
                 job_script = job_scripts[0]
                 print(f"  Submitting {job_script.name}")
-                result = subprocess.run(['sbatch', job_script.name], cwd=tdir, capture_output=True, text=True)
+                result = subprocess.run(['sbatch', job_script.name], cwd=tdir,
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
                 if sequential:
                     # Extract job ID and wait for completion
@@ -860,7 +862,7 @@ class RegtestOrchestrator:
                             import time
                             while True:
                                 check_result = subprocess.run(['squeue', '-j', job_id],
-                                                            capture_output=True, text=True)
+                                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                                 # If job not in queue, it's done
                                 if job_id not in check_result.stdout:
                                     print(f"  Job {job_id} completed")
@@ -972,7 +974,8 @@ class RegtestOrchestrator:
                 cmd,
                 shell=True,
                 cwd=tdir,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True
             )
 
