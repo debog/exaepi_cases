@@ -15,6 +15,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# scheduler-agnostic job-status helpers (Slurm + Flux)
+source "${SCRIPT_DIR}/job_lib.sh"
+
 # Determine which prefixes to monitor
 PREFIXES=()
 if [[ $# -eq 0 ]]; then
@@ -86,14 +89,14 @@ for iteration in {1..1000000}; do
                 # In progress - show detailed output
                 echo -e "${CYAN}${case_name}${NC} ${BOLD}[${platform}]${NC}"
 
-                # Check if job is queued/running
+                # Check if job is queued/running (Slurm or Flux)
                 if [[ -f "${ensemble_dir}/job_id.txt" ]]; then
                     job_id=$(cat "${ensemble_dir}/job_id.txt" 2>/dev/null)
-                    if [[ -n "$job_id" ]] && command -v squeue &>/dev/null; then
-                        job_status=$(squeue -j "$job_id" -h -o "%T" 2>/dev/null)
-                        if [[ -n "$job_status" ]]; then
-                            echo -e "  Status: ${GREEN}${job_status}${NC}"
-                        fi
+                    job_status=$(get_job_status "$job_id")
+                    if [[ "$job_status" == "GONE" ]]; then
+                        echo -e "  Status: ${YELLOW}not in queue (finished or failed)${NC}"
+                    elif [[ -n "$job_status" && "$job_status" != "UNKNOWN" ]]; then
+                        echo -e "  Status: ${GREEN}${job_status}${NC}"
                     fi
                 fi
 

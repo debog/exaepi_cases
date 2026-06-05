@@ -17,6 +17,9 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# scheduler-agnostic job-status helpers (Slurm + Flux)
+source "${SCRIPT_DIR}/job_lib.sh"
+
 PREFIX=""
 FORCE=false
 for a in "$@"; do
@@ -45,14 +48,19 @@ for edir in "${dirs[@]}"; do
         continue
     fi
 
-    # Already queued/running? skip unless --force.
-    if [[ "$FORCE" != true && -f "${edir}/job_id.txt" ]] && command -v squeue &> /dev/null; then
+    # Already queued/running? skip unless --force (works under Slurm and Flux).
+    if [[ "$FORCE" != true && -f "${edir}/job_id.txt" ]]; then
         jid=$(cat "${edir}/job_id.txt" 2>/dev/null)
-        state=$(squeue -j "$jid" -h -o "%T" 2>/dev/null)
-        if [[ -n "$state" ]]; then
-            echo "[${name}] job ${jid} is ${state} - skipping (use --force to resubmit)"
+        state=$(get_job_status "$jid")
+        if job_state_is_active "$state"; then
+            echo "[${name}] job ${jid} is ${state} - skipping"
             continue
         fi
+        if [[ "$state" == "UNKNOWN" ]]; then
+            echo "[${name}] job ${jid:-?} status unknown - skipping (use --force to resubmit)"
+            continue
+        fi
+        # GONE / finished / failed -> fall through and resubmit
     fi
 
     if [[ ! -f "${edir}/exaepi.job" ]]; then

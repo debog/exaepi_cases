@@ -112,7 +112,10 @@ Run directories: `.run_bay_<case>_<platform>/` (single) and
 ```
 
 The ensemble job skips finished replicates and re-runs incomplete ones, so a
-restart is just a resubmit.
+restart is just a resubmit. Both scripts work on Slurm (Matrix, Dane) and Flux
+(Tuolumne) — the job-state check (`scripts/job_lib.sh`) falls back from
+`squeue` to `flux jobs`. When the scheduler cannot be queried,
+`restart_ensemble.sh` errs on the safe side and skips; resubmit with `--force`.
 
 ## Open item
 
