@@ -111,6 +111,22 @@ disease.xmit_hosp_d2p = 0.0
 disease.xmit_hosp_p2p = 0.0
 EOF
 
+# Mitigation block: a shelter-in-place window and a higher symptomatic-withdrawal
+# compliance, to flatten the epidemic into a realistic surge (peak load ~2-3x,
+# not the ~25x of an unmitigated run). The withdrawal lines override the base
+# (ParmParse takes the last value). Tune the shelter strength/timing and the
+# compliance to land the peak load in the target range.
+read -r -d '' MITIGATION <<'EOF' || true
+
+## --- Mitigation: shelter-in-place + symptomatic withdrawal ---
+agent.shelter_start = 40
+agent.shelter_length = 45
+agent.shelter_compliance = 0.7
+agent.symptomatic_withdraw_compliance_day_0 = 0.5 0.5 0.6 0.6 0.6 0.7
+agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.8 0.85 0.85 0.85 0.9
+agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.9 0.95 0.95 0.95 0.95
+EOF
+
 # --- two-disease base: COVID-19 (Cov19S1) + influenza A/H3N2 (FluS1) ----------
 #     Flu parameters and the COVID+flu coupling follow the multidisease decks.
 read -r -d '' BASE2D <<'EOF' || true
@@ -248,6 +264,21 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 5
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
+
+# --- H1 (mitigated): realistic surge via shelter-in-place + withdrawal ---------
+#     Same as H1_capacity but with mitigation, to pull the peak load into a
+#     realistic ~2-3x range (the unmitigated run overwhelms the ~10.9k real beds
+#     ~25x). Check the resulting peak load, tune the mitigation, then calibrate
+#     score_minimum / halfscore_load for the ~2x mortality target.
+write_case "H1_mitigated" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 5
+hospital_model.write_pltfiles = true
+${HOSP_XMIT_OFF}
+${MITIGATION}"
 
 # --- H3: in-hospital transmission -> workforce depletion feedback -------------
 #     same as H1 but the patient-coupled channels are on. Calibrate xmit_hosp_*

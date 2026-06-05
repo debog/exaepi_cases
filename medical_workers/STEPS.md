@@ -38,11 +38,20 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ```
 
 - **Viability:** confirm peak hospital load exceeds 1 (from the
-  `hospital_data_*` plotfiles, component `hospital_load`). If it never does,
-  the mechanism never engages — lengthen the run (`agent.nsteps`) or raise
-  transmission, then rerun.
-- Excess mortality = `H1_capacity` − `verify_ample` (same config, real vs
-  ample beds).
+  `hospital_data_*` plotfiles, component `hospital_load`). An *unmitigated*
+  Bay Area run overshoots badly — peak load ~25× the ~10.9k real beds, giving a
+  ~12× mortality multiplier. Use `bay_H1_mitigated` for a realistic surge:
+
+  ```bash
+  ./scripts/run_exaepi.sh --case=bay_H1_mitigated --mode=batch --ensemble --ensemble-size=25
+  ```
+
+  It adds a shelter-in-place window and a higher symptomatic-withdrawal
+  compliance to flatten the curve toward a peak load of ~2-3×. Check the peak
+  hospitalized against the bed supply (~10,876) and tune the mitigation in
+  `inputs/make_inputs.sh` (`MITIGATION` block) until the load is in range.
+- Excess mortality = `H1_*` − the matching ample-bed baseline (same config and
+  mitigation, real vs ample beds).
 - Tune `score_minimum` and `halfscore_load` so in-hospital mortality at peak
   load is ~2× the unstrained baseline. Edit `inputs/make_inputs.sh`, rerun
   `make_inputs.sh`, resubmit. Iterate.
