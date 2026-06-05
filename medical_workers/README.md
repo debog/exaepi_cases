@@ -29,6 +29,7 @@ disease base + a medical-worker block.
 |---|---|---|---|---|
 | `verify_off` | Baseline; must match `development` | off | — | — |
 | `verify_ample` | Model on, no strain → recovers baseline mortality | on | ample (per-capita ×100) | off |
+| `verify_match` | Control: matched transmission → should match baseline | on | ample (per-capita ×100) | d2d=work, rest off |
 | `H1_capacity` | **H1**: load → excess mortality, workforce ~fixed | on | real, county | off |
 | `H3_hcw` | **H3**: in-hospital transmission → workforce depletion | on | real, county | on |
 | `H2_mw08` | **H2**: small workforce (fragile capacity) | on | real, county | on |
@@ -50,7 +51,12 @@ feature, so the mechanism is isolated:
 - **Reproduces `development`:** `verify_off` vs a `development` run of the same
   deck (the gate check; the regtests already cover this).
 - **No-strain limit:** `verify_ample` — model on but beds ample, so treatment
-  quality stays 1 and mortality matches the baseline.
+  quality stays 1 and mortality matches the baseline (its epidemic is slightly
+  smaller, as medical workers leave the workplace mixing pool).
+- **Matched control:** `verify_match` — like `verify_ample` but doctor-to-doctor
+  transmission at the workplace rate restores medical-worker mixing; it should
+  reproduce `verify_off`, so `verify_off` − `verify_ample` is provably the
+  reduced medical-worker transmission.
 - **H1 (excess mortality from capacity):** `H1_capacity` − `verify_ample`.
   Same model configuration; the only difference is real vs ample beds.
 - **H3 (workforce-depletion feedback):** `H3_hcw` − `H1_capacity`. The only

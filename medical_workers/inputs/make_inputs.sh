@@ -111,6 +111,18 @@ disease.xmit_hosp_d2p = 0.0
 disease.xmit_hosp_p2p = 0.0
 EOF
 
+# Matched in-hospital transmission: doctor-to-doctor at the regular workplace
+# rate (xmit_work = 0.0575), no patient channels. Medical workers keep their
+# occupational transmission (now in the hospital workgroup), so a model-on run
+# with ample beds should reproduce the baseline; the gap to verify_ample is then
+# attributable to the reduced medical-worker transmission there.
+read -r -d '' HOSP_XMIT_MATCH <<'EOF' || true
+disease.xmit_hosp_d2d = 0.0575
+disease.xmit_hosp_p2d = 0.0
+disease.xmit_hosp_d2p = 0.0
+disease.xmit_hosp_p2p = 0.0
+EOF
+
 # Mitigation block: a shelter-in-place window and a higher symptomatic-withdrawal
 # compliance, to flatten the epidemic into a realistic surge (peak load ~2-3x,
 # not the ~25x of an unmitigated run). The withdrawal lines override the base
@@ -252,6 +264,19 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 5
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
+
+# --- verification: matched control -- model on, ample beds, doctor-to-doctor at
+#     the workplace rate, no patient channels. Restores medical-worker
+#     transmission so this should reproduce the baseline (verify_off); the gap
+#     from verify_ample is then attributable to reduced medical-worker mixing.
+write_case "verify_match" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = false
+hospital_model.staffed_beds_per_1000 = 100.0
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 5
+hospital_model.write_pltfiles = true
+${HOSP_XMIT_MATCH}"
 
 # --- H1: hospital load -> excess mortality, workforce held ~fixed -------------
 #     real county beds; no in-hospital transmission so capacity ~ bed supply.

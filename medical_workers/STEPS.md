@@ -24,12 +24,19 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ```bash
 ./scripts/run_exaepi.sh --case=bay_verify_off    --mode=batch --ensemble --ensemble-size=25
 ./scripts/run_exaepi.sh --case=bay_verify_ample  --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_verify_match  --mode=batch --ensemble --ensemble-size=25
 ```
 
 - `verify_off` must reproduce a `development` run of the same deck (the gate
   check; the regtests already cover this).
 - `verify_ample` mortality must match the baseline — with ample beds, load
-  stays below 1, treatment quality stays at 1.
+  stays below 1, treatment quality stays at 1. Its epidemic is slightly smaller
+  than the baseline because medical workers leave the workplace mixing pool.
+- `verify_match` is the control for that confound: ample beds, doctor-to-doctor
+  transmission at the workplace rate, no patient channels. It should reproduce
+  the baseline, proving the `verify_ample` gap is the reduced medical-worker
+  transmission. Fetch its summaries into `draft/figures/data/` as
+  `verify_match_{mean,std}.dat`; `plot_verification.py` then adds its curve.
 
 ## 2. H1 — viability and capacity → excess mortality (calibrate the score)
 
