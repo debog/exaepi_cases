@@ -88,7 +88,7 @@ disease.hospital_stay_type = "constant"
 disease.hospitalization_days = 3 3 3 3 8 7
 
 ## Hospital outcome probabilities (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-disease.CHR = 0.0104 0.0104 0.070 0.28 0.28 1.0
+disease.CHR = 0.0181 0.0094 0.0260 0.0260 0.0720 0.2244
 disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
 disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
 disease.hospCVF = 0 0 0 0 0 0
@@ -138,6 +138,18 @@ agent.symptomatic_withdraw_compliance_day_0 = 0.5 0.5 0.6 0.6 0.6 0.7
 agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.8 0.85 0.85 0.85 0.9
 agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.9 0.95 0.95 0.95 0.95
 EOF
+
+# Note: the COVID-19 disease.CHR set in BASE and BASE2D is the realistic US
+# age-stratified hospitalization rate, P(hospitalized | symptomatic case),
+# replacing the high EpiCast defaults (CHR=1.0 for 65+) that drove peak load ~25x.
+# It is computed as estimated hospitalizations / symptomatic illnesses by age from
+# Reese et al. 2021 (Clin Infect Dis 72(12):e1010; CDC, United States, Feb-Sep
+# 2020), Table 3 over Table 4:
+#   0-4   20719/1144532   = 0.0181
+#   5-17  44321/4719785   = 0.0094
+#   18-49 652741/25096725 = 0.0260   (ExaEpi 18-29 and 30-49 both take this)
+#   50-64 642358/8926318  = 0.0720
+#   >=65  1022295/4556384 = 0.2244
 
 # --- two-disease base: COVID-19 (Cov19S1) + influenza A/H3N2 (FluS1) ----------
 #     Flu parameters and the COVID+flu coupling follow the multidisease decks.
@@ -207,7 +219,7 @@ disease.hospital_delay_length_alpha = 1.0
 disease.hospital_delay_length_beta = 1.0
 disease.hospital_stay_type = "constant"
 disease.hospitalization_days = 3 3 3 3 8 7
-disease.CHR = 0.0104 0.0104 0.070 0.28 0.28 1.0
+disease.CHR = 0.0181 0.0094 0.0260 0.0260 0.0720 0.2244
 disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
 disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
 disease.hospCVF = 0 0 0 0 0 0
