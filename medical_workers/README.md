@@ -6,6 +6,9 @@ structure mirrors `../multidisease`: a generic runner copies data and
 submits jobs, run/ensemble directories are `.run_*/` and `.ensemble_*/`
 (git-ignored).
 
+**[STEPS.md](STEPS.md)** is the step-by-step runbook (what to run, in what
+order). This README covers the design and the experiment matrix.
+
 ## Prerequisites
 
 - `EXAEPI_BUILD` — ExaEpi build directory (contains `bin/agent`).
