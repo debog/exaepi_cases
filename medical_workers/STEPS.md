@@ -22,8 +22,8 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ## 1. Verification (the model reduces to the baseline)
 
 ```bash
-./scripts/run_exaepi.sh --case=bay_verify_off    --mode=batch --ensemble --ensemble-size=10
-./scripts/run_exaepi.sh --case=bay_verify_ample  --mode=batch --ensemble --ensemble-size=10
+./scripts/run_exaepi.sh --case=bay_verify_off    --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_verify_ample  --mode=batch --ensemble --ensemble-size=25
 ```
 
 - `verify_off` must reproduce a `development` run of the same deck (the gate
@@ -34,7 +34,7 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ## 2. H1 — viability and capacity → excess mortality (calibrate the score)
 
 ```bash
-./scripts/run_exaepi.sh --case=bay_H1_capacity --mode=batch --ensemble --ensemble-size=10
+./scripts/run_exaepi.sh --case=bay_H1_capacity --mode=batch --ensemble --ensemble-size=25
 ```
 
 - **Viability:** confirm peak hospital load exceeds 1 (from the
@@ -50,7 +50,7 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ## 3. H3 — in-hospital transmission → workforce depletion (calibrate xmit_hosp)
 
 ```bash
-./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --ensemble-size=10
+./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --ensemble-size=25
 ```
 
 - From `medical_workers.dat`, per day: `MW_*` (medical workers) and `OW_*`
@@ -65,7 +65,7 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 
 ```bash
 for c in H2_mw08 H3_hcw H2_mw20; do
-    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=10
+    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 ```
 
@@ -75,8 +75,27 @@ done
 ## 5. Combined (all mechanisms, real placement + routing)
 
 ```bash
-./scripts/run_exaepi.sh --case=bay_combined --mode=batch --ensemble --ensemble-size=10
+./scripts/run_exaepi.sh --case=bay_combined --mode=batch --ensemble --ensemble-size=25
 ```
+
+## 6. Multidisease (in-hospital cross-disease transmission)
+
+Two co-circulating diseases (COVID-19 + influenza) are needed for the
+patient-coupled channels (`d2p`, `p2p`) to act: a patient admitted for one
+disease can acquire the other in the hospital. With a single disease these
+channels are inert.
+
+```bash
+./scripts/run_exaepi.sh --case=bay_md_combined --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_md_nonoso   --mode=batch --ensemble --ensemble-size=25
+```
+
+- `md_combined` turns on all four in-hospital channels; `md_nonoso` keeps the
+  worker channels (`p2d`, `d2d`) but turns the patient-coupled channels off.
+- Nosocomial co-infection = `md_combined` − `md_nonoso`: the agents who acquire
+  a second disease in the hospital, and the excess mortality from it. Outputs are
+  per disease (`output_Cov19S1.dat` / `output_FluS1.dat`,
+  `medical_workers_Cov19S1.dat` / `medical_workers_FluS1.dat`).
 
 ## Monitor and restart (any time)
 
@@ -107,3 +126,4 @@ done
 3. H3_hcw → calibrate xmit_hosp from `medical_workers.dat`.
 4. H2_mw08 / H3_hcw / H2_mw20 → workforce-size sweep.
 5. combined → realistic showcase.
+6. md_combined / md_nonoso → in-hospital cross-disease (nosocomial) transmission.
