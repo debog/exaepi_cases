@@ -23,11 +23,11 @@ agent.census_filename = "BayArea.dat"
 agent.workerflow_filename = "BayArea-wf.bin"
 
 ## Simulation control
-agent.nsteps = 120
+agent.nsteps = 365
 agent.max_box_size = 16
 
 ## Output control
-agent.plot_int = 5
+agent.plot_int = 15
 agent.check_int = -1
 agent.aggregated_diag_int = 1
 agent.aggregated_diag_prefix = "cases"
@@ -123,20 +123,24 @@ disease.xmit_hosp_d2p = 0.0
 disease.xmit_hosp_p2p = 0.0
 EOF
 
-# Mitigation block: a shelter-in-place window and a higher symptomatic-withdrawal
-# compliance, to flatten the epidemic into a realistic surge (peak load ~2-3x,
-# not the ~25x of an unmitigated run). The withdrawal lines override the base
-# (ParmParse takes the last value). Tune the shelter strength/timing and the
-# compliance to land the peak load in the target range.
+# Mitigation block: SUSTAINED moderate distancing (a long, partial shelter, not a
+# short hard lockdown) plus an age-tiered symptomatic-withdrawal compliance. A
+# short shelter window only delays the wave: the susceptible pool stays intact and
+# the epidemic rebounds when it lifts. Sustained partial distancing lets the
+# epidemic burn slowly through the low-risk young (low CHR, few hospitalizations)
+# and build an immune buffer, flattening the peak load toward the ~2-3x target.
+# The young withdraw less than the old. The withdrawal lines override the base
+# (ParmParse takes the last value). Check the peak load and tune
+# shelter_compliance/length to land in the target range.
 read -r -d '' MITIGATION <<'EOF' || true
 
-## --- Mitigation: shelter-in-place + symptomatic withdrawal ---
+## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
 agent.shelter_start = 40
-agent.shelter_length = 45
-agent.shelter_compliance = 0.7
-agent.symptomatic_withdraw_compliance_day_0 = 0.5 0.5 0.6 0.6 0.6 0.7
-agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.8 0.85 0.85 0.85 0.9
-agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.9 0.95 0.95 0.95 0.95
+agent.shelter_length = 280
+agent.shelter_compliance = 0.4
+agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.4 0.5 0.6 0.8
+agent.symptomatic_withdraw_compliance_day_1 = 0.5 0.5 0.7 0.8 0.85 0.95
+agent.symptomatic_withdraw_compliance_day_2 = 0.7 0.7 0.85 0.9 0.95 0.98
 EOF
 
 # Note: the COVID-19 disease.CHR set in BASE and BASE2D is the realistic US
@@ -173,11 +177,11 @@ agent.census_filename = "BayArea.dat"
 agent.workerflow_filename = "BayArea-wf.bin"
 
 ## Simulation control
-agent.nsteps = 120
+agent.nsteps = 365
 agent.max_box_size = 16
 
 ## Output control
-agent.plot_int = 5
+agent.plot_int = 15
 agent.check_int = -1
 agent.aggregated_diag_int = 1
 agent.aggregated_diag_prefix = "cases"
@@ -286,7 +290,8 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 100.0
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
 
@@ -299,33 +304,36 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 100.0
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_MATCH}"
 
 # --- H1: hospital load -> excess mortality, workforce held ~fixed -------------
 #     real county beds; no in-hospital transmission so capacity ~ bed supply.
-#     Calibrate score_minimum / halfscore_load here (mortality ~2x at peak strain).
+#     score_minimum / halfscore_load calibrated for the minimum-score model (~2x
+#     overall mortality at 2.5x peak load) via calibration/calibrate_treatment_score.py.
 write_case "H1_capacity" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
 
 # --- H1 (mitigated): realistic surge via shelter-in-place + withdrawal ---------
-#     Same as H1_capacity but with mitigation, to pull the peak load into a
-#     realistic ~2-3x range (the unmitigated run overwhelms the ~10.9k real beds
-#     ~25x). Check the resulting peak load, tune the mitigation, then calibrate
-#     score_minimum / halfscore_load for the ~2x mortality target.
+#     Same as H1_capacity but with sustained age-tiered mitigation, over a
+#     one-year horizon, to pull the peak load into the realistic ~2-3x range.
+#     Check the resulting peak load and tune the mitigation (shelter_compliance/length).
 write_case "H1_mitigated" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
@@ -338,7 +346,8 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
@@ -349,7 +358,8 @@ agent.med_workers_proportion = 0.08
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
@@ -358,7 +368,8 @@ agent.med_workers_proportion = 0.20
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
@@ -368,7 +379,8 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
@@ -383,7 +395,8 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.00575
 disease.xmit_hosp_p2d = 0.00575
@@ -399,7 +412,8 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.00575
 disease.xmit_hosp_p2d = 0.00575

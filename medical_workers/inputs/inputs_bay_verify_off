@@ -4,11 +4,11 @@ agent.census_filename = "BayArea.dat"
 agent.workerflow_filename = "BayArea-wf.bin"
 
 ## Simulation control
-agent.nsteps = 120
+agent.nsteps = 365
 agent.max_box_size = 16
 
 ## Output control
-agent.plot_int = 5
+agent.plot_int = 15
 agent.check_int = -1
 agent.aggregated_diag_int = 1
 agent.aggregated_diag_prefix = "cases"
