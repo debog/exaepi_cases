@@ -1430,7 +1430,7 @@ num_runs = int(os.environ.get('NUM_RUNS', '100'))
 first_run = None
 for i in range(1, num_runs + 1):
     run_dir = os.path.join(ensemble_dir, 'run_%03d' % i)
-    candidates = [f for f in os.listdir(run_dir) if f.startswith('output') and f.endswith('.dat')]
+    candidates = [f for f in os.listdir(run_dir) if (f.startswith('output') or f.startswith('medical_workers')) and f.endswith('.dat')]
     if candidates:
         first_run = run_dir
         output_files = candidates
@@ -1508,7 +1508,7 @@ for output_name in output_files:
     death_idx    = headers.index('D') if 'D' in headers else None
     recov_idx    = headers.index('R') if 'R' in headers else None
 
-    if infected_idx and hosp_idx and death_idx is not None and recov_idx is not None:
+    if output_name.startswith('output') and infected_idx and hosp_idx and death_idx is not None and recov_idx is not None:
         # stacked shape: (num_runs, num_timesteps, num_cols)
         total_infected = np.sum(stacked[:, :, infected_idx], axis=2)
         total_hosp     = np.sum(stacked[:, :, hosp_idx],     axis=2)
@@ -1562,7 +1562,7 @@ for output_name in output_files:
         write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_min.dat'),  summary_header, days, derived_min)
         write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_max.dat'),  summary_header, days, derived_max)
         print(f'  Wrote {stats_base}_summary_mean.dat, {stats_base}_summary_std.dat, {stats_base}_summary_min.dat, {stats_base}_summary_max.dat')
-    else:
+    elif output_name.startswith('output'):
         print('  WARNING: Could not find infected/hospitalized/death columns; skipping summary', file=sys.stderr)
 
 PYEOF
@@ -1598,7 +1598,7 @@ for i in range(1, num_runs + 1):
     run_dir = os.path.join(ensemble_dir, 'run_%03d' % i)
     if not os.path.isdir(run_dir):
         continue
-    candidates = [f for f in os.listdir(run_dir) if f.startswith('output') and f.endswith('.dat')]
+    candidates = [f for f in os.listdir(run_dir) if (f.startswith('output') or f.startswith('medical_workers')) and f.endswith('.dat')]
     if candidates:
         first_run = run_dir
         output_files = candidates
@@ -1668,7 +1668,7 @@ for output_name in output_files:
     death_idx    = headers.index('D') if 'D' in headers else None
     recov_idx    = headers.index('R') if 'R' in headers else None
 
-    if infected_idx and hosp_idx and death_idx is not None and recov_idx is not None:
+    if output_name.startswith('output') and infected_idx and hosp_idx and death_idx is not None and recov_idx is not None:
         total_infected = np.sum(stacked[:, :, infected_idx], axis=2)
         total_hosp     = np.sum(stacked[:, :, hosp_idx],     axis=2)
         deaths         = stacked[:, :, death_idx]
@@ -1718,7 +1718,7 @@ for output_name in output_files:
         write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_min.dat'),  summary_header, days, derived_min)
         write_summary_file(os.path.join(ensemble_dir, stats_base + '_summary_max.dat'),  summary_header, days, derived_max)
         print(f'  Wrote {stats_base}_summary_mean.dat, {stats_base}_summary_std.dat, {stats_base}_summary_min.dat, {stats_base}_summary_max.dat')
-    else:
+    elif output_name.startswith('output'):
         print('  WARNING: Could not find infected/hospitalized/death columns; skipping summary', file=sys.stderr)
 
 print('Ensemble statistics computation complete!')

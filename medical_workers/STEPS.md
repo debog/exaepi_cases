@@ -93,8 +93,12 @@ done
   - `medical_workers.dat` — daily medical- vs other-worker infection counts.
   - `hospital_data_*` — per-community load, capacity, available workforce
     (series and maps); kept after the ensemble cleanup.
-- Per ensemble: `output_*_mean.dat`, `_std.dat`, `_min.dat`, `_max.dat`
-  (the runner averages `output.dat` across replicates).
+- Per ensemble (the runner averages across replicates):
+  `output_*_{mean,std,min,max}.dat` and
+  `medical_workers_*_{mean,std,min,max}.dat` (same stats on the HCW counts),
+  plus `output_*_summary_{mean,std,min,max}.dat` (derived disease totals).
+  For the HCW hazard ratio, compute it per replicate (`run_NNN/`) and average,
+  or read it off the mean counts — the two differ slightly.
 
 ## Order summary
 
