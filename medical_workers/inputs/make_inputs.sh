@@ -91,9 +91,9 @@ disease.hospitalization_days = 3 3 3 3 8 7
 disease.CHR = 0.0181 0.0094 0.0260 0.0260 0.0720 0.2244
 disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
 disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
-disease.hospCVF = 0 0 0 0 0 0
-disease.icuCVF = 0 0 0 0 0 0.26
-disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
+disease.hospCVF = 0.0024 0.0024 0.0095 0.0188 0.0409 0.1497
+disease.icuCVF = 0.0047 0.0047 0.0189 0.0375 0.0817 0.2994
+disease.ventCVF = 0.0071 0.0071 0.0284 0.0563 0.1226 0.4490
 EOF
 
 # In-hospital transmission blocks (on = defaults, off = isolate capacity from workforce loss)
@@ -150,6 +150,19 @@ EOF
 #   18-49 652741/25096725 = 0.0260   (ExaEpi 18-29 and 30-49 both take this)
 #   50-64 642358/8926318  = 0.0720
 #   >=65  1022295/4556384 = 0.2244
+#
+# The COVID-19 hospCVF/icuCVF/ventCVF (death probability by treatment tier and
+# age) are likewise set to realistic US values, replacing the EpiCast defaults
+# (which understated 50-64 and 65+ in-hospital mortality and, with hospCVF=0,
+# could not reach the >=65 death rate at all given CIC=0.35). The target overall
+# P(death | hospitalized) by age is the age-stratified in-hospital case fatality
+# of Gold et al. 2020 (MMWR 69(18):545-550; metro Atlanta + SW Georgia, Mar 2020:
+# 18-49 3.4%, 50-64 9.8%, >=65 35.6%), scaled by 0.6 to the fall-2020 level (US
+# in-hospital mortality fell ~40% Mar->Nov 2020) so that it represents the
+# UNSTRAINED (q=1) baseline before the medical-worker capacity model adds excess.
+# Fall-2020 targets P(death|hosp): 0.3 0.3 1.2 2.7 5.9 21.4 (%); pediatric from
+# COVID-NET <18 (~0.5%). The three tiers split each target as ward:ICU:vent =
+# 1:2:3, solved against CIC/CVE.
 
 # --- two-disease base: COVID-19 (Cov19S1) + influenza A/H3N2 (FluS1) ----------
 #     Flu parameters and the COVID+flu coupling follow the multidisease decks.
@@ -222,9 +235,9 @@ disease.hospitalization_days = 3 3 3 3 8 7
 disease.CHR = 0.0181 0.0094 0.0260 0.0260 0.0720 0.2244
 disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
 disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
-disease.hospCVF = 0 0 0 0 0 0
-disease.icuCVF = 0 0 0 0 0 0.26
-disease.ventCVF = 0.20 0.20 0.20 0.45 0.45 1.0
+disease.hospCVF = 0.0024 0.0024 0.0095 0.0188 0.0409 0.1497
+disease.icuCVF = 0.0047 0.0047 0.0189 0.0375 0.0817 0.2994
+disease.ventCVF = 0.0071 0.0071 0.0284 0.0563 0.1226 0.4490
 
 ## FluS1 overrides (influenza A/H3N2)
 disease_FluS1.initial_case_type = "random"
