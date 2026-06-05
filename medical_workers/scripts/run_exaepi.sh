@@ -145,6 +145,33 @@ print_verbose() {
     fi
 }
 
+# Normalize a walltime to HH:MM:SS. Accepts HH:MM:SS, H:MM:SS, Xh, X.Yh, Xm, or a
+# plain integer (minutes). SLURM (and the Tuolumne Flux wrapper) reliably accept
+# only the colon form -- "1h"/"0.5h"/"30m" reaching "#SBATCH --time=" verbatim are
+# rejected and silently replaced by a ~1-minute default, so the job dies after one
+# run. Converting here makes -t/--walltime behave as documented.
+normalize_walltime() {
+    local t="$1"
+    [[ -z "$t" ]] && return 0
+    if [[ "$t" =~ ^([0-9]+):([0-9]{1,2}):([0-9]{1,2})$ ]]; then
+        printf '%02d:%02d:%02d' "$((10#${BASH_REMATCH[1]}))" "$((10#${BASH_REMATCH[2]}))" "$((10#${BASH_REMATCH[3]}))"
+        return 0
+    fi
+    local mins=
+    if [[ "$t" =~ ^([0-9]*\.?[0-9]+)[hH]$ ]]; then
+        mins=$(awk "BEGIN{printf \"%d\", (${BASH_REMATCH[1]})*60 + 0.5}")
+    elif [[ "$t" =~ ^([0-9]*\.?[0-9]+)[mM]$ ]]; then
+        mins=$(awk "BEGIN{printf \"%d\", (${BASH_REMATCH[1]}) + 0.5}")
+    elif [[ "$t" =~ ^[0-9]+$ ]]; then
+        mins="$t"
+    else
+        print_warning "Unrecognized walltime '${t}'; passing through unchanged"
+        printf '%s' "$t"
+        return 0
+    fi
+    printf '%02d:%02d:00' "$((mins / 60))" "$((mins % 60))"
+}
+
 show_help() {
     cat << EOF
 ExaEpi Multidisease Simulation Runner
@@ -1083,11 +1110,11 @@ parse_args() {
                 shift
                 ;;
             -t|--walltime)
-                OVERRIDE_WALLTIME="$2"
+                OVERRIDE_WALLTIME="$(normalize_walltime "$2")"
                 shift 2
                 ;;
             --walltime=*)
-                OVERRIDE_WALLTIME="${1#*=}"
+                OVERRIDE_WALLTIME="$(normalize_walltime "${1#*=}")"
                 shift
                 ;;
             -s|--max-step)
