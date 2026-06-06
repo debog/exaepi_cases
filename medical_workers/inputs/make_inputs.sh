@@ -349,7 +349,8 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.34
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}"
+${HOSP_XMIT_ON}
+${MITIGATION}"
 
 # --- H2: workforce-size sweep (depletion on; size sets capacity fragility) ----
 #     central value 0.13 is the H3_hcw run; here the low/high ends.
@@ -361,7 +362,8 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.34
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}"
+${HOSP_XMIT_ON}
+${MITIGATION}"
 
 write_case "H2_mw20" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.20
@@ -371,7 +373,8 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.34
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}"
+${HOSP_XMIT_ON}
+${MITIGATION}"
 
 # --- combined: all mechanisms, tract-level real placement + patient routing ---
 write_case "combined" "agent.model_medical_workers = true

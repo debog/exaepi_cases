@@ -89,3 +89,10 @@ disease.xmit_hosp_d2d = 0.00575
 disease.xmit_hosp_p2d = 0.00575
 disease.xmit_hosp_d2p = 0.00575
 disease.xmit_hosp_p2p = 0.01725
+## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
+agent.shelter_start = 40
+agent.shelter_length = 280
+agent.shelter_compliance = 0.4
+agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.4 0.5 0.6 0.8
+agent.symptomatic_withdraw_compliance_day_1 = 0.5 0.5 0.7 0.8 0.85 0.95
+agent.symptomatic_withdraw_compliance_day_2 = 0.7 0.7 0.85 0.9 0.95 0.98
