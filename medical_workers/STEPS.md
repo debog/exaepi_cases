@@ -22,9 +22,10 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ## 1. Verification (the model reduces to the baseline)
 
 ```bash
-./scripts/run_exaepi.sh --case=bay_verify_off    --mode=batch --ensemble --ensemble-size=25
-./scripts/run_exaepi.sh --case=bay_verify_ample  --mode=batch --ensemble --ensemble-size=25
-./scripts/run_exaepi.sh --case=bay_verify_match  --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_verify_off       --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_verify_ample     --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_verify_ample_mit --mode=batch --ensemble --ensemble-size=25
+./scripts/run_exaepi.sh --case=bay_verify_match     --mode=batch --ensemble --ensemble-size=25
 ```
 
 - `verify_off` must reproduce a `development` run of the same deck (the gate
@@ -32,6 +33,11 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 - `verify_ample` mortality must match the baseline — with ample beds, load
   stays below 1, treatment quality stays at 1. Its epidemic is slightly smaller
   than the baseline because medical workers leave the workplace mixing pool.
+- `verify_ample_mit` is the no-strain reference for the *mitigated* capacity run
+  (`H1_mitigated`): ample beds + the same mitigation, so its epidemic matches
+  the mitigated one but with the score pinned at 1. The mitigated strain
+  multiplier is `H1_mitigated` / `verify_ample_mit`. Fetch its summaries into
+  `draft/figures/data/` as `verify_ample_mit_{mean,std}.dat`.
 - `verify_match` is the control for that confound: ample beds, doctor-to-doctor
   transmission at the workplace rate, no patient channels. It should reproduce
   the baseline, proving the `verify_ample` gap is the reduced medical-worker
@@ -128,6 +134,10 @@ channels are inert.
   - `medical_workers.dat` — daily medical- vs other-worker infection counts.
   - `hospital_data_*` — per-community load, capacity, available workforce
     (series and maps); kept after the ensemble cleanup.
+  - `plt?????` — full plotfiles (per-cell `total` agent count etc.); deleted
+    after each run to save space, **except for `run_001`**, which is kept for
+    the per-tract maps (excess mortality and infections need one representative
+    realization). Fetch `run_001/plt00000` and a resolved late plotfile.
 - Per ensemble (the runner averages across replicates):
   `output_*_{mean,std,min,max}.dat` and
   `medical_workers_*_{mean,std,min,max}.dat` (same stats on the HCW counts),

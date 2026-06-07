@@ -1429,8 +1429,14 @@ EOF
         COMPLETED=$((COMPLETED + 1))
     fi
 
-    # Remove plt* and cases* directories to save space
-    rm -rf "${RUN_DIR}"/plt????? "${RUN_DIR}"/cases*
+    # Remove cases* to save space. Keep the first member's plt* -- the
+    # per-tract maps (hospital load, excess mortality, infections) need one
+    # representative realization, and run_001 is fetched for that. The other
+    # members' plotfiles are still removed.
+    rm -rf "${RUN_DIR}"/cases*
+    if [ "$i" -ne 1 ]; then
+        rm -rf "${RUN_DIR}"/plt?????
+    fi
 
     cd "${ENSEMBLE_DIR}"
     echo "--- Run $i/$NUM_RUNS finished ---"

@@ -295,6 +295,23 @@ hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
 
+# --- verification: ample beds + mitigation -- the no-strain reference for the
+#     mitigated capacity run. Same flattened (and younger) epidemic as
+#     H1_mitigated, but ample beds keep the score at 1, so its mortality is the
+#     mitigated baseline. The mitigated strain multiplier is H1_mitigated/this,
+#     not H1_mitigated/verify_ample (which conflates strain with the smaller
+#     mitigated epidemic).
+write_case "verify_ample_mit" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = false
+hospital_model.staffed_beds_per_1000 = 100.0
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.34
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+
 # --- verification: matched control -- model on, ample beds, doctor-to-doctor at
 #     the workplace rate, no patient channels. Restores medical-worker
 #     transmission so this should reproduce the baseline (verify_off); the gap
