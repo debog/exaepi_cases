@@ -9,8 +9,10 @@ multiple of the unstrained baseline -- the ~2x at peak strain reported in
 caseload-surge studies (Kadri 2021, Bravata 2021).
 
 Model (src/HospitalModel.H):
-  score(load) = 1                                                  load <= 1
-              = 1 - (1-floor)*e^(load-1)/(e^half + e^(load-1))      load > 1
+  score(load) = 1                                                          load <= 1
+              = 1 - (1-floor)*(e^(load-1)-1)/((e^half-1)+(e^(load-1)-1))    load > 1
+  (continuous at load=1: the numerator vanishes there, so score->1; the
+  half-score load and the floor are preserved exactly.)
   Each hospital day the agent's treatment-quality multiplier q is updated by the
   community's daily score, in one of two modes
   (hospital_model.treatment_score_type):
@@ -64,7 +66,7 @@ def score(load, floor, half):
     if load <= 1.0:
         return 1.0
     x = load - 1.0
-    return 1.0 - (1.0 - floor) * math.exp(x) / (math.exp(half) + math.exp(x))
+    return 1.0 - (1.0 - floor) * (math.exp(x) - 1.0) / ((math.exp(half) - 1.0) + (math.exp(x) - 1.0))
 
 
 def mult_min(load, floor, half, b):
