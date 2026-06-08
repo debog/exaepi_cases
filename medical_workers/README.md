@@ -20,7 +20,7 @@ order). This README covers the design and the experiment matrix.
 
 ## Experiment matrix
 
-All decks are Bay Area, census init, 120 days. Most use a single COVID-19
+All decks are Bay Area, census init, up to one year (nsteps 365). Most use a single COVID-19
 strain; the two `md_*` decks add co-circulating influenza. They are generated
 by `inputs/make_inputs.sh` (edit it to change the matrix). Each deck = a shared
 disease base + a medical-worker block.
@@ -30,13 +30,15 @@ disease base + a medical-worker block.
 | `verify_off` | Baseline; must match `development` | off | — | — |
 | `verify_ample` | Model on, no strain → recovers baseline mortality | on | ample (per-capita ×100) | off |
 | `verify_match` | Control: matched transmission → should match baseline | on | ample (per-capita ×100) | d2d=work, rest off |
-| `H1_capacity` | **H1**: load → excess mortality, workforce ~fixed | on | real, county | off |
-| `H3_hcw` | **H3**: in-hospital transmission → workforce depletion | on | real, county | on |
-| `H2_mw08` | **H2**: small workforce (fragile capacity) | on | real, county | on |
-| `H2_mw20` | **H2**: large workforce (robust capacity) | on | real, county | on |
+| `H1_capacity` | **H1**: load → excess mortality, workforce ~fixed (unmitigated) | on | real, tract | off |
+| `H1_mitigated` | **H1**: realistic surge (mitigation); transfer on, logs transfers | on | real, tract | off |
+| `H1_mitigated_notransfer` | **H1**: same with patient transfer off (transfer comparison) | on | real, tract | off |
+| `H3_hcw` | **H3**: in-hospital transmission → workforce depletion | on | real, tract | on |
+| `H2_mw08` | **H2**: small workforce (fragile capacity) | on | real, tract | on |
+| `H2_mw20` | **H2**: large workforce (robust capacity) | on | real, tract | on |
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
-| `md_combined` | **Multidisease** (COVID+flu): all in-hospital channels | on | real, county | on (all 4) |
-| `md_nonoso` | Multidisease counterfactual: patient channels off | on | real, county | worker only |
+| `md_combined` | **Multidisease** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
+| `md_nonoso` | Multidisease counterfactual: patient channels off | on | real, tract | worker only |
 
 The H2 central point (proportion 0.13) is the `H3_hcw` run. Hospital
 plotfiles (`write_pltfiles = true`, named `hospital_data_*`) give per-community
@@ -57,10 +59,13 @@ feature, so the mechanism is isolated:
   transmission at the workplace rate restores medical-worker mixing; it should
   reproduce `verify_off`, so `verify_off` − `verify_ample` is provably the
   reduced medical-worker transmission.
-- **H1 (excess mortality from capacity):** `H1_capacity` − `verify_ample`.
-  Same model configuration; the only difference is real vs ample beds.
-- **H3 (workforce-depletion feedback):** `H3_hcw` − `H1_capacity`. The only
-  difference is the in-hospital transmission channels.
+- **H1 (excess mortality from capacity):** `H1_capacity` − `verify_ample`
+  (unmitigated) and `H1_mitigated` − `verify_ample_mit` (realistic surge); the
+  only difference in each pair is real vs ample beds.
+- **Patient transfer:** `H1_mitigated` − `H1_mitigated_notransfer` — same surge,
+  transfer on vs off; isolates the same-county transfer effect.
+- **H3 (workforce-depletion feedback):** `H3_hcw` − `H1_mitigated` (both
+  mitigated); the only difference is the in-hospital transmission channels.
 - **H2 (workforce size):** `H2_mw08` / `H3_hcw` / `H2_mw20` — sweep of
   `med_workers_proportion` with the feedback on.
 - **Nosocomial co-infection (multidisease):** `md_combined` − `md_nonoso`. The
@@ -69,14 +74,19 @@ feature, so the mechanism is isolated:
 
 ## Calibration
 
-Capacity magnitude is pinned by the real HHS bed data. Three parameters
-remain, and two are set by the experiments above (see
-`../../2026_MedicalWorkers/calibration/`):
+Capacity magnitude is pinned by the real HHS bed data. The score model is set in
+closed form by `../../2026_MedicalWorkers/calibration/`; the mitigation and the
+in-hospital weights are set empirically with local 4-rank runs, documented in
+[calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md)
+(current values: `shelter_compliance = 0.32`, `xmit_hosp_d2d = p2d = 0.0075`):
 
-- `score_minimum`, `halfscore_load` — from **H1**: tune so in-hospital
-  mortality is ~2× the unstrained baseline at peak load.
-- `disease.xmit_hosp_*` — from **H3**: tune to the HCW infection target
-  (aHR ~3.4 / in-hospital SAR ~1%).
+- `score_minimum = 0.1`, `halfscore_load = 3.13` — from **H1**: in-hospital
+  mortality ~2× the unstrained baseline at a 2.5× peak load.
+- `shelter_compliance` — from **H1_mitigated** (channels off): tune to a ~2.5×
+  mitigated peak load.
+- `disease.xmit_hosp_{d2d,p2d}` — from **H3**: tune to the HCW hazard target
+  (cumulative-hazard ratio ~3.4). The metric is robust to closed-population
+  saturation; the raw attack-rate ratio is not.
 - `agent.med_workers_proportion` — pinned at ~0.13 (NAICS 62); H2 characterizes
   the sensitivity to it.
 
@@ -131,9 +141,12 @@ restart is just a resubmit. Both scripts work on Slurm (Matrix, Dane) and Flux
 
 ## Diagnostics
 
-The per-day medical-worker vs other-worker infection counts that the
-`xmit_hosp_*` calibration (H3) needs are written to `medical_workers.dat` (one
-file per disease for the `md_*` decks) whenever the model is on. The ensemble
+The per-day medical-worker vs other-worker counts that the `xmit_hosp_*`
+calibration (H3) needs are written to `medical_workers.dat` (one file per disease
+for the `md_*` decks) whenever the model is on: totals, susceptible, newly
+infected, and cumulative deaths (`MW_dead`/`OW_dead`) for each group. The ensemble
 step averages these alongside `output.dat`. Per-community grid fields
 (`hospital_data_*`) and the per-agent treatment quality are written when
-`hospital_model.write_pltfiles` is set.
+`hospital_model.write_pltfiles` is set. Setting
+`hospital_model.transfer_output_file` logs each day's patient transfers (day,
+from/to hospital FIPS+tract, count).

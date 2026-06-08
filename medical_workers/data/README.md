@@ -11,13 +11,13 @@ Files each deck references (all under `$EXAEPI_DIR/data/`):
 |---|---|---|
 | `BayArea.dat` | `CensusData/` | all decks (census population) |
 | `BayArea-wf.bin` | `CensusData/` | all decks (worker flow) |
-| `BayArea_hospitals_2020.dat` | `HospitalData/` | `H1`, `H2`, `H3` (county beds) |
-| `BayArea_hospitals_tract_2020.dat` | `HospitalData/` | `combined` (tract beds + routing) |
+| `BayArea_hospitals_tract_2020.dat` | `HospitalData/` | all model-on decks (tract beds + patient/staff routing + same-county transfer) |
 
-The hospital data files are HHS staffed-bed counts for the week of
-2020-09-27 (a non-surge baseline), built by
-`$EXAEPI_DIR/utilities/build_hospital_data.py`. Regenerate for a different
-week or region with that script.
+The hospital data file is HHS staffed-bed counts for the week of 2020-09-27 (a
+non-surge baseline), built by `$EXAEPI_DIR/utilities/build_hospital_data.py`. The
+Bay Area file is built on the 2000-vintage tracts that match `BayArea.dat` (so all
+10,876 beds at 58 hospital tracts place); regenerate for a different week or region
+with that script.
 
 To pin a specific data file locally, drop it in this directory — the runner
 searches here first.

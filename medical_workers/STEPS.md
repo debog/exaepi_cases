@@ -45,7 +45,14 @@ all of which move the load regime:
   worker-to-worker (`xmit_hosp_d2d`) mixing to realistic team sizes, so it changes
   the H3 HCW hazard ratio for a given `xmit_hosp_d2d`.
 
-### Re-tuning procedure (do this before the full sweep)
+### Re-tuning procedure (done -- redo only if the model or region changes)
+
+The mitigation and in-hospital weights are already calibrated for the current
+model (the work-neighborhood fix + workgroups + complete beds); values and method
+in [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md):
+`shelter_compliance = 0.32` (mitigated peak load ~2.5x) and
+`xmit_hosp_d2d = p2d = 0.0075` (HCW cumulative-hazard ratio ~3.4). The steps below
+are the procedure, kept for re-tuning after a model or region change.
 
 1. **Validate one run.** Run a single `bay_H1_capacity` realization
    (`--mode=batch` without `--ensemble`); locally, 4 MPI ranks on the 9-county Bay
