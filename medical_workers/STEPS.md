@@ -19,6 +19,25 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 - Regenerate the decks if you edit the matrix: `./inputs/make_inputs.sh`.
 - Sanity check: `./scripts/run_exaepi.sh --list-cases`.
 
+### Hospital data: now tract-level (discrete hospitals)
+
+The HHS decks now use `BayArea_hospitals_tract_2020.dat` (real hospital tracts +
+patient/workforce routing), not the county apportionment. ExaEpi also defaults to
+tract-level when HHS data is used (commit `fa63f5f`), so **rebuild ExaEpi from the
+latest `dg/medical_workers`** first.
+
+- **Validate before the full sweep.** The tract routing has not been
+  runtime-tested at scale. Run a single `bay_H1_capacity` realization first
+  (`--mode=batch` without `--ensemble`), confirm it completes, and check the
+  `hospital_data_*` plotfiles: beds (`staffed_bed_supply`) and patients should now
+  concentrate at the ~50 hospital tracts, not spread across every community.
+- **Expect the load regime to change.** Concentrating beds at hospitals raises the
+  local peak loads well above the county-apportioned case. The mitigation
+  (`MITIGATION` block) and the score calibration (`halfscore_load`) were tuned for
+  county apportionment, so check the H1 peak load and **re-tune the mitigation to
+  land in the realistic ~2--3x range**; re-run `calibration/calibrate_treatment_score.py`
+  if the admission mix or baseline mortality shifts. Then run the full ensembles.
+
 ## 1. Verification (the model reduces to the baseline)
 
 ```bash

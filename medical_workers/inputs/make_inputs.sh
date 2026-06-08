@@ -333,7 +333,7 @@ ${HOSP_XMIT_MATCH}"
 write_case "H1_capacity" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -347,7 +347,7 @@ ${HOSP_XMIT_OFF}"
 write_case "H1_mitigated" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -361,7 +361,7 @@ ${MITIGATION}"
 write_case "H3_hcw" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -374,7 +374,7 @@ ${MITIGATION}"
 write_case "H2_mw08" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.08
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -385,7 +385,7 @@ ${MITIGATION}"
 write_case "H2_mw20" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.20
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -413,7 +413,7 @@ ${HOSP_XMIT_ON}"
 write_case "md_combined" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -430,7 +430,7 @@ disease_FluS1.xmit_hosp_p2p = 0.01725" "$BASE2D"
 write_case "md_nonoso" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_2020.dat\"
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
