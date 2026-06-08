@@ -21,22 +21,55 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 
 ### Hospital data: now tract-level (discrete hospitals)
 
-The HHS decks now use `BayArea_hospitals_tract_2020.dat` (real hospital tracts +
-patient/workforce routing), not the county apportionment. ExaEpi also defaults to
+The HHS decks use `BayArea_hospitals_tract_2020.dat` (real hospital tracts +
+patient/workforce routing), not the county apportionment. ExaEpi defaults to
 tract-level when HHS data is used (commit `fa63f5f`), so **rebuild ExaEpi from the
-latest `dg/medical_workers`** first.
+latest `dg/medical_workers`** first. Three things changed from the county version,
+all of which move the load regime:
 
-- **Validate before the full sweep.** The tract routing has not been
-  runtime-tested at scale. Run a single `bay_H1_capacity` realization first
-  (`--mode=batch` without `--ensemble`), confirm it completes, and check the
-  `hospital_data_*` plotfiles: beds (`staffed_bed_supply`) and patients should now
-  concentrate at the ~50 hospital tracts, not spread across every community.
-- **Expect the load regime to change.** Concentrating beds at hospitals raises the
-  local peak loads well above the county-apportioned case. The mitigation
-  (`MITIGATION` block) and the score calibration (`halfscore_load`) were tuned for
-  county apportionment, so check the H1 peak load and **re-tune the mitigation to
-  land in the realistic ~2--3x range**; re-run `calibration/calibrate_treatment_score.py`
-  if the admission mix or baseline mortality shifts. Then run the full ensembles.
+- **Beds are complete.** The bed file was rebuilt on the 2000-vintage tracts that
+  match `BayArea.dat`. All 10,876 staffed beds at 58 hospital tracts now place;
+  the old 2020-vintage file lost a third of the beds (7,240 at 39 tracts) to tract
+  splits. Capacity is higher than the earlier tract runs, so loads are lower.
+- **Patient transfer is on.** A just-admitted patient whose nearest hospital is over
+  capacity is sent to the lowest-load hospital in the same county (no transfer in a
+  one-hospital county). This shaves the per-hospital peak load -- the worst-hospital
+  tail (~45x without transfer) drops once the county's slack is used. Disable with
+  `hospital_model.patient_transfer = 0` for the no-transfer comparison. Set
+  `hospital_model.transfer_output_file = "transfers.dat"` to log the transfers
+  (one line per day per source hospital: `day from_FIPS from_tract to_FIPS to_tract
+  n_patients`), for reporting the transfer volume in the paper.
+- **Medical workforce is grouped.** Each hospital's staff are split into workgroups
+  of ~`workgroup_size` (default 20, set by `agent.workgroup_size` or override with
+  `hospital_model.workgroup_size`), instead of one group per hospital. This bounds
+  worker-to-worker (`xmit_hosp_d2d`) mixing to realistic team sizes, so it changes
+  the H3 HCW hazard ratio for a given `xmit_hosp_d2d`.
+
+### Re-tuning procedure (do this before the full sweep)
+
+1. **Validate one run.** Run a single `bay_H1_capacity` realization
+   (`--mode=batch` without `--ensemble`); locally, 4 MPI ranks on the 9-county Bay
+   Area finishes in a few minutes. Confirm it completes and check the init log:
+   `58 hospitals`, `patient transfer: on`, `~20 staff` workgroups. In the
+   `hospital_data_*` plotfiles, `staffed_bed_supply` sums to 10,876 over 58 cells
+   and `baseline_frontline_medworkers` concentrates at the same 58 cells.
+2. **Read the peak load with transfer on.** From the `hospital_data_*` plotfiles,
+   take `hospital_load` (= `num_patients / patient_capacity`) per hospital at the
+   peak step. The relevant numbers are the patient-weighted mean and the worst
+   hospital; transfer flattens the spread, so re-read both -- do not reuse the
+   pre-transfer 45x tail.
+3. **Re-tune the mitigation** (`inputs/make_inputs.sh`, `MITIGATION` block) so the
+   mitigated H1 peak lands in the realistic ~2--3x range on the *new* (higher)
+   capacity. Regenerate the decks, resubmit, iterate.
+4. **Re-run the score calibration.** If the admission mix or baseline mortality
+   shifts, re-run `calibration/calibrate_treatment_score.py` and update
+   `score_minimum` / `halfscore_load`.
+5. **Re-tune `xmit_hosp` for H3.** The workgroups change the d2d hazard, so retune
+   `disease.xmit_hosp_{d2d,p2d,d2p,p2p}` against the target HCW hazard ratio
+   (`aHR ~ 3.4`) from `medical_workers.dat` -- see the H3 section below.
+6. **Decide the transfer comparison.** Run H1 with and without
+   `hospital_model.patient_transfer` if the paper reports the transfer effect on
+   the worst-hospital load; otherwise leave it on. Then run the full ensembles.
 
 ## 1. Verification (the model reduces to the baseline)
 
