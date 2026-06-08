@@ -351,6 +351,25 @@ hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
+hospital_model.transfer_output_file = \"transfers.dat\"
+hospital_model.write_pltfiles = true
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+
+# --- H1 (mitigated, no transfer): same realistic surge as H1_mitigated but with
+#     same-county patient transfer disabled. The pair H1_mitigated (transfer on,
+#     the default) vs this isolates the effect of patient transfer: how moving
+#     patients from over-capacity hospitals to the lowest-load hospital in the same
+#     county redistributes the per-hospital load (worst-hospital load, overloaded
+#     count) and the excess mortality. Set transfer_output_file to log the moves.
+write_case "H1_mitigated_notransfer" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.patient_transfer = 0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"

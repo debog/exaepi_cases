@@ -117,6 +117,18 @@ all of which move the load regime:
   `inputs/make_inputs.sh` (`MITIGATION` block) until the load is in range.
 - Excess mortality = `H1_*` − the matching ample-bed baseline (same config and
   mitigation, real vs ample beds).
+- **Patient-transfer effect.** `bay_H1_mitigated` has transfer on (the default)
+  and logs the moves to `transfers.dat`. `bay_H1_mitigated_notransfer` is the same
+  run with transfer off:
+
+  ```bash
+  ./scripts/run_exaepi.sh --case=bay_H1_mitigated_notransfer --mode=batch --ensemble --ensemble-size=25
+  ```
+
+  The pair isolates the transfer effect: compare the per-hospital load (worst
+  hospital, overloaded count, from the `hospital_data_*` `hospital_load`) and the
+  deaths, on vs off. `transfers.dat` gives the transfer volume (day, from/to
+  hospital tract, patients).
 - Tune `score_minimum` and `halfscore_load` so in-hospital mortality at peak
   load is ~2× the unstrained baseline. Edit `inputs/make_inputs.sh`, rerun
   `make_inputs.sh`, resubmit. Iterate.
