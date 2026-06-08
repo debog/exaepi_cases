@@ -9,8 +9,10 @@
 # combined); see ../README.md.
 #
 # Disease/transmission parameters are copied from the multidisease Bay Area
-# COVID-19-S1 deck. xmit_work = 0.0575; the in-hospital transmission defaults
-# are 0.1x xmit_work (d2d, p2d, d2p) and 0.3x xmit_work (p2p).
+# COVID-19-S1 deck. xmit_work = 0.0575. In-hospital transmission: the worker
+# channels d2d/p2d/d2p = 0.0075 (~0.13x xmit_work), calibrated so the HCW hazard
+# ratio in H3 is ~3.4 (see calibration/calibrate_mitigation_xmit.md); patient-to-
+# patient p2p = 0.3x xmit_work = 0.01725.
 #
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -98,9 +100,9 @@ EOF
 
 # In-hospital transmission blocks (on = defaults, off = isolate capacity from workforce loss)
 read -r -d '' HOSP_XMIT_ON <<'EOF' || true
-disease.xmit_hosp_d2d = 0.00575
-disease.xmit_hosp_p2d = 0.00575
-disease.xmit_hosp_d2p = 0.00575
+disease.xmit_hosp_d2d = 0.0075
+disease.xmit_hosp_p2d = 0.0075
+disease.xmit_hosp_d2p = 0.0075
 disease.xmit_hosp_p2p = 0.01725
 EOF
 
@@ -137,7 +139,7 @@ read -r -d '' MITIGATION <<'EOF' || true
 ## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
 agent.shelter_start = 40
 agent.shelter_length = 280
-agent.shelter_compliance = 0.4
+agent.shelter_compliance = 0.32
 agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.4 0.5 0.6 0.8
 agent.symptomatic_withdraw_compliance_day_1 = 0.5 0.5 0.7 0.8 0.85 0.95
 agent.symptomatic_withdraw_compliance_day_2 = 0.7 0.7 0.85 0.9 0.95 0.98
@@ -437,13 +439,13 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.00575
-disease.xmit_hosp_p2d = 0.00575
-disease.xmit_hosp_d2p = 0.00575
+disease.xmit_hosp_d2d = 0.0075
+disease.xmit_hosp_p2d = 0.0075
+disease.xmit_hosp_d2p = 0.0075
 disease.xmit_hosp_p2p = 0.01725
-disease_FluS1.xmit_hosp_d2d = 0.00575
-disease_FluS1.xmit_hosp_p2d = 0.00575
-disease_FluS1.xmit_hosp_d2p = 0.00575
+disease_FluS1.xmit_hosp_d2d = 0.0075
+disease_FluS1.xmit_hosp_p2d = 0.0075
+disease_FluS1.xmit_hosp_d2p = 0.0075
 disease_FluS1.xmit_hosp_p2p = 0.01725" "$BASE2D"
 
 write_case "md_nonoso" "agent.model_medical_workers = true
@@ -454,12 +456,12 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.00575
-disease.xmit_hosp_p2d = 0.00575
+disease.xmit_hosp_d2d = 0.0075
+disease.xmit_hosp_p2d = 0.0075
 disease.xmit_hosp_d2p = 0.0
 disease.xmit_hosp_p2p = 0.0
-disease_FluS1.xmit_hosp_d2d = 0.00575
-disease_FluS1.xmit_hosp_p2d = 0.00575
+disease_FluS1.xmit_hosp_d2d = 0.0075
+disease_FluS1.xmit_hosp_p2d = 0.0075
 disease_FluS1.xmit_hosp_d2p = 0.0
 disease_FluS1.xmit_hosp_p2p = 0.0" "$BASE2D"
 
