@@ -78,9 +78,9 @@ disease.ventCVF = 0.0071 0.0071 0.0284 0.0563 0.1226 0.4490
 
 ## ===== Medical-worker / hospital-capacity model =====
 agent.model_medical_workers = true
-agent.med_workers_proportion = 0.08
+agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
-hospital_model.staffed_beds_per_1000 = 1.477
+hospital_model.staffed_beds_per_1000 = 2.4
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum

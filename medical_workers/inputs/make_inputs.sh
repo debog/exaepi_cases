@@ -390,12 +390,27 @@ hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}
 ${MITIGATION}"
 
-# --- H2: workforce-size sweep (depletion on; size sets capacity fragility) ----
-#     central value 0.13 is the H3_hcw run; here the low/high ends.
+# --- H2: workforce-size sweep -------------------------------------------------
+#     Non-HHS (per-community) option so the bed supply scales with the workforce:
+#     staffed_beds_per_1000 = 2.4 (the default, at 13%) x (med_worker_fraction/0.13).
+#     This makes capacity proportional to the medical workforce, the quantity the
+#     hypothesis is about. (With fixed HHS beds the workforce size barely moves the
+#     baseline capacity.) Mitigation and in-hospital transmission as in H3.
 write_case "H2_mw08" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.08
-hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.use_HHS_data = false
+hospital_model.staffed_beds_per_1000 = 1.477
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true
+${HOSP_XMIT_ON}
+${MITIGATION}"
+
+write_case "H2_mw13" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = false
+hospital_model.staffed_beds_per_1000 = 2.4
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
@@ -405,8 +420,8 @@ ${MITIGATION}"
 
 write_case "H2_mw20" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.20
-hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.use_HHS_data = false
+hospital_model.staffed_beds_per_1000 = 3.692
 hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
