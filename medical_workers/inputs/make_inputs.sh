@@ -395,7 +395,9 @@ ${MITIGATION}"
 #     staffed_beds_per_1000 = 2.4 (the default, at 13%) x (med_worker_fraction/0.13).
 #     This makes capacity proportional to the medical workforce, the quantity the
 #     hypothesis is about. (With fixed HHS beds the workforce size barely moves the
-#     baseline capacity.) Mitigation and in-hospital transmission as in H3.
+#     baseline capacity.) Mitigation on; in-hospital transmission OFF so the
+#     workforce acts only through capacity -- the H3 depletion feedback is isolated
+#     out, keeping H2 (size -> capacity) and H3 (in-hospital depletion) distinct.
 write_case "H2_mw08" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.08
 hospital_model.use_HHS_data = false
@@ -404,7 +406,7 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}
+${HOSP_XMIT_OFF}
 ${MITIGATION}"
 
 write_case "H2_mw13" "agent.model_medical_workers = true
@@ -415,7 +417,7 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}
+${HOSP_XMIT_OFF}
 ${MITIGATION}"
 
 write_case "H2_mw20" "agent.model_medical_workers = true
@@ -426,7 +428,7 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}
+${HOSP_XMIT_OFF}
 ${MITIGATION}"
 
 # --- combined: all mechanisms, tract-level real placement + patient routing ---

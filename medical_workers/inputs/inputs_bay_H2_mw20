@@ -85,10 +85,10 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.0075
-disease.xmit_hosp_p2d = 0.0075
-disease.xmit_hosp_d2p = 0.0075
-disease.xmit_hosp_p2p = 0.01725
+disease.xmit_hosp_d2d = 0.0
+disease.xmit_hosp_p2d = 0.0
+disease.xmit_hosp_d2p = 0.0
+disease.xmit_hosp_p2p = 0.0
 ## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
 agent.shelter_start = 40
 agent.shelter_length = 280
