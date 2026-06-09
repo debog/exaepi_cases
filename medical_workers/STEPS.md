@@ -169,8 +169,9 @@ done
 
 - `H2_mw13` is the central point (proportion 0.13). Report load, overloaded
   communities, and deaths against workforce size.
-- Single-realization local check (transmission off): deaths 68,298 (8%) →
-  38,677 (13%) → 20,131 (20%) with transmission on; re-run with it off updates these.
+- Single-realization local check (seed 1, transmission off): deaths 65,137 (8%) →
+  34,736 (13%) → 18,046 (20%) — capacity only, a ~72% drop across the sweep. With
+  transmission on the same trend runs ~5-10% higher (68,298 / 38,677 / 20,131).
 
 ## 5. Combined (all mechanisms, real placement + routing)
 
