@@ -156,14 +156,21 @@ are the procedure, kept for re-tuning after a model or region change.
 
 ## 4. H2 — workforce-size sweep
 
+Non-HHS (per-community) bed model so the staffed-bed supply scales with the
+medical-worker fraction (2.4 × frac/0.13 beds per 1000), making capacity
+proportional to the workforce. In-hospital transmission is off, so the workforce
+acts only through capacity (the H3 depletion feedback is isolated out).
+
 ```bash
-for c in H2_mw08 H3_hcw H2_mw20; do
+for c in H2_mw08 H2_mw13 H2_mw20; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 ```
 
-- `H3_hcw` is the central point (proportion 0.13). Report load, overloaded
+- `H2_mw13` is the central point (proportion 0.13). Report load, overloaded
   communities, and deaths against workforce size.
+- Single-realization local check (transmission off): deaths 68,298 (8%) →
+  38,677 (13%) → 20,131 (20%) with transmission on; re-run with it off updates these.
 
 ## 5. Combined (all mechanisms, real placement + routing)
 
@@ -221,6 +228,6 @@ channels are inert.
 1. verify_off, verify_ample → check baseline recovery.
 2. H1_capacity → check load > 1, calibrate score.
 3. H3_hcw → calibrate xmit_hosp from `medical_workers.dat`.
-4. H2_mw08 / H3_hcw / H2_mw20 → workforce-size sweep.
+4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
 5. combined → realistic showcase.
 6. md_combined / md_nonoso → in-hospital cross-disease (nosocomial) transmission.

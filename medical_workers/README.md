@@ -34,13 +34,18 @@ disease base + a medical-worker block.
 | `H1_mitigated` | **H1**: realistic surge (mitigation); transfer on, logs transfers | on | real, tract | off |
 | `H1_mitigated_notransfer` | **H1**: same with patient transfer off (transfer comparison) | on | real, tract | off |
 | `H3_hcw` | **H3**: in-hospital transmission → workforce depletion | on | real, tract | on |
-| `H2_mw08` | **H2**: small workforce (fragile capacity) | on | real, tract | on |
-| `H2_mw20` | **H2**: large workforce (robust capacity) | on | real, tract | on |
+| `H2_mw08` | **H2**: small workforce (8%), bed supply scaled down | on | fallback, beds∝workforce | off |
+| `H2_mw13` | **H2**: reference workforce (13%) | on | fallback, beds∝workforce | off |
+| `H2_mw20` | **H2**: large workforce (20%), bed supply scaled up | on | fallback, beds∝workforce | off |
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
 | `md_combined` | **Multidisease** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
 | `md_nonoso` | Multidisease counterfactual: patient channels off | on | real, tract | worker only |
 
-The H2 central point (proportion 0.13) is the `H3_hcw` run. Hospital
+H2 uses the per-community (fallback) bed model so the staffed-bed supply scales
+with the medical-worker fraction (2.4 × frac/0.13 beds per 1000 residents),
+making capacity proportional to the workforce; the central point is `H2_mw13`.
+In-hospital transmission is off in H2, so the workforce acts only through capacity
+(the H3 depletion feedback is isolated out). Hospital
 plotfiles (`write_pltfiles = true`, named `hospital_data_*`) give per-community
 time series and maps of load, capacity, and available workforce; the ensemble
 cleanup removes the agent `plt*` but keeps these.
@@ -66,8 +71,9 @@ feature, so the mechanism is isolated:
   transfer on vs off; isolates the same-county transfer effect.
 - **H3 (workforce-depletion feedback):** `H3_hcw` − `H1_mitigated` (both
   mitigated); the only difference is the in-hospital transmission channels.
-- **H2 (workforce size):** `H2_mw08` / `H3_hcw` / `H2_mw20` — sweep of
-  `med_workers_proportion` with the feedback on.
+- **H2 (workforce size):** `H2_mw08` / `H2_mw13` / `H2_mw20` — sweep of
+  `med_workers_proportion` with the bed supply scaled to match (fallback option),
+  in-hospital transmission off so the workforce acts only through capacity.
 - **Nosocomial co-infection (multidisease):** `md_combined` − `md_nonoso`. The
   only difference is the patient-coupled in-hospital channels (`d2p`, `p2p`), so
   the difference is the second-disease infections acquired in the hospital.
@@ -111,7 +117,7 @@ From this directory:
 ./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --ensemble-size=25
 
 # all cases as ensembles
-for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw20 combined md_combined md_nonoso; do
+for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 combined md_combined md_nonoso; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 
