@@ -24,13 +24,18 @@ agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
 agent.number_of_diseases = 2
 agent.disease_names = "Cov19S1" "FluS1"
 
-## Disease coupling (2x2, row-major): no cross-immunity; moderate co-susceptibility
+## Disease coupling (2x2, row-major): no cross-immunity. Co-susceptibility set to the
+## neutral 1.0 -- the real COVID/influenza interaction is if anything suppressive (<1;
+## viral interference via the interferon response), but the acquisition formula is not
+## bounded below 1 (ExaEpi issue #153), so 1.0 (no enhancement) is the closest realistic
+## value it allows. The earlier 1.5 was an academic choice that inflated the combined
+## epidemic through a spurious-background artifact of that formula.
 disease_coupling.coimmunity_matrix = \
     1.0  0.0 \
     0.0  1.0
 disease_coupling.cosusceptibility_matrix = \
-    1.0  1.5 \
-    1.5  1.0
+    1.0  1.0 \
+    1.0  1.0
 
 ## Default disease parameters (Cov19S1: wild-type COVID-19)
 disease.initial_case_type = "random"
@@ -85,7 +90,11 @@ disease_FluS1.incubation_length_beta = 0.5
 disease_FluS1.immune_length_alpha = 180.0
 disease_FluS1.immune_length_beta = 1.5
 disease_FluS1.hospitalization_days = 2 2 3 3 5 5
-disease_FluS1.CHR = 0.009 0.004 0.006 0.008 0.023 0.15
+## CHR = P(hospitalized | symptomatic), data-supported from CDC FluView/burden:
+## per-age hospitalization rate divided by the symptomatic attack rate (65+ 332/100k
+## over 3.9% = ~8%; 50-64 ~0.8%; 18-49 ~0.4%; children ~0.4-1%). Replaces the earlier
+## (~2x too high) elderly/older values carried over from the multidisease decks.
+disease_FluS1.CHR = 0.010 0.004 0.004 0.004 0.008 0.080
 disease_FluS1.CIC = 0.18 0.22 0.16 0.16 0.21 0.15
 disease_FluS1.CVE = 0.28 0.25 0.50 0.50 0.52 0.40
 disease_FluS1.hospCVF = 0 0 0 0 0 0
