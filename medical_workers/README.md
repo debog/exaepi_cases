@@ -40,8 +40,6 @@ disease base + a medical-worker block.
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
 | `covflu_w_noso` | **Nosocomial** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
 | `covflu_wo_noso` | COVID+flu, patient channels off | on | real, tract | worker only |
-| `cov2_w_noso` | **Nosocomial** (2 COVID strains, wild-type+Delta): all channels | on | real, tract | on (all 4) |
-| `cov2_wo_noso` | 2 COVID strains, patient channels off | on | real, tract | worker only |
 
 H2 uses the per-community (fallback) bed model so the staffed-bed supply scales
 with the medical-worker fraction (2.4 × frac/0.13 beds per 1000 residents),
@@ -76,11 +74,14 @@ feature, so the mechanism is isolated:
 - **H2 (workforce size):** `H2_mw08` / `H2_mw13` / `H2_mw20` — sweep of
   `med_workers_proportion` with the bed supply scaled to match (fallback option),
   in-hospital transmission off so the workforce acts only through capacity.
-- **Nosocomial co-infection:** `covflu_{w,wo}_noso` and `cov2_{w,wo}_noso` (two
-  scenarios: COVID+flu, and two COVID strains, wild-type+Delta). `w_noso` −
+- **Nosocomial co-infection:** `covflu_{w,wo}_noso` (COVID+flu). `w_noso` −
   `wo_noso` isolates the patient-coupled in-hospital channels (`d2p`, `p2p`): the
   second-disease infections acquired in the hospital (the `hospital_acquired`
-  diagnostic) and their excess mortality.
+  diagnostic) and their excess mortality. This is an artificial stress test (shared
+  symptomatic withdrawal, no cross-immunity or vaccination, cosusceptibility pinned
+  at the formula floor `c_S = 1.0`, hospitals at roughly double the single-COVID
+  peak load), so the channel difference is a near-upper-bound; see the paper's
+  Section 4.6 disclaimers.
 
 ## Calibration
 
@@ -123,7 +124,7 @@ From this directory:
 ./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --ensemble-size=25
 
 # all cases as ensembles
-for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 combined covflu_w_noso covflu_wo_noso cov2_w_noso cov2_wo_noso; do
+for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 combined covflu_w_noso covflu_wo_noso; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 

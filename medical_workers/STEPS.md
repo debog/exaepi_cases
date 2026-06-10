@@ -193,32 +193,43 @@ done
 
 Two co-circulating diseases are needed for the patient-coupled channels (`d2p`,
 `p2p`) to act: a patient admitted for one disease can acquire the other in the
-hospital. With a single disease these channels are inert. Two scenarios bracket the
-coupling -- COVID-19 + influenza (no cross-immunity, mild second disease) and two
-COVID-19 strains, wild-type + Delta (~85% cross-immunity, lethal second strain) --
-each run with the patient channels on (`w_noso`) and off (`wo_noso`):
+hospital. With a single disease these channels are inert. The scenario is
+COVID-19 + influenza, run with the patient channels on (`w_noso`) and off
+(`wo_noso`):
 
 ```bash
-for c in covflu_w_noso covflu_wo_noso cov2_w_noso cov2_wo_noso; do
+for c in covflu_w_noso covflu_wo_noso; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 ```
 
+This is an artificial stress test, not a calibrated forecast -- read the
+disclaimers in the paper's Section 4.6. Both diseases circulate together at full
+strength with no cross-immunity and no vaccination; symptomatic withdrawal is one
+shared agent-level flag (a flu symptom withdraws the agent from COVID exposure
+too); the cosusceptibility coefficient is pinned at the formula floor `c_S = 1.0`
+(neutral) because the multidisease infection-probability formula cannot represent
+protective coupling `c_S < 1` (ExaEpi issue #153); and the co-circulating epidemic
+runs the hospitals at roughly double the single-COVID peak load, so wards saturate
+and a patient acquires the second disease almost regardless of the patient
+channels.
+
 - `w_noso` turns on all four in-hospital channels; `wo_noso` keeps the worker
-  channels (`p2d`, `d2d`) but turns the patient-coupled channels off. Both
-  scenarios use the same data-anchored mitigation; cov2's greater severity is from
-  the disease parameters (Delta more transmissible and ~1.93x more severe), not a
-  behavior table.
+  channels (`p2d`, `d2d`) but turns the patient-coupled channels off. Influenza CHR
+  is the CDC-derived value (`disease_FluS1.CHR`); both runs use the same data-
+  anchored mitigation.
 - The diagnostic is the per-disease `hospital_acquired` plotfile field (cumulative
   nosocomial infections deposited at the hospital cell; needs the latest
   `dg/medical_workers` binary, which also carries the OOB and dual-hospitalization
   fixes the multi-disease hospital runs require). Net nosocomial = `w_noso` −
   `wo_noso` (the small `wo_noso` residual is community infection on the admission
   day); the mortality increment is the death difference `w_noso` − `wo_noso`.
-- First-realization check (pre-recalibration): covflu +0.67% deaths, cov2 +1.49%
-  -- patient cross-infection is a minor mortality channel next to the H3 worker
-  depletion (+52%); the driver is the acquired disease's lethality. Re-derive at
-  the data-anchored mitigation.
+- Single-realization check (data-anchored mitigation, `c_S = 1.0`, CDC flu CHR):
+  deaths 89,717 (`w_noso`) vs 88,761 (`wo_noso`), +956 (+1.08%); nosocomial
+  18,589 COVID + 68,281 flu. Patient cross-infection is a minor mortality channel
+  next to the H3 worker depletion. The peak load is aggregate ~5.2x, median
+  hospital ~5.7x, busiest ~28x -- the saturated regime that makes the channel
+  comparison a near-upper-bound, not a typical value.
 
 ## Monitor and restart (any time)
 
@@ -253,4 +264,4 @@ done
 3. H3_hcw → calibrate xmit_hosp from `medical_workers.dat`.
 4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
 5. combined → realistic showcase.
-6. covflu_{w,wo}_noso, cov2_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
+6. covflu_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
