@@ -12,25 +12,25 @@ agent.plot_int = 15
 agent.check_int = -1
 agent.aggregated_diag_int = 1
 agent.aggregated_diag_prefix = "cases"
-diag.output_filename = "output_Cov19S1.dat" "output_FluS1.dat"
+diag.output_filename = "output_Cov19S1.dat" "output_Cov19S2.dat"
 agent.air_travel_int = -1
 
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
-agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
-agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+agent.symptomatic_withdraw_compliance_day_0 = 0.15 0.15 0.15 0.15 0.20 0.25
+agent.symptomatic_withdraw_compliance_day_1 = 0.25 0.25 0.25 0.25 0.30 0.35
+agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
 
-## Two co-circulating diseases
+## Two co-circulating COVID-19 strains
 agent.number_of_diseases = 2
-agent.disease_names = "Cov19S1" "FluS1"
+agent.disease_names = "Cov19S1" "Cov19S2"
 
-## Disease coupling (2x2, row-major): no cross-immunity; moderate co-susceptibility
+## Disease coupling (2x2, row-major): ~85% cross-immunity, neutral co-susceptibility
 disease_coupling.coimmunity_matrix = \
-    1.0  0.0 \
-    0.0  1.0
+    1.0   0.85 \
+    0.85  1.0
 disease_coupling.cosusceptibility_matrix = \
-    1.0  1.5 \
-    1.5  1.0
+    1.0  1.0 \
+    1.0  1.0
 
 ## Default disease parameters (Cov19S1: wild-type COVID-19)
 disease.initial_case_type = "random"
@@ -70,27 +70,21 @@ disease.hospCVF = 0.0024 0.0024 0.0095 0.0188 0.0409 0.1497
 disease.icuCVF = 0.0047 0.0047 0.0189 0.0375 0.0817 0.2994
 disease.ventCVF = 0.0071 0.0071 0.0284 0.0563 0.1226 0.4490
 
-## FluS1 overrides (influenza A/H3N2)
-disease_FluS1.initial_case_type = "random"
-disease_FluS1.num_initial_cases = 25
-disease_FluS1.p_trans = 0.16
-disease_FluS1.p_asymp = 0.16
-disease_FluS1.asymp_relative_inf = 0.5
-disease_FluS1.latent_length_alpha = 4.0
-disease_FluS1.latent_length_beta = 0.5
-disease_FluS1.infectious_length_alpha = 15.0
-disease_FluS1.infectious_length_beta = 0.3
-disease_FluS1.incubation_length_alpha = 4.0
-disease_FluS1.incubation_length_beta = 0.5
-disease_FluS1.immune_length_alpha = 180.0
-disease_FluS1.immune_length_beta = 1.5
-disease_FluS1.hospitalization_days = 2 2 3 3 5 5
-disease_FluS1.CHR = 0.009 0.004 0.006 0.008 0.023 0.15
-disease_FluS1.CIC = 0.18 0.22 0.16 0.16 0.21 0.15
-disease_FluS1.CVE = 0.28 0.25 0.50 0.50 0.52 0.40
-disease_FluS1.hospCVF = 0 0 0 0 0 0
-disease_FluS1.icuCVF = 0.02 0.02 0.03 0.03 0.05 0.10
-disease_FluS1.ventCVF = 0.05 0.10 0.15 0.25 0.30 0.50
+## Cov19S2 overrides (Delta variant: only the parameters that differ)
+## Transmission/period overrides follow the multidisease Cov19S2 (Delta) deck.
+disease_Cov19S2.initial_case_type = "random"
+disease_Cov19S2.num_initial_cases = 5
+disease_Cov19S2.p_trans = 0.35
+disease_Cov19S2.p_asymp = 0.15
+disease_Cov19S2.latent_length_alpha = 4.7
+disease_Cov19S2.infectious_length_beta = 0.27
+disease_Cov19S2.incubation_length_alpha = 4.43
+disease_Cov19S2.incubation_length_beta = 1.01
+## Severity: this paper's Cov19S1 outcome rates scaled by the multidisease S1->S2
+## factors (CHR x1.93, icuCVF x1.154, ventCVF x1.25); hospCVF/CIC/CVE inherit S1.
+disease_Cov19S2.CHR = 0.0350 0.0182 0.0503 0.0503 0.1392 0.4338
+disease_Cov19S2.icuCVF = 0.0054 0.0054 0.0218 0.0433 0.0943 0.3455
+disease_Cov19S2.ventCVF = 0.0089 0.0089 0.0355 0.0704 0.1533 0.5613
 
 ## ===== Medical-worker / hospital-capacity model =====
 agent.model_medical_workers = true
@@ -103,9 +97,23 @@ hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.0075
 disease.xmit_hosp_p2d = 0.0075
-disease.xmit_hosp_d2p = 0.0
-disease.xmit_hosp_p2p = 0.0
-disease_FluS1.xmit_hosp_d2d = 0.0075
-disease_FluS1.xmit_hosp_p2d = 0.0075
-disease_FluS1.xmit_hosp_d2p = 0.0
-disease_FluS1.xmit_hosp_p2p = 0.0
+disease.xmit_hosp_d2p = 0.0075
+disease.xmit_hosp_p2p = 0.01725
+disease_Cov19S2.xmit_hosp_d2d = 0.0075
+disease_Cov19S2.xmit_hosp_p2d = 0.0075
+disease_Cov19S2.xmit_hosp_d2p = 0.0075
+disease_Cov19S2.xmit_hosp_p2p = 0.01725
+## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
+agent.shelter_start = 40
+agent.shelter_length = 280
+## Shelter compliance: data-anchored to the ~50% out-of-home contact reduction observed
+## in the Bay Area after the March 2020 order (Google mobility: retail/rec ~-60%, work
+## ~-50%). A counterfactual lower value is used where the experiment needs hospital
+## overload (the real Bay Area avoided collapse through high compliance).
+agent.shelter_compliance = 0.50
+## Enhanced withdrawal (under the order): cumulative ~75% (working) to ~92% (65+),
+## matching the ~82% stay-at-home adherence reported under the orders. Each cell is
+## >= the corresponding default.
+agent.symptomatic_withdraw_compliance_day_0 = 0.30 0.30 0.30 0.30 0.40 0.50
+agent.symptomatic_withdraw_compliance_day_1 = 0.40 0.40 0.40 0.40 0.50 0.60
+agent.symptomatic_withdraw_compliance_day_2 = 0.40 0.40 0.40 0.40 0.50 0.60

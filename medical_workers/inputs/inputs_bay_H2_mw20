@@ -16,9 +16,14 @@ diag.output_filename = "output.dat"
 agent.air_travel_int = -1
 
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
-agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
-agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+## COVID-anchored defaults (replacing the inherited EpiCast/FluTE influenza values):
+## per-day withdrawal hazards giving a cumulative ~50% (working ages) to ~68% (65+) over
+## the first three symptomatic days, matching the ~46% "stay home when sick" reported
+## early in the US pandemic. Children set equal to working adults (a sick child is kept
+## home at the rate an adult self-isolates); the elderly highest.
+agent.symptomatic_withdraw_compliance_day_0 = 0.15 0.15 0.15 0.15 0.20 0.25
+agent.symptomatic_withdraw_compliance_day_1 = 0.25 0.25 0.25 0.25 0.30 0.35
+agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
 
 ## Single-disease COVID-19 setup
 agent.number_of_diseases = 1
@@ -92,7 +97,14 @@ disease.xmit_hosp_p2p = 0.0
 ## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
 agent.shelter_start = 40
 agent.shelter_length = 280
-agent.shelter_compliance = 0.32
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.4 0.5 0.6 0.8
-agent.symptomatic_withdraw_compliance_day_1 = 0.5 0.5 0.7 0.8 0.85 0.95
-agent.symptomatic_withdraw_compliance_day_2 = 0.7 0.7 0.85 0.9 0.95 0.98
+## Shelter compliance: data-anchored to the ~50% out-of-home contact reduction observed
+## in the Bay Area after the March 2020 order (Google mobility: retail/rec ~-60%, work
+## ~-50%). A counterfactual lower value is used where the experiment needs hospital
+## overload (the real Bay Area avoided collapse through high compliance).
+agent.shelter_compliance = 0.50
+## Enhanced withdrawal (under the order): cumulative ~75% (working) to ~92% (65+),
+## matching the ~82% stay-at-home adherence reported under the orders. Each cell is
+## >= the corresponding default.
+agent.symptomatic_withdraw_compliance_day_0 = 0.30 0.30 0.30 0.30 0.40 0.50
+agent.symptomatic_withdraw_compliance_day_1 = 0.40 0.40 0.40 0.40 0.50 0.60
+agent.symptomatic_withdraw_compliance_day_2 = 0.40 0.40 0.40 0.40 0.50 0.60

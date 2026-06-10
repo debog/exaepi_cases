@@ -16,9 +16,9 @@ diag.output_filename = "output_Cov19S1.dat" "output_FluS1.dat"
 agent.air_travel_int = -1
 
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
-agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
-agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+agent.symptomatic_withdraw_compliance_day_0 = 0.15 0.15 0.15 0.15 0.20 0.25
+agent.symptomatic_withdraw_compliance_day_1 = 0.25 0.25 0.25 0.25 0.30 0.35
+agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
 
 ## Two co-circulating diseases
 agent.number_of_diseases = 2
@@ -109,3 +109,17 @@ disease_FluS1.xmit_hosp_d2d = 0.0075
 disease_FluS1.xmit_hosp_p2d = 0.0075
 disease_FluS1.xmit_hosp_d2p = 0.0075
 disease_FluS1.xmit_hosp_p2p = 0.01725
+## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
+agent.shelter_start = 40
+agent.shelter_length = 280
+## Shelter compliance: data-anchored to the ~50% out-of-home contact reduction observed
+## in the Bay Area after the March 2020 order (Google mobility: retail/rec ~-60%, work
+## ~-50%). A counterfactual lower value is used where the experiment needs hospital
+## overload (the real Bay Area avoided collapse through high compliance).
+agent.shelter_compliance = 0.50
+## Enhanced withdrawal (under the order): cumulative ~75% (working) to ~92% (65+),
+## matching the ~82% stay-at-home adherence reported under the orders. Each cell is
+## >= the corresponding default.
+agent.symptomatic_withdraw_compliance_day_0 = 0.30 0.30 0.30 0.30 0.40 0.50
+agent.symptomatic_withdraw_compliance_day_1 = 0.40 0.40 0.40 0.40 0.50 0.60
+agent.symptomatic_withdraw_compliance_day_2 = 0.40 0.40 0.40 0.40 0.50 0.60

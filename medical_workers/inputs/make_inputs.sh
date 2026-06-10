@@ -37,9 +37,14 @@ diag.output_filename = "output.dat"
 agent.air_travel_int = -1
 
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
-agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
-agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+## COVID-anchored defaults (replacing the inherited EpiCast/FluTE influenza values):
+## per-day withdrawal hazards giving a cumulative ~50% (working ages) to ~68% (65+) over
+## the first three symptomatic days, matching the ~46% "stay home when sick" reported
+## early in the US pandemic. Children set equal to working adults (a sick child is kept
+## home at the rate an adult self-isolates); the elderly highest.
+agent.symptomatic_withdraw_compliance_day_0 = 0.15 0.15 0.15 0.15 0.20 0.25
+agent.symptomatic_withdraw_compliance_day_1 = 0.25 0.25 0.25 0.25 0.30 0.35
+agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
 
 ## Single-disease COVID-19 setup
 agent.number_of_diseases = 1
@@ -139,10 +144,17 @@ read -r -d '' MITIGATION <<'EOF' || true
 ## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
 agent.shelter_start = 40
 agent.shelter_length = 280
-agent.shelter_compliance = 0.32
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.4 0.5 0.6 0.8
-agent.symptomatic_withdraw_compliance_day_1 = 0.5 0.5 0.7 0.8 0.85 0.95
-agent.symptomatic_withdraw_compliance_day_2 = 0.7 0.7 0.85 0.9 0.95 0.98
+## Shelter compliance: data-anchored to the ~50% out-of-home contact reduction observed
+## in the Bay Area after the March 2020 order (Google mobility: retail/rec ~-60%, work
+## ~-50%). A counterfactual lower value is used where the experiment needs hospital
+## overload (the real Bay Area avoided collapse through high compliance).
+agent.shelter_compliance = 0.50
+## Enhanced withdrawal (under the order): cumulative ~75% (working) to ~92% (65+),
+## matching the ~82% stay-at-home adherence reported under the orders. Each cell is
+## >= the corresponding default.
+agent.symptomatic_withdraw_compliance_day_0 = 0.30 0.30 0.30 0.30 0.40 0.50
+agent.symptomatic_withdraw_compliance_day_1 = 0.40 0.40 0.40 0.40 0.50 0.60
+agent.symptomatic_withdraw_compliance_day_2 = 0.40 0.40 0.40 0.40 0.50 0.60
 EOF
 
 # Note: the COVID-19 disease.CHR set in BASE and BASE2D is the realistic US
@@ -191,9 +203,9 @@ diag.output_filename = "output_Cov19S1.dat" "output_FluS1.dat"
 agent.air_travel_int = -1
 
 ## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
-agent.symptomatic_withdraw_compliance_day_0 = 0.3 0.3 0.3 0.3 0.3 0.3
-agent.symptomatic_withdraw_compliance_day_1 = 0.8 0.7 0.5 0.5 0.5 0.5
-agent.symptomatic_withdraw_compliance_day_2 = 0.9 0.8 0.7 0.7 0.7 0.7
+agent.symptomatic_withdraw_compliance_day_0 = 0.15 0.15 0.15 0.15 0.20 0.25
+agent.symptomatic_withdraw_compliance_day_1 = 0.25 0.25 0.25 0.25 0.30 0.35
+agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
 
 ## Two co-circulating diseases
 agent.number_of_diseases = 2
@@ -266,6 +278,107 @@ disease_FluS1.CVE = 0.28 0.25 0.50 0.50 0.52 0.40
 disease_FluS1.hospCVF = 0 0 0 0 0 0
 disease_FluS1.icuCVF = 0.02 0.02 0.03 0.03 0.05 0.10
 disease_FluS1.ventCVF = 0.05 0.10 0.15 0.25 0.30 0.50
+EOF
+
+# --- two-disease base: COVID-19 wild-type (Cov19S1) + COVID-19 Delta (Cov19S2) -
+#     A second COVID-19 strain rather than influenza, so the in-hospital
+#     cross-disease channel acts between two lethal diseases. Delta (Cov19S2) is
+#     more transmissible (p_trans 0.35 vs 0.20; shorter latent/incubation) and more
+#     severe. The severity is set by the SAME approach as the multidisease decks:
+#     the multidisease S1->S2 ratios (CHR x1.93, icuCVF x1.154, ventCVF x1.25;
+#     hospCVF/CIC/CVE inherited) applied to THIS paper's data-based Cov19S1 outcome
+#     rates (Reese 2021 / Gold 2020), so the two strains differ by the same factors
+#     as in the multidisease paper but anchored to this paper's ancestral baseline.
+#     Coupling: prior wild-type infection gives ~85% cross-protection against Delta
+#     (coimmunity 0.85 [Goldberg 2021]); neutral co-susceptibility.
+read -r -d '' BASE2D_COV2 <<'EOF' || true
+## Initialization and data files
+agent.ic_type = "census"
+agent.census_filename = "BayArea.dat"
+agent.workerflow_filename = "BayArea-wf.bin"
+
+## Simulation control
+agent.nsteps = 365
+agent.max_box_size = 16
+
+## Output control
+agent.plot_int = 15
+agent.check_int = -1
+agent.aggregated_diag_int = 1
+agent.aggregated_diag_prefix = "cases"
+diag.output_filename = "output_Cov19S1.dat" "output_Cov19S2.dat"
+agent.air_travel_int = -1
+
+## Symptomatic withdrawal compliance (by age group: U5, 5-17, 18-29, 30-49, 50-64, 65+)
+agent.symptomatic_withdraw_compliance_day_0 = 0.15 0.15 0.15 0.15 0.20 0.25
+agent.symptomatic_withdraw_compliance_day_1 = 0.25 0.25 0.25 0.25 0.30 0.35
+agent.symptomatic_withdraw_compliance_day_2 = 0.25 0.25 0.25 0.25 0.30 0.35
+
+## Two co-circulating COVID-19 strains
+agent.number_of_diseases = 2
+agent.disease_names = "Cov19S1" "Cov19S2"
+
+## Disease coupling (2x2, row-major): ~85% cross-immunity, neutral co-susceptibility
+disease_coupling.coimmunity_matrix = \
+    1.0   0.85 \
+    0.85  1.0
+disease_coupling.cosusceptibility_matrix = \
+    1.0  1.0 \
+    1.0  1.0
+
+## Default disease parameters (Cov19S1: wild-type COVID-19)
+disease.initial_case_type = "random"
+disease.num_initial_cases = 20
+disease.p_trans = 0.20
+disease.xmit_comm = 0.000015 0.000055 0.00015 0.00015 0.00015 0.00025
+disease.xmit_hood = 0.000086 0.00025 0.00065 0.00065 0.00065 0.001
+disease.xmit_hh_adult = 0.3 0.3 0.4 0.4 0.4 0.4
+disease.xmit_hh_child = 0.6 0.6 0.3 0.3 0.3 0.3
+disease.xmit_nc_adult = 0.0528 0.0528 0.066 0.066 0.066 0.066
+disease.xmit_nc_child = 0.1 0.1 0.0528 0.0528 0.0528 0.0528
+disease.xmit_work = 0.0575
+disease.xmit_school = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_a2c = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.xmit_school_c2a = 0 0.0315 0.0315 0.0375 0.0435 0.15
+disease.p_asymp = 0.30
+disease.asymp_relative_inf = 0.7
+disease.vac_eff = 0.0
+disease.child_compliance = 0.5
+disease.child_hh_closure = 2.0
+disease.latent_length_alpha = 5.2
+disease.latent_length_beta = 0.75
+disease.infectious_length_alpha = 26.2
+disease.infectious_length_beta = 0.23
+disease.incubation_length_alpha = 7.5
+disease.incubation_length_beta = 0.65
+disease.immune_length_alpha = 540.0
+disease.immune_length_beta = 0.33
+disease.hospital_delay_length_alpha = 1.0
+disease.hospital_delay_length_beta = 1.0
+disease.hospital_stay_type = "constant"
+disease.hospitalization_days = 3 3 3 3 8 7
+disease.CHR = 0.0181 0.0094 0.0260 0.0260 0.0720 0.2244
+disease.CIC = 0.24 0.24 0.24 0.36 0.36 0.35
+disease.CVE = 0.12 0.12 0.12 0.22 0.22 0.22
+disease.hospCVF = 0.0024 0.0024 0.0095 0.0188 0.0409 0.1497
+disease.icuCVF = 0.0047 0.0047 0.0189 0.0375 0.0817 0.2994
+disease.ventCVF = 0.0071 0.0071 0.0284 0.0563 0.1226 0.4490
+
+## Cov19S2 overrides (Delta variant: only the parameters that differ)
+## Transmission/period overrides follow the multidisease Cov19S2 (Delta) deck.
+disease_Cov19S2.initial_case_type = "random"
+disease_Cov19S2.num_initial_cases = 5
+disease_Cov19S2.p_trans = 0.35
+disease_Cov19S2.p_asymp = 0.15
+disease_Cov19S2.latent_length_alpha = 4.7
+disease_Cov19S2.infectious_length_beta = 0.27
+disease_Cov19S2.incubation_length_alpha = 4.43
+disease_Cov19S2.incubation_length_beta = 1.01
+## Severity: this paper's Cov19S1 outcome rates scaled by the multidisease S1->S2
+## factors (CHR x1.93, icuCVF x1.154, ventCVF x1.25); hospCVF/CIC/CVE inherit S1.
+disease_Cov19S2.CHR = 0.0350 0.0182 0.0503 0.0503 0.1392 0.4338
+disease_Cov19S2.icuCVF = 0.0054 0.0054 0.0218 0.0433 0.0943 0.3455
+disease_Cov19S2.ventCVF = 0.0089 0.0089 0.0355 0.0704 0.1533 0.5613
 EOF
 
 # --- writer: $1 = name, $2 = medical-worker block, $3 = base deck (default 1-disease) ---
@@ -442,13 +555,19 @@ hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
-# --- multidisease (COVID + influenza): in-hospital cross-disease transmission --
+# --- in-hospital cross-disease transmission (Section 4.6) ----------------------
 #     Two co-circulating diseases let the patient-coupled channels act: a patient
-#     admitted for one disease can acquire the other in the hospital. md_combined
-#     turns on all four in-hospital channels; md_nonoso keeps the worker channels
-#     (p2d, d2d) but turns the patient-coupled channels (d2p, p2p) off. The
-#     difference isolates hospital-acquired (nosocomial) co-infection.
-write_case "md_combined" "agent.model_medical_workers = true
+#     admitted for one disease can acquire the OTHER in the hospital (nosocomial
+#     co-infection). Because hospitalized agents are cut off from all community,
+#     household, work and school contact, any new infection of a patient is
+#     necessarily hospital-acquired -- the new "hospital_acquired" diagnostic counts
+#     exactly these. w_noso turns on all four in-hospital channels; wo_noso keeps the
+#     worker channels (d2d, p2d) but turns the patient-coupled channels (d2p, p2p)
+#     off, so the w_noso/wo_noso difference isolates hospital-acquired co-infection.
+#     Two scenarios: COVID-19 + influenza (covflu_*) and two COVID-19 strains,
+#     wild-type + Delta (cov2_*). Both seeded at t=0. Mitigated (to keep the load in
+#     the realistic range, as in H1_mitigated), real HHS bed data, 13% workforce.
+write_case "covflu_w_noso" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
@@ -463,9 +582,10 @@ disease.xmit_hosp_p2p = 0.01725
 disease_FluS1.xmit_hosp_d2d = 0.0075
 disease_FluS1.xmit_hosp_p2d = 0.0075
 disease_FluS1.xmit_hosp_d2p = 0.0075
-disease_FluS1.xmit_hosp_p2p = 0.01725" "$BASE2D"
+disease_FluS1.xmit_hosp_p2p = 0.01725
+${MITIGATION}" "$BASE2D"
 
-write_case "md_nonoso" "agent.model_medical_workers = true
+write_case "covflu_wo_noso" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
@@ -480,6 +600,43 @@ disease.xmit_hosp_p2p = 0.0
 disease_FluS1.xmit_hosp_d2d = 0.0075
 disease_FluS1.xmit_hosp_p2d = 0.0075
 disease_FluS1.xmit_hosp_d2p = 0.0
-disease_FluS1.xmit_hosp_p2p = 0.0" "$BASE2D"
+disease_FluS1.xmit_hosp_p2p = 0.0
+${MITIGATION}" "$BASE2D"
+
+write_case "cov2_w_noso" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true
+disease.xmit_hosp_d2d = 0.0075
+disease.xmit_hosp_p2d = 0.0075
+disease.xmit_hosp_d2p = 0.0075
+disease.xmit_hosp_p2p = 0.01725
+disease_Cov19S2.xmit_hosp_d2d = 0.0075
+disease_Cov19S2.xmit_hosp_p2d = 0.0075
+disease_Cov19S2.xmit_hosp_d2p = 0.0075
+disease_Cov19S2.xmit_hosp_p2p = 0.01725
+${MITIGATION}" "$BASE2D_COV2"
+
+write_case "cov2_wo_noso" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true
+disease.xmit_hosp_d2d = 0.0075
+disease.xmit_hosp_p2d = 0.0075
+disease.xmit_hosp_d2p = 0.0
+disease.xmit_hosp_p2p = 0.0
+disease_Cov19S2.xmit_hosp_d2d = 0.0075
+disease_Cov19S2.xmit_hosp_p2d = 0.0075
+disease_Cov19S2.xmit_hosp_d2p = 0.0
+disease_Cov19S2.xmit_hosp_p2p = 0.0
+${MITIGATION}" "$BASE2D_COV2"
 
 echo "done."
