@@ -47,12 +47,22 @@ all of which move the load regime:
 
 ### Re-tuning procedure (done -- redo only if the model or region changes)
 
-The mitigation and in-hospital weights are already calibrated for the current
-model (the work-neighborhood fix + workgroups + complete beds); values and method
-in [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md):
-`shelter_compliance = 0.32` (mitigated peak load ~2.5x) and
-`xmit_hosp_d2d = p2d = 0.0075` (HCW cumulative-hazard ratio ~3.4). The steps below
-are the procedure, kept for re-tuning after a model or region change.
+The mitigation is now **data-anchored, not tuned to a load target.**
+`shelter_compliance = 0.50` is the ~50% out-of-home mobility reduction in the Bay
+Area after the March 2020 order (Google Community Mobility); the symptomatic-
+withdrawal probabilities are the paper's Table 5, anchored to COVID isolation
+surveys (~50% default / ~75-92% enhanced cumulative over three days), replacing the
+inherited EpiCast/FluTE influenza values. The in-hospital weights remain calibrated
+for the current model: `xmit_hosp_d2d = p2d = 0.0075` (HCW cumulative-hazard ratio
+~3.4); method in
+[calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md).
+The peak load is then an **output**, not a target -- a single H1_mitigated
+realization gives aggregate ~2.2x, median hospital ~2.3x (busiest ~17x), ~25k
+deaths, ~57k patient-transfers. The Bay Area did not in fact overload (it avoided
+LA/NY-style collapse through high compliance), so the model's overload is a
+counterfactual the capacity response acts on. The score and `xmit_hosp` steps below
+are kept for re-tuning after a model or region change; the mitigation is no longer
+tuned.
 
 1. **Validate one run.** Run a single `bay_H1_capacity` realization
    (`--mode=batch` without `--ensemble`); locally, 4 MPI ranks on the 9-county Bay
@@ -65,9 +75,9 @@ are the procedure, kept for re-tuning after a model or region change.
    peak step. The relevant numbers are the patient-weighted mean and the worst
    hospital; transfer flattens the spread, so re-read both -- do not reuse the
    pre-transfer 45x tail.
-3. **Re-tune the mitigation** (`inputs/make_inputs.sh`, `MITIGATION` block) so the
-   mitigated H1 peak lands in the realistic ~2--3x range on the *new* (higher)
-   capacity. Regenerate the decks, resubmit, iterate.
+3. **Read the mitigated load (do not tune it).** The shelter (0.50) and withdrawal
+   (Table 5) are data-anchored, so the mitigated H1 peak load is reported, not
+   driven to a target. Only edit the `MITIGATION` block if the data anchors change.
 4. **Re-run the score calibration.** If the admission mix or baseline mortality
    shifts, re-run `calibration/calibrate_treatment_score.py` and update
    `score_minimum` / `halfscore_load`.
@@ -118,10 +128,10 @@ are the procedure, kept for re-tuning after a model or region change.
   ./scripts/run_exaepi.sh --case=bay_H1_mitigated --mode=batch --ensemble --ensemble-size=25
   ```
 
-  It adds a shelter-in-place window and a higher symptomatic-withdrawal
-  compliance to flatten the curve toward a peak load of ~2-3×. Check the peak
-  hospitalized against the bed supply (~10,876) and tune the mitigation in
-  `inputs/make_inputs.sh` (`MITIGATION` block) until the load is in range.
+  It adds the data-anchored shelter window (0.50) and enhanced symptomatic
+  withdrawal (Table 5). The resulting peak load (single realization: aggregate
+  ~2.2×, median hospital ~2.3×, busiest ~17×) is read off the `hospital_data_*`
+  plotfiles, not tuned to a target -- the mitigation is fixed by the data.
 - Excess mortality = `H1_*` − the matching ample-bed baseline (same config and
   mitigation, real vs ample beds).
 - **Patient-transfer effect.** `bay_H1_mitigated` has transfer on (the default)
@@ -179,24 +189,36 @@ done
 ./scripts/run_exaepi.sh --case=bay_combined --mode=batch --ensemble --ensemble-size=25
 ```
 
-## 6. Multidisease (in-hospital cross-disease transmission)
+## 6. Nosocomial (in-hospital cross-disease transmission)
 
-Two co-circulating diseases (COVID-19 + influenza) are needed for the
-patient-coupled channels (`d2p`, `p2p`) to act: a patient admitted for one
-disease can acquire the other in the hospital. With a single disease these
-channels are inert.
+Two co-circulating diseases are needed for the patient-coupled channels (`d2p`,
+`p2p`) to act: a patient admitted for one disease can acquire the other in the
+hospital. With a single disease these channels are inert. Two scenarios bracket the
+coupling -- COVID-19 + influenza (no cross-immunity, mild second disease) and two
+COVID-19 strains, wild-type + Delta (~85% cross-immunity, lethal second strain) --
+each run with the patient channels on (`w_noso`) and off (`wo_noso`):
 
 ```bash
-./scripts/run_exaepi.sh --case=bay_md_combined --mode=batch --ensemble --ensemble-size=25
-./scripts/run_exaepi.sh --case=bay_md_nonoso   --mode=batch --ensemble --ensemble-size=25
+for c in covflu_w_noso covflu_wo_noso cov2_w_noso cov2_wo_noso; do
+    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
+done
 ```
 
-- `md_combined` turns on all four in-hospital channels; `md_nonoso` keeps the
-  worker channels (`p2d`, `d2d`) but turns the patient-coupled channels off.
-- Nosocomial co-infection = `md_combined` − `md_nonoso`: the agents who acquire
-  a second disease in the hospital, and the excess mortality from it. Outputs are
-  per disease (`output_Cov19S1.dat` / `output_FluS1.dat`,
-  `medical_workers_Cov19S1.dat` / `medical_workers_FluS1.dat`).
+- `w_noso` turns on all four in-hospital channels; `wo_noso` keeps the worker
+  channels (`p2d`, `d2d`) but turns the patient-coupled channels off. Both
+  scenarios use the same data-anchored mitigation; cov2's greater severity is from
+  the disease parameters (Delta more transmissible and ~1.93x more severe), not a
+  behavior table.
+- The diagnostic is the per-disease `hospital_acquired` plotfile field (cumulative
+  nosocomial infections deposited at the hospital cell; needs the latest
+  `dg/medical_workers` binary, which also carries the OOB and dual-hospitalization
+  fixes the multi-disease hospital runs require). Net nosocomial = `w_noso` −
+  `wo_noso` (the small `wo_noso` residual is community infection on the admission
+  day); the mortality increment is the death difference `w_noso` − `wo_noso`.
+- First-realization check (pre-recalibration): covflu +0.67% deaths, cov2 +1.49%
+  -- patient cross-infection is a minor mortality channel next to the H3 worker
+  depletion (+52%); the driver is the acquired disease's lethality. Re-derive at
+  the data-anchored mitigation.
 
 ## Monitor and restart (any time)
 
@@ -231,4 +253,4 @@ channels are inert.
 3. H3_hcw → calibrate xmit_hosp from `medical_workers.dat`.
 4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
 5. combined → realistic showcase.
-6. md_combined / md_nonoso → in-hospital cross-disease (nosocomial) transmission.
+6. covflu_{w,wo}_noso, cov2_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
