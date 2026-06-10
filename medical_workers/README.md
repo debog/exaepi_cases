@@ -38,8 +38,10 @@ disease base + a medical-worker block.
 | `H2_mw13` | **H2**: reference workforce (13%) | on | fallback, beds∝workforce | off |
 | `H2_mw20` | **H2**: large workforce (20%), bed supply scaled up | on | fallback, beds∝workforce | off |
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
-| `md_combined` | **Multidisease** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
-| `md_nonoso` | Multidisease counterfactual: patient channels off | on | real, tract | worker only |
+| `covflu_w_noso` | **Nosocomial** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
+| `covflu_wo_noso` | COVID+flu, patient channels off | on | real, tract | worker only |
+| `cov2_w_noso` | **Nosocomial** (2 COVID strains, wild-type+Delta): all channels | on | real, tract | on (all 4) |
+| `cov2_wo_noso` | 2 COVID strains, patient channels off | on | real, tract | worker only |
 
 H2 uses the per-community (fallback) bed model so the staffed-bed supply scales
 with the medical-worker fraction (2.4 × frac/0.13 beds per 1000 residents),
@@ -74,9 +76,11 @@ feature, so the mechanism is isolated:
 - **H2 (workforce size):** `H2_mw08` / `H2_mw13` / `H2_mw20` — sweep of
   `med_workers_proportion` with the bed supply scaled to match (fallback option),
   in-hospital transmission off so the workforce acts only through capacity.
-- **Nosocomial co-infection (multidisease):** `md_combined` − `md_nonoso`. The
-  only difference is the patient-coupled in-hospital channels (`d2p`, `p2p`), so
-  the difference is the second-disease infections acquired in the hospital.
+- **Nosocomial co-infection:** `covflu_{w,wo}_noso` and `cov2_{w,wo}_noso` (two
+  scenarios: COVID+flu, and two COVID strains, wild-type+Delta). `w_noso` −
+  `wo_noso` isolates the patient-coupled in-hospital channels (`d2p`, `p2p`): the
+  second-disease infections acquired in the hospital (the `hospital_acquired`
+  diagnostic) and their excess mortality.
 
 ## Calibration
 
@@ -84,12 +88,14 @@ Capacity magnitude is pinned by the real HHS bed data. The score model is set in
 closed form by `../../2026_MedicalWorkers/calibration/`; the mitigation and the
 in-hospital weights are set empirically with local 4-rank runs, documented in
 [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md)
-(current values: `shelter_compliance = 0.32`, `xmit_hosp_d2d = p2d = 0.0075`):
+(current values: `shelter_compliance = 0.50` data-anchored, `xmit_hosp_d2d = p2d = 0.0075`):
 
 - `score_minimum = 0.1`, `halfscore_load = 3.13` — from **H1**: in-hospital
-  mortality ~2× the unstrained baseline at a 2.5× peak load.
-- `shelter_compliance` — from **H1_mitigated** (channels off): tune to a ~2.5×
-  mitigated peak load.
+  mortality ~2× the unstrained baseline at a 2.5× peak load (the score model's
+  dose-response, independent of the mitigation).
+- `shelter_compliance = 0.50` and the symptomatic-withdrawal probabilities —
+  **data-anchored** (Bay Area mobility and COVID isolation surveys), not tuned to a
+  load target; the mitigated peak load is then an output (~2.2× aggregate).
 - `disease.xmit_hosp_{d2d,p2d}` — from **H3**: tune to the HCW hazard target
   (cumulative-hazard ratio ~3.4). The metric is robust to closed-population
   saturation; the raw attack-rate ratio is not.
@@ -117,7 +123,7 @@ From this directory:
 ./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --ensemble-size=25
 
 # all cases as ensembles
-for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 combined md_combined md_nonoso; do
+for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 combined covflu_w_noso covflu_wo_noso cov2_w_noso cov2_wo_noso; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 

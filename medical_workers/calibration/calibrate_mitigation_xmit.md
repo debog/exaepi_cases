@@ -32,24 +32,34 @@ recalibration:
   day-to-day noise of an incidence-rate ratio. Target ~3.4, the adjusted risk
   reported for front-line health-care workers (Nguyen et al. 2020).
 
-## Mitigation (H1_mitigated, in-hospital channels off)
+## Mitigation (data-anchored; superseded the load-target tuning)
 
-Target a realistic mitigated peak load of ~2.5x capacity (the load at which the
-treatment-score calibration sets ~2x in-hospital mortality). Sweep
-`agent.shelter_compliance` with the rest of the `MITIGATION` block fixed
-(`shelter_start = 40`, `shelter_length = 280`, age-tiered symptomatic withdrawal):
+The mitigation is now **data-anchored, not tuned to a load target.**
+`shelter_compliance = 0.50` is the ~50% out-of-home mobility reduction observed in
+the Bay Area after the March 2020 order (Google Community Mobility), and the
+symptomatic-withdrawal probabilities are anchored to COVID isolation surveys (~50%
+default / ~75-92% enhanced cumulative), replacing the inherited EpiCast/FluTE
+influenza values. The mitigated peak load is then an **output**: a single
+H1_mitigated realization gives aggregate ~2.2x (median hospital ~2.3x, busiest
+~17x), ~25k deaths, ~57k patient-transfers. The Bay Area did not in fact overload
+(it avoided LA/NY-style collapse through high compliance), so the model's overload
+is a counterfactual the capacity response acts on.
+
+The earlier sweep below tuned `shelter_compliance` to a ~2.5x peak-load target with
+the *old EpiCast withdrawal*; it is kept for reference only and is superseded by
+the data anchoring above.
 
 | shelter_compliance | peak load | over-cap days | final deaths |
 |--------------------|-----------|---------------|--------------|
 | 0.40               | 1.86x     | 33            | 31\,994      |
-| 0.32               | 2.47x     | 36            | 46\,991      |
+| 0.32 (old chosen)  | 2.47x     | 36            | 46\,991      |
 | 0.25               | 3.07x     | 38            | 59\,976      |
 
-**Chosen: `shelter_compliance = 0.32`** (peak load 2.47x, single broad peak,
-no rebound). Lower compliance (0.40) gives the previous over-mitigated tuning;
-0.25 is the upper end of the realistic 2--3x range.
+## In-hospital transmission (H3_hcw, channels on)
 
-## In-hospital transmission (H3_hcw, channels on, compliance = 0.32)
+> The sweep below was run at the old `0.32` shelter; `xmit_hosp = 0.0075` carries
+> over to the data-anchored mitigation (the aHR is robust to the shelter level), but
+> re-validate the aHR against `medical_workers.dat` at `0.50` before the ensembles.
 
 Worker-infecting weights set equal (`xmit_hosp_d2d = xmit_hosp_p2d`), both
 reduced from the workplace weight by infection-control precautions; the patient-
