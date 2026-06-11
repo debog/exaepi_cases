@@ -46,7 +46,8 @@ AGE_COLS = ['HospU5', 'Hosp5to17', 'Hosp18to29', 'Hosp30to49', 'Hosp50to64', 'Ho
 HOSP_COMPARTMENTS = ['H/NI', 'H/I', 'ICU', 'V']          # in-hospital census = sum
 
 # --- grids ----------------------------------------------------------------------
-SMIN_GRID = [0.0, 0.1, 0.2, 0.3]
+SMIN_GRID = [0.05, 0.1, 0.2, 0.35, 0.5, 0.7]   # floor; M_max=(1-s_min(1-pbar))/pbar at
+#   extreme load: 0.05->8.7x .. 0.7->3.2x. s_min=0 (certain death) excluded as unphysical.
 LHALF_GRID = [2.0, 3.13, 4.0, 6.0]
 TARGET_GRID = [1.5, 2.0, 3.0]      # M(2.5) calibration target (Kadri/Bravata CI)
 PBAR = 0.11                        # admission-weighted baseline in-hospital mortality

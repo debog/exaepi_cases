@@ -542,13 +542,19 @@ hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true"
-write_case "S1_smin00" "${S1_BASE}
-hospital_model.score_minimum = 0.0
+# s_min is the asymptotic treatment quality, so it sets the worst-case in-hospital
+# mortality multiplier at extreme overload, M_max = (1 - s_min(1-pbar))/pbar (pbar~=0.11):
+# s_min=0.05 -> ~8.7x (~95% mortality, near-catastrophic), 0.70 -> ~3.2x (~35%, the level
+# of the worst observed overwhelmed systems). s_min=0 (certain death) is excluded as
+# unphysical; the baseline 0.1 already implies a ~8x ceiling, so the realistic range is
+# the HIGHER (milder) end.
+write_case "S1_smin05" "${S1_BASE}
+hospital_model.score_minimum = 0.05
 hospital_model.halfscore_load = 3.13
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
-write_case "S1_smin20" "${S1_BASE}
-hospital_model.score_minimum = 0.2
+write_case "S1_smin70" "${S1_BASE}
+hospital_model.score_minimum = 0.7
 hospital_model.halfscore_load = 3.13
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"

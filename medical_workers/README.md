@@ -40,7 +40,7 @@ disease base + a medical-worker block.
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
 | `covflu_w_noso` | **Nosocomial** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
 | `covflu_wo_noso` | COVID+flu, patient channels off | on | real, tract | worker only |
-| `S1_smin00`/`S1_smin20` | **S1** (sensitivity): score floor `s_min`=0.0 / 0.2 (mitigated) | on | real, tract | off |
+| `S1_smin05`/`S1_smin70` | **S1** (sensitivity): score floor `s_min`=0.05 / 0.70 (worst-case mortality ceiling ~8.7× / ~3.2×; mitigated) | on | real, tract | off |
 | `S1_lhalf20`/`S1_lhalf50` | **S1**: half-score load `L_1/2`=2.0 / 5.0 (mitigated) | on | real, tract | off |
 | `S2_hcw_lo`/`S2_hcw_hi` | **S2**: in-hospital xmit scaled ~0.67× / 1.6× (HCW-hazard sweep) | on | real, tract | on (scaled) |
 | `cost_off`/`cost_on`/`cost_on_full` | **Cost**: timing, model off / capacity-only / full (plotfiles off) | off/on | real, tract | off / off / on |

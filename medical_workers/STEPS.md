@@ -255,7 +255,7 @@ since the strain sits in the hardest-hit hospitals). So anchor the mitigated
 operating point with full re-runs at the corners:
 
 ```bash
-for c in S1_smin00 S1_smin20 S1_lhalf20 S1_lhalf50; do
+for c in S1_smin05 S1_smin70 S1_lhalf20 S1_lhalf50; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 ```
