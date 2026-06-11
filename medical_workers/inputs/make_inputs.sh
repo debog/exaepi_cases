@@ -16,6 +16,7 @@
 #
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
+REGION=bay   # output filename prefix: inputs_${REGION}_<case>
 
 # --- shared base (everything except the medical-worker block) -----------------
 read -r -d '' BASE <<'EOF' || true
@@ -300,8 +301,8 @@ write_case () {
         echo ""
         echo "## ===== Medical-worker / hospital-capacity model ====="
         echo "$block"
-    } > "inputs_bay_${name}"
-    echo "  wrote inputs_bay_${name}"
+    } > "inputs_${REGION}_${name}"
+    echo "  wrote inputs_${REGION}_${name}"
 }
 
 # --- verification: gate off (must reproduce development exactly) --------------
@@ -512,5 +513,154 @@ disease_FluS1.xmit_hosp_p2d = 0.0075
 disease_FluS1.xmit_hosp_d2p = 0.0
 disease_FluS1.xmit_hosp_p2p = 0.0
 ${MITIGATION}" "$BASE2D"
+
+# ==============================================================================
+# Sensitivity and robustness (Section 4.7) and computational cost (Section 4.8)
+# ==============================================================================
+#
+# The two free parameters of the load->mortality map (score_minimum s_min, and
+# halfscore_load L_1/2, the latter pinned by the M(2.5)~=2x calibration target) are
+# NOT swept here: because they enter only the closed-form mortality multiplier and
+# do not change the load trajectory in the fixed-workforce experiments (H1, H2), the
+# (s_min, L_1/2) sensitivity is obtained by ANALYTIC RE-SCORING of the saved H1/H3
+# load trajectories -- see ../scripts/rescore_sensitivity.py, no new runs. The decks
+# below cover only what needs new dynamics: the in-hospital transmissivity (HCW
+# hazard) sweep, and the cost-timing runs.
+
+# --- S1: treatment-quality map (s_min, L_1/2) -- FULL re-runs at OAT corners ----
+#     The aggregate re-scoring (scripts/rescore_sensitivity.py) is validated at high
+#     UNIFORM load (unmitigated: 6.1x, matches the full run) but UNDERESTIMATES where
+#     the load is spatially concentrated (mitigated: 1.5x mean load yet 3.2x
+#     mortality, the strain sits in the hardest-hit hospitals). So the mitigated
+#     operating point needs full runs. These vary s_min and L_1/2 one at a time
+#     around the baseline (s_min=0.1, L_1/2=3.13 = H1_mitigated); real beds, no
+#     in-hospital transmission. They anchor the re-scoring and give the faithful
+#     (s_min, L_1/2) sensitivity of the mitigated multiplier.
+S1_BASE="agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true"
+write_case "S1_smin00" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 3.13
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S1_smin20" "${S1_BASE}
+hospital_model.score_minimum = 0.2
+hospital_model.halfscore_load = 3.13
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S1_lhalf20" "${S1_BASE}
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 2.0
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S1_lhalf50" "${S1_BASE}
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 5.0
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+
+# --- S2: in-hospital transmissivity sweep (HCW hazard-ratio sensitivity) -------
+#     Bracket the calibrated H3_hcw (baseline) by uniformly scaling the in-hospital
+#     transmissivities down (lo, ~0.67x) and up (hi, ~1.6x). xmit_hosp is set by
+#     calibration to a data-based TARGET (the front-line HCW adjusted hazard ratio,
+#     ~2.5-5 across reports; Nguyen et al. 2020) -- this sweep probes that target's
+#     range. Read the achieved cumulative-hazard ratio off medical_workers.dat and
+#     tune the scaling. H3 setup otherwise (mitigated, real beds, 13% workforce).
+write_case "S2_hcw_lo" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true
+disease.xmit_hosp_d2d = 0.005
+disease.xmit_hosp_p2d = 0.005
+disease.xmit_hosp_d2p = 0.005
+disease.xmit_hosp_p2p = 0.0115
+${MITIGATION}"
+
+write_case "S2_hcw_hi" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = true
+disease.xmit_hosp_d2d = 0.012
+disease.xmit_hosp_p2d = 0.012
+disease.xmit_hosp_d2p = 0.012
+disease.xmit_hosp_p2p = 0.0276
+${MITIGATION}"
+
+# --- Computational cost (Section 4.8): per-step overhead of the model vs baseline -
+#     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute; time
+#     the per-day wall time and report overhead = (on - off)/off on a single MI300A.
+#       cost_off      : model off (baseline ExaEpi)
+#       cost_on       : capacity model on, in-hospital transmission OFF -- the core
+#                       per-step overhead, with ~identical dynamics to cost_off
+#       cost_on_full  : full model (+ all four in-hospital channels) -- adds the
+#                       hospital-interaction cost, an upper bound on the overhead
+write_case "cost_off" "agent.model_medical_workers = false
+agent.plot_int = -1
+${MITIGATION}"
+
+write_case "cost_on" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = false
+agent.plot_int = -1
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+
+write_case "cost_on_full" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = true
+hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = false
+agent.plot_int = -1
+${HOSP_XMIT_ON}
+${MITIGATION}"
+
+# --- Cost at scale: California (33.9M agents), to show the per-step overhead
+#     fraction is ~size-independent (added work is O(agents)+O(communities), the
+#     same class as the base step). REQUIRES the California synthetic population
+#     (California.dat / California-wf.bin) staged on the run system -- adjust the
+#     filenames/grid to match your CA data. Uses the per-community bed model so
+#     cost_on needs no CA hospital data file (bed-supply source is immaterial to the
+#     per-step cost); in-hospital transmission off for the clean capacity overhead.
+#     nsteps reduced to span the peak at bounded cost.
+BASE_CA="$(sed 's/BayArea/California/g' <<< "$BASE")"
+REGION=ca
+write_case "cost_off" "agent.model_medical_workers = false
+agent.nsteps = 120
+agent.plot_int = -1
+${MITIGATION}" "$BASE_CA"
+
+write_case "cost_on" "agent.model_medical_workers = true
+agent.med_workers_proportion = 0.13
+hospital_model.use_HHS_data = false
+hospital_model.staffed_beds_per_1000 = 2.4
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 3.13
+hospital_model.treatment_score_type = minimum
+hospital_model.write_pltfiles = false
+agent.nsteps = 120
+agent.plot_int = -1
+${HOSP_XMIT_OFF}
+${MITIGATION}" "$BASE_CA"
+REGION=bay
 
 echo "done."

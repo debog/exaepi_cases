@@ -40,6 +40,21 @@ disease base + a medical-worker block.
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
 | `covflu_w_noso` | **Nosocomial** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
 | `covflu_wo_noso` | COVID+flu, patient channels off | on | real, tract | worker only |
+| `S1_smin00`/`S1_smin20` | **S1** (sensitivity): score floor `s_min`=0.0 / 0.2 (mitigated) | on | real, tract | off |
+| `S1_lhalf20`/`S1_lhalf50` | **S1**: half-score load `L_1/2`=2.0 / 5.0 (mitigated) | on | real, tract | off |
+| `S2_hcw_lo`/`S2_hcw_hi` | **S2**: in-hospital xmit scaled ~0.67× / 1.6× (HCW-hazard sweep) | on | real, tract | on (scaled) |
+| `cost_off`/`cost_on`/`cost_on_full` | **Cost**: timing, model off / capacity-only / full (plotfiles off) | off/on | real, tract | off / off / on |
+| `ca_cost_off`/`ca_cost_on` | **Cost at scale**: California (33.9M agents); needs CA population staged | off/on | per-community | off |
+
+**Sensitivity and cost (paper Sections 4.7–4.8).** The treatment-quality map
+(`s_min`, `L_1/2`) sensitivity is mostly post-processing:
+`scripts/rescore_sensitivity.py` re-scores the saved H1/H3 load trajectories over a
+(`s_min`, `L_1/2`) grid (validated at high uniform load; underestimates the
+spatially-concentrated mitigated case). The `S1_*` full runs anchor the mitigated
+operating point. `S2_hcw_{lo,hi}` bracket the calibrated HCW hazard ratio — tune the
+xmit scaling from `medical_workers.dat`. The `cost_*` runs time the per-step overhead
+(off vs on) on a single MI300A; `ca_cost_*` repeat at California scale (stage the CA
+synthetic population and adjust filenames/grid).
 
 H2 uses the per-community (fallback) bed model so the staffed-bed supply scales
 with the medical-worker fraction (2.4 × frac/0.13 beds per 1000 residents),

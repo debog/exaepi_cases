@@ -231,6 +231,76 @@ channels.
   hospital ~5.7x, busiest ~28x -- the saturated regime that makes the channel
   comparison a near-upper-bound, not a typical value.
 
+## 7. Sensitivity and robustness (Section 4.7)
+
+The parameters that are NOT fixed by data are the treatment-quality floor `s_min`
+and the half-score load `L_1/2` (pinned by the M(2.5)~=2x target), and the HCW
+hazard-ratio target behind `xmit_hosp`. `med_workers_proportion` is data-anchored
+(its effect is H2).
+
+**S1 — treatment-quality map (`s_min`, `L_1/2`).** These enter only the closed-form
+mortality map, not the load trajectory, so re-score the saved H1/H3 runs without
+re-running:
+
+```bash
+python3 scripts/rescore_sensitivity.py \
+    /path/.ensemble_bay_H1_capacity_<platform>             # s_min x L_1/2 grid
+python3 scripts/rescore_sensitivity.py \
+    /path/.ensemble_bay_H1_mitigated_<platform> --target   # s_min x M(2.5) target
+```
+
+The re-scoring is validated at high uniform load (unmitigated -> 6.1x, the full-run
+value) but UNDERESTIMATES the spatially-concentrated mitigated case (~1.1x vs 3.2x,
+since the strain sits in the hardest-hit hospitals). So anchor the mitigated
+operating point with full re-runs at the corners:
+
+```bash
+for c in S1_smin00 S1_smin20 S1_lhalf20 S1_lhalf50; do
+    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
+done
+```
+
+Report the H1 multiplier over the grid; state which qualitative conclusion holds
+(strain multiplies mortality) and that the magnitude is the calibration-sensitive part.
+
+**S2 — in-hospital transmissivity (HCW hazard).** Bracket the calibrated H3
+(`H3_hcw`, HR ~3.4-4) by scaling `xmit_hosp` down (`lo`) and up (`hi`):
+
+```bash
+for c in S2_hcw_lo S2_hcw_hi; do
+    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
+done
+```
+
+Read the achieved HCW hazard ratio from `medical_workers.dat` (Section 3 formula),
+tune the `xmit_hosp` scaling in `make_inputs.sh` to span ~2.5-5, and report the
+depletion mortality amplification against the hazard ratio.
+
+## 8. Computational cost (Section 4.8)
+
+Per-step overhead of the model vs baseline, plotfiles off, on a single MI300A. Time
+off / capacity-only / full on the same Bay Area scenario:
+
+```bash
+for c in cost_off cost_on cost_on_full; do
+    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch          # single run; time it
+done
+```
+
+- `cost_on` − `cost_off`: the capacity-model overhead (identical dynamics).
+- `cost_on_full` − `cost_on`: the in-hospital-interaction cost.
+- Break the overhead down by routine from the AMReX TinyProfiler output
+  (`updateHospitalCapacities`, hospital interactions, `treatAgents`).
+- Repeat at California scale (33.9M agents) for size-independence; stage the CA
+  synthetic population (`California.dat` / `California-wf.bin`) and fix the
+  filenames/grid in the `ca_cost_*` decks first:
+
+```bash
+for c in cost_off cost_on; do
+    ./scripts/run_exaepi.sh --case=ca_$c --mode=batch
+done
+```
+
 ## Monitor and restart (any time)
 
 ```bash
@@ -265,3 +335,5 @@ channels.
 4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
 5. combined → realistic showcase.
 6. covflu_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
+7. S1 (rescore_sensitivity.py + S1_* corners), S2_hcw_{lo,hi} → sensitivity.
+8. cost_{off,on,on_full} (+ ca_cost_*) → computational-cost timing.
