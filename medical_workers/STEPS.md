@@ -289,8 +289,17 @@ done
 
 - `cost_on` − `cost_off`: the capacity-model overhead (identical dynamics).
 - `cost_on_full` − `cost_on`: the in-hospital-interaction cost.
-- Break the overhead down by routine from the AMReX TinyProfiler output
-  (`updateHospitalCapacities`, hospital interactions, `treatAgents`).
+- Break the overhead down by routine from the AMReX TinyProfiler table. **This needs a
+  TinyProfiler build**: the default hardcodes `set(AMReX_TINY_PROFILE OFF)` in ExaEpi's
+  `CMakeLists.txt`, which shadows any `-DAMReX_TINY_PROFILE=ON`, so set that line `ON` for
+  the timing binary. The model routines are already `BL_PROFILE`-annotated
+  (`AgentContainer::interactDay`, `...getMedicalWorkerCounts`, the `HospitalModel` /
+  `HospitalData` regions), so the table names them directly; it prints to the run stdout
+  (`exaepi_*.out`) at finalize. (Without it, the wall time from the run's
+  `Job started`/`Job finished` lines gives only a coarse total that includes init and I/O.)
+- Run on both architectures -- Tuolumne (AMD MI300A) and Matrix (NVIDIA H100) -- to report
+  the overhead on AMD and NVIDIA GPUs; the same cost cases run on either (platform
+  auto-detected, or set by `LCHOST`).
 - Repeat at California scale (33.9M agents) for size-independence; stage the CA
   synthetic population (`California.dat` / `California-wf.bin`) and fix the
   filenames/grid in the `ca_cost_*` decks first:
