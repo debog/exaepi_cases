@@ -9,10 +9,11 @@
 # combined); see ../README.md.
 #
 # Disease/transmission parameters are copied from the multidisease Bay Area
-# COVID-19-S1 deck. xmit_work = 0.0575. In-hospital transmission: the worker
-# channels d2d/p2d/d2p = 0.0075 (~0.13x xmit_work), calibrated so the HCW hazard
-# ratio in H3 is ~3.4 (see calibration/calibrate_mitigation_xmit.md); patient-to-
-# patient p2p = 0.3x xmit_work = 0.01725.
+# COVID-19-S1 deck. xmit_work = 0.0575. In-hospital transmission, calibrated:
+# worker-receiving channels d2d/p2d = 0.0002 (~0.0035x xmit_work), so the HCW
+# hazard ratio matches ~3.4 at a low-incidence window; patient-receiving channels
+# d2p = 0.0001, p2p = 0.0003 (held 1:3), so the in-hospital nosocomial incidence
+# among admitted patients is ~2% (see calibration/calibrate_mitigation_xmit.md).
 #
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -106,10 +107,10 @@ EOF
 
 # In-hospital transmission blocks (on = defaults, off = isolate capacity from workforce loss)
 read -r -d '' HOSP_XMIT_ON <<'EOF' || true
-disease.xmit_hosp_d2d = 0.0075
-disease.xmit_hosp_p2d = 0.0075
-disease.xmit_hosp_d2p = 0.0075
-disease.xmit_hosp_p2p = 0.01725
+disease.xmit_hosp_d2d = 0.0002
+disease.xmit_hosp_p2d = 0.0002
+disease.xmit_hosp_d2p = 0.0001
+disease.xmit_hosp_p2p = 0.0003
 EOF
 
 read -r -d '' HOSP_XMIT_OFF <<'EOF' || true
@@ -486,14 +487,14 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.0075
-disease.xmit_hosp_p2d = 0.0075
-disease.xmit_hosp_d2p = 0.0075
-disease.xmit_hosp_p2p = 0.01725
-disease_FluS1.xmit_hosp_d2d = 0.0075
-disease_FluS1.xmit_hosp_p2d = 0.0075
-disease_FluS1.xmit_hosp_d2p = 0.0075
-disease_FluS1.xmit_hosp_p2p = 0.01725
+disease.xmit_hosp_d2d = 0.0002
+disease.xmit_hosp_p2d = 0.0002
+disease.xmit_hosp_d2p = 0.0001
+disease.xmit_hosp_p2p = 0.0003
+disease_FluS1.xmit_hosp_d2d = 0.0002
+disease_FluS1.xmit_hosp_p2d = 0.0002
+disease_FluS1.xmit_hosp_d2p = 0.0001
+disease_FluS1.xmit_hosp_p2p = 0.0003
 ${MITIGATION}" "$BASE2D"
 
 write_case "covflu_wo_noso" "agent.model_medical_workers = true
@@ -504,12 +505,12 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.0075
-disease.xmit_hosp_p2d = 0.0075
+disease.xmit_hosp_d2d = 0.0002
+disease.xmit_hosp_p2d = 0.0002
 disease.xmit_hosp_d2p = 0.0
 disease.xmit_hosp_p2p = 0.0
-disease_FluS1.xmit_hosp_d2d = 0.0075
-disease_FluS1.xmit_hosp_p2d = 0.0075
+disease_FluS1.xmit_hosp_d2d = 0.0002
+disease_FluS1.xmit_hosp_p2d = 0.0002
 disease_FluS1.xmit_hosp_d2p = 0.0
 disease_FluS1.xmit_hosp_p2p = 0.0
 ${MITIGATION}" "$BASE2D"
@@ -584,10 +585,10 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.005
-disease.xmit_hosp_p2d = 0.005
-disease.xmit_hosp_d2p = 0.005
-disease.xmit_hosp_p2p = 0.0115
+disease.xmit_hosp_d2d = 0.000134
+disease.xmit_hosp_p2d = 0.000134
+disease.xmit_hosp_d2p = 0.000067
+disease.xmit_hosp_p2p = 0.000201
 ${MITIGATION}"
 
 write_case "S2_hcw_hi" "agent.model_medical_workers = true
@@ -598,10 +599,10 @@ hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 3.13
 hospital_model.treatment_score_type = minimum
 hospital_model.write_pltfiles = true
-disease.xmit_hosp_d2d = 0.012
-disease.xmit_hosp_p2d = 0.012
-disease.xmit_hosp_d2p = 0.012
-disease.xmit_hosp_p2p = 0.0276
+disease.xmit_hosp_d2d = 0.00032
+disease.xmit_hosp_p2d = 0.00032
+disease.xmit_hosp_d2p = 0.00016
+disease.xmit_hosp_p2p = 0.00048
 ${MITIGATION}"
 
 # --- Computational cost (Section 4.8): per-step overhead of the model vs baseline -
