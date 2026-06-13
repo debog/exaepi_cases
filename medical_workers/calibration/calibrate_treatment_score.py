@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 """
+SUPERSEDED (2026-06-13). The mortality model is now a bounded, risk-independent
+multiplier  p_death = min(1, M*p0),  M = 1 + (M_max-1)(1-q)/(1-s_min); its parameters
+are data-anchored analytically (M_max=3 ceiling; L_1/2=1.5 from M(2.5)=2, i.e.
+g(2.5)=(m_target-1)/(M_max-1)), so no inversion script is needed. This script encodes the
+OLD linear form  p_death = 1 - q(1-p0)  and is kept for reference only. See
+calibrate_mitigation_xmit.md and
+../../2026_MedicalWorkers/calibration/treatment_quality_score.md.
+
 Calibrate the capacity-limited treatment-quality response of the ExaEpi
 medical-worker / hospital-capacity model.
 

@@ -316,8 +316,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 100.0
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
 
@@ -332,8 +333,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 100.0
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
@@ -347,8 +349,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 100.0
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_MATCH}"
 
@@ -361,8 +364,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}"
 
@@ -375,8 +379,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.transfer_output_file = \"transfers.dat\"
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
@@ -393,8 +398,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.patient_transfer = 0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
@@ -408,8 +414,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}
 ${MITIGATION}"
@@ -427,8 +434,9 @@ agent.med_workers_proportion = 0.08
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 1.477
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
@@ -438,8 +446,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 2.4
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
@@ -449,8 +458,9 @@ agent.med_workers_proportion = 0.20
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 3.692
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
@@ -461,8 +471,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
@@ -484,8 +495,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.0002
 disease.xmit_hosp_p2d = 0.0002
@@ -502,8 +514,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.0002
 disease.xmit_hosp_p2d = 0.0002
@@ -519,54 +532,57 @@ ${MITIGATION}" "$BASE2D"
 # Sensitivity and robustness (Section 4.7) and computational cost (Section 4.8)
 # ==============================================================================
 #
-# The two free parameters of the load->mortality map (score_minimum s_min, and
-# halfscore_load L_1/2, the latter pinned by the M(2.5)~=2x calibration target) are
-# NOT swept here: because they enter only the closed-form mortality multiplier and
-# do not change the load trajectory in the fixed-workforce experiments (H1, H2), the
-# (s_min, L_1/2) sensitivity is obtained by ANALYTIC RE-SCORING of the saved H1/H3
-# load trajectories -- see ../scripts/rescore_sensitivity.py, no new runs. The decks
-# below cover only what needs new dynamics: the in-hospital transmissivity (HCW
-# hazard) sweep, and the cost-timing runs.
+# The free parameters of the load->mortality map are the overload mortality ceiling
+# mortality_multiplier_max (M_max, default 3.0) and halfscore_load L_1/2 (1.5, pinned by
+# M(2.5x)=2x). Under the multiplicative p_death form the multiplier is 1 + (M_max-1) g(L),
+# independent of baseline risk AND of score_minimum (s_min only normalizes the score field),
+# so s_min is NOT swept. These two enter only the closed-form mortality and do not change
+# the load trajectory in the fixed-workforce experiments (H1, H2), so the (M_max, L_1/2)
+# sensitivity is obtained by ANALYTIC RE-SCORING of the saved H1/H3 load trajectories --
+# see ../scripts/rescore_sensitivity.py, no new runs. The decks below cover only what needs
+# new dynamics: the in-hospital transmissivity (HCW hazard) sweep, and the cost-timing runs.
 
-# --- S1: treatment-quality map (s_min, L_1/2) -- FULL re-runs at OAT corners ----
+# --- S1: load->mortality map (M_max, L_1/2) -- FULL re-runs at OAT corners ----
 #     The aggregate re-scoring (scripts/rescore_sensitivity.py) is validated at high
-#     UNIFORM load (unmitigated: 6.1x, matches the full run) but UNDERESTIMATES where
-#     the load is spatially concentrated (mitigated: 1.5x mean load yet 3.2x
-#     mortality, the strain sits in the hardest-hit hospitals). So the mitigated
-#     operating point needs full runs. These vary s_min and L_1/2 one at a time
-#     around the baseline (s_min=0.1, L_1/2=3.13 = H1_mitigated); real beds, no
-#     in-hospital transmission. They anchor the re-scoring and give the faithful
-#     (s_min, L_1/2) sensitivity of the mitigated multiplier.
+#     UNIFORM load but UNDERESTIMATES where the load is spatially concentrated (mitigated:
+#     ~1.5x mean load yet a much higher mortality, the strain sits in the hardest-hit
+#     hospitals). So the mitigated operating point needs full runs. These vary M_max and
+#     L_1/2 one at a time around the baseline (M_max=3.0, L_1/2=1.5 = H1_mitigated); real
+#     beds, no in-hospital transmission. They anchor the re-scoring and give the faithful
+#     (M_max, L_1/2) sensitivity of the mitigated multiplier.
 S1_BASE="agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true"
-# s_min is the asymptotic treatment quality, so it sets the worst-case in-hospital
-# mortality multiplier at extreme overload, M_max = (1 - s_min(1-pbar))/pbar (pbar~=0.11):
-# s_min=0.05 -> ~8.7x (~95% mortality, near-catastrophic), 0.70 -> ~3.2x (~35%, the level
-# of the worst observed overwhelmed systems). s_min=0 (certain death) is excluded as
-# unphysical; the baseline 0.1 already implies a ~8x ceiling, so the realistic range is
-# the HIGHER (milder) end.
-write_case "S1_smin05" "${S1_BASE}
-hospital_model.score_minimum = 0.05
-hospital_model.halfscore_load = 3.13
-${HOSP_XMIT_OFF}
-${MITIGATION}"
-write_case "S1_smin70" "${S1_BASE}
-hospital_model.score_minimum = 0.7
-hospital_model.halfscore_load = 3.13
-${HOSP_XMIT_OFF}
-${MITIGATION}"
-write_case "S1_lhalf20" "${S1_BASE}
+# M_max is the overload mortality ceiling (multiplier as load -> infinity). Data: the worst
+# observed overwhelmed systems ran ~2-3x baseline mortality (Kadri 2021 ~2x; Bravata 2021
+# +94%), so the baseline is 3.0 and the OAT corners bracket it at 2x and 4x. L_1/2 sets the
+# load at which the multiplier reaches the M(2.5x)=2x anchor; corners 1.0 (bites earlier)
+# and 2.5 (later) around the 1.5 baseline. score_minimum is fixed at 0.1 (it only normalizes
+# the score field; under the multiplicative p_death it does not affect mortality).
+write_case "S1_mmax2" "${S1_BASE}
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 2.0
+hospital_model.halfscore_load = 1.5
+hospital_model.mortality_multiplier_max = 2.0
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
-write_case "S1_lhalf50" "${S1_BASE}
+write_case "S1_mmax4" "${S1_BASE}
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 5.0
+hospital_model.halfscore_load = 1.5
+hospital_model.mortality_multiplier_max = 4.0
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S1_lhalf10" "${S1_BASE}
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 1.0
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S1_lhalf25" "${S1_BASE}
+hospital_model.score_minimum = 0.1
+hospital_model.halfscore_load = 2.5
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
 
@@ -582,8 +598,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.000134
 disease.xmit_hosp_p2d = 0.000134
@@ -596,8 +613,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 disease.xmit_hosp_d2d = 0.00032
 disease.xmit_hosp_p2d = 0.00032
@@ -622,8 +640,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = false
 agent.plot_int = -1
 ${HOSP_XMIT_OFF}
@@ -634,8 +653,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = false
 agent.plot_int = -1
 ${HOSP_XMIT_ON}
@@ -661,8 +681,9 @@ agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = false
 hospital_model.staffed_beds_per_1000 = 2.4
 hospital_model.score_minimum = 0.1
-hospital_model.halfscore_load = 3.13
+hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
+hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = false
 agent.nsteps = 120
 agent.plot_int = -1
