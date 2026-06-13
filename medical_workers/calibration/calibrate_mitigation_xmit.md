@@ -27,10 +27,13 @@ recalibration:
   beds, 10\,876), from `output.dat` columns H/NI + H/I + ICU + V.
 - **HCW hazard ratio (aHR)** = ratio of cumulative infection hazards of medical
   vs other workers, `ln(MW_S0/MW_Send) / ln(OW_S0/OW_Send)` from
-  `medical_workers.dat`. The cumulative-hazard ratio is robust to the closed-
-  population saturation that compresses a raw attack-rate ratio and to the
-  day-to-day noise of an incidence-rate ratio. Target ~3.4, the adjusted risk
-  reported for front-line health-care workers (Nguyen et al. 2020).
+  `medical_workers.dat`, read over a **low-incidence window** (general-community
+  cumulative incidence ~2%, matching the early-pandemic phase Nguyen measured) --
+  NOT the full run. Over a full closed single wave both groups saturate (MW ~99%)
+  and the ratio collapses toward 1; the full-run aHR therefore *understates* the
+  early-window value, so reading the calibration at the full run overstates the
+  weight needed. Target ~3.4, the adjusted risk reported for front-line
+  health-care workers (Nguyen et al. 2020).
 
 ## Mitigation (data-anchored; superseded the load-target tuning)
 
@@ -73,14 +76,37 @@ common value to hit aHR ~3.4:
 | 0.0075              | 3.50         | 99.4%       | 77.0%       | 3.81x        |
 | 0.008               | 3.54         | 99.5%       | 77.2%       | 3.92x        |
 
-**Chosen: `xmit_hosp_d2d = xmit_hosp_p2d = 0.0075`** (~0.13x p_work; aHR 3.50).
-`d2p` is set to the same worker-channel value and `p2p = 0.3 x p_work = 0.01725`,
-both carried into the multidisease decks (inert with a single disease). Note the
-H3 peak load (3.8x) sits well above the channels-off H1 reference (2.47x): the
-in-hospital transmission infects the workforce, cutting capacity -- the H3
-workforce-depletion effect, not a mitigation miss. The closed single-wave
-epidemic saturates the higher-hazard medical workers (~99% infected); the
-calibrated quantity is the hazard *ratio*, not the absolute level.
+**Superseded (2026-06-13).** The aHR column above was read over the full run, which
+saturates (the closed single wave drives MW to ~99%). Re-reading the hazard ratio over
+the **low-incidence window** instead (community ~2%) makes it far more sensitive to the
+weight, and `0.0075` overshoots ~3.4 badly. The recalibrated worker weight is
+**`xmit_hosp_d2d = xmit_hosp_p2d = 0.0002`** (~0.0035x p_work), which gives aHR ~3.4 at
+the window. The patient-infecting weights are no longer carried at the worker value --
+they are calibrated separately (next section).
+
+## Patient-channel (nosocomial) calibration (2026-06-13)
+
+The patient-infecting weights (`d2p`, `p2p`) drive cross-disease nosocomial infection of
+admitted patients and are inert with a single disease, so they are calibrated in the
+two-disease covflu nosocomial experiment, not the H3 single-disease run. Target: the
+**in-hospital nosocomial incidence** -- the fraction of admissions that acquire the
+*second* disease in hospital -- of order ~2% (Wolfensberger 7.4% of COVID inpatients;
+Zhou ~2%). This is an overall incidence, NOT a per-exposure secondary attack rate.
+
+Diagnostic: domain-sum of `<disease>_hospital_acquired` (cumulative, in the `plt*` mesh,
+not `output.dat` or `hospital_data_*`) over both diseases, divided by total admissions
+(sum of `NewH`, column 19, over both `output_*.dat`). Use a **fixed `agent.seed`** --
+unseeded realizations swing total admissions by ~50%. The household-leak floor (with
+`d2p=p2p=0`, hospitalized patients still infected via their household) is ~0.01%,
+negligible, so `hospital_acquired` is effectively all channel-driven.
+
+| d2p | p2p (= 3 d2p) | nosocomial incidence |
+|-----|---------------|----------------------|
+| 0.0    | 0.0        | 0.01% (floor)        |
+| 0.0001 | 0.0003     | 2.40%                |
+| 0.0075 | 0.01725    | ~27% (old, ~14x too high) |
+
+**Chosen: `d2p = 0.0001`, `p2p = 0.0003`** (held 1:3; nosocomial incidence 2.4%).
 
 ## Apply
 

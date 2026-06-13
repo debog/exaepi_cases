@@ -104,7 +104,7 @@ Capacity magnitude is pinned by the real HHS bed data. The score model is set in
 closed form by `../../2026_MedicalWorkers/calibration/`; the mitigation and the
 in-hospital weights are set empirically with local 4-rank runs, documented in
 [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md)
-(current values: `shelter_compliance = 0.50` data-anchored, `xmit_hosp_d2d = p2d = 0.0075`):
+(current values: `shelter_compliance = 0.50` data-anchored, `xmit_hosp_d2d = p2d = 0.0002`, `d2p = 0.0001`, `p2p = 0.0003`):
 
 - `score_minimum = 0.1`, `halfscore_load = 3.13` — from **H1**: in-hospital
   mortality ~2× the unstrained baseline at a 2.5× peak load (the score model's

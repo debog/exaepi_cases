@@ -53,7 +53,7 @@ Area after the March 2020 order (Google Community Mobility); the symptomatic-
 withdrawal probabilities are the paper's Table 5, anchored to COVID isolation
 surveys (~50% default / ~75-92% enhanced cumulative over three days), replacing the
 inherited EpiCast/FluTE influenza values. The in-hospital weights remain calibrated
-for the current model: `xmit_hosp_d2d = p2d = 0.0075` (HCW cumulative-hazard ratio
+for the current model: `xmit_hosp_d2d = p2d = 0.0002` (HCW cumulative-hazard ratio
 ~3.4); method in
 [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md).
 The peak load is then an **output**, not a target -- a single H1_mitigated
