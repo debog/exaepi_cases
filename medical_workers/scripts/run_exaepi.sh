@@ -518,9 +518,16 @@ setup_run_directory() {
     local case_name="$1"
     local platform="$2"
     local input_file="$3"
+    local ntasks="$4"
 
-    # Create run directory name (set global variable)
-    RUN_DIR="${PROJECT_DIR}/.run_${case_name}_${platform}"
+    # Create run directory name (set global variable). Cost cases append the MPI
+    # task count so the same case can be timed at several ntasks side by side in
+    # one working directory.
+    local ntasks_suffix=""
+    if [[ "$case_name" == *cost* ]]; then
+        ntasks_suffix="_n${ntasks}"
+    fi
+    RUN_DIR="${PROJECT_DIR}/.run_${case_name}_${platform}${ntasks_suffix}"
 
     if [[ -d "$RUN_DIR" ]]; then
         print_verbose "Removing existing run directory: ${RUN_DIR}"
@@ -1848,7 +1855,13 @@ process_ensemble_case() {
         parent_dir="${PROJECT_DIR}/${ENSEMBLE_PARENT_DIR}"
         mkdir -p "$parent_dir"
     fi
-    local ensemble_dir="${parent_dir}/.ensemble_${case_name}_${platform}"
+    # Cost cases append the MPI task count so the same case can be timed at several
+    # ntasks side by side in one working directory.
+    local ntasks_suffix=""
+    if [[ "$case_name" == *cost* ]]; then
+        ntasks_suffix="_n${ntasks}"
+    fi
+    local ensemble_dir="${parent_dir}/.ensemble_${case_name}_${platform}${ntasks_suffix}"
     print_verbose "Creating ensemble directory: ${ensemble_dir}"
     mkdir -p "$ensemble_dir"
 
@@ -2090,7 +2103,7 @@ process_single_case() {
     # Setup run directory and copy data files
     print_verbose "Setting up run directory..."
     print_info "Copying data files to run directory..."
-    setup_run_directory "${case_name}" "${platform}" "${input_file}"
+    setup_run_directory "${case_name}" "${platform}" "${input_file}" "${ntasks}"
     if [[ $? -ne 0 ]]; then
         print_error "Failed to setup run directory for case: ${case_name}"
         return 1
