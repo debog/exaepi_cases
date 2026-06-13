@@ -78,9 +78,10 @@ tuned.
 3. **Read the mitigated load (do not tune it).** The shelter (0.50) and withdrawal
    (Table 5) are data-anchored, so the mitigated H1 peak load is reported, not
    driven to a target. Only edit the `MITIGATION` block if the data anchors change.
-4. **Re-run the score calibration.** If the admission mix or baseline mortality
-   shifts, re-run `calibration/calibrate_treatment_score.py` and update
-   `score_minimum` / `halfscore_load`.
+4. **The load-to-mortality map is data-anchored analytically** -- `mortality_multiplier_max`=3
+   (ceiling) and `halfscore_load`=1.5 (M(2.5)=2x). The multiplier is risk-independent, so it
+   does not depend on the admission mix or baseline mortality; no calibration run is needed
+   (`calibration/calibrate_treatment_score.py` is superseded).
 5. **Re-tune `xmit_hosp` for H3.** The workgroups change the d2d hazard, so retune
    `disease.xmit_hosp_{d2d,p2d,d2p,p2p}` against the target HCW hazard ratio
    (`aHR ~ 3.4`) from `medical_workers.dat` -- see the H3 section below.
@@ -121,8 +122,8 @@ tuned.
 
 - **Viability:** confirm peak hospital load exceeds 1 (from the
   `hospital_data_*` plotfiles, component `hospital_load`). An *unmitigated*
-  Bay Area run overshoots badly — peak load ~25× the ~10.9k real beds, giving a
-  ~12× mortality multiplier. Use `bay_H1_mitigated` for a realistic surge:
+  Bay Area run overshoots badly — peak load ~25× the ~10.9k real beds, at which the
+  mortality multiplier saturates at the ceiling `M_max`=3×. Use `bay_H1_mitigated` for a realistic surge:
 
   ```bash
   ./scripts/run_exaepi.sh --case=bay_H1_mitigated --mode=batch --ensemble --ensemble-size=25
@@ -146,9 +147,10 @@ tuned.
   hospital, overloaded count, from the `hospital_data_*` `hospital_load`) and the
   deaths, on vs off. `transfers.dat` gives the transfer volume (day, from/to
   hospital tract, patients).
-- Tune `score_minimum` and `halfscore_load` so in-hospital mortality at peak
-  load is ~2× the unstrained baseline. Edit `inputs/make_inputs.sh`, rerun
-  `make_inputs.sh`, resubmit. Iterate.
+- The load-to-mortality map is data-anchored analytically: `mortality_multiplier_max`=3
+  (the ~2–3× ceiling at overwhelmed systems) and `halfscore_load`=1.5 (so the multiplier
+  is 2× at a 2.5× peak load). The multiplier is risk-independent, so no tuning run is
+  needed; `score_minimum`=0.1 only normalizes the score field.
 
 ## 3. H3 — in-hospital transmission → workforce depletion (calibrate xmit_hosp)
 
@@ -191,7 +193,7 @@ done
 
 ## 6. Nosocomial (in-hospital cross-disease transmission)
 
-Two co-circulating diseases are needed for the patient-coupled channels (`d2p`,
+Two co-circulating diseases are needed for the patient-receiving channels (`d2p`,
 `p2p`) to act: a patient admitted for one disease can acquire the other in the
 hospital. With a single disease these channels are inert. The scenario is
 COVID-19 + influenza, run with the patient channels on (`w_noso`) and off
@@ -215,7 +217,7 @@ and a patient acquires the second disease almost regardless of the patient
 channels.
 
 - `w_noso` turns on all four in-hospital channels; `wo_noso` keeps the worker
-  channels (`p2d`, `d2d`) but turns the patient-coupled channels off. Influenza CHR
+  channels (`p2d`, `d2d`) but turns the patient-receiving channels off. Influenza CHR
   is the CDC-derived value (`disease_FluS1.CHR`); both runs use the same data-
   anchored mitigation.
 - The diagnostic is the per-disease `hospital_acquired` plotfile field (cumulative
@@ -224,38 +226,38 @@ channels.
   fixes the multi-disease hospital runs require). Net nosocomial = `w_noso` −
   `wo_noso` (the small `wo_noso` residual is community infection on the admission
   day); the mortality increment is the death difference `w_noso` − `wo_noso`.
-- Single-realization check (data-anchored mitigation, `c_S = 1.0`, CDC flu CHR):
-  deaths 89,717 (`w_noso`) vs 88,761 (`wo_noso`), +956 (+1.08%); nosocomial
-  18,589 COVID + 68,281 flu. Patient cross-infection is a minor mortality channel
-  next to the H3 worker depletion. The peak load is aggregate ~5.2x, median
-  hospital ~5.7x, busiest ~28x -- the saturated regime that makes the channel
-  comparison a near-upper-bound, not a typical value.
+- Single-realization check (data-anchored mitigation, CDC flu CHR): report deaths
+  `w_noso` vs `wo_noso` (the difference is the nosocomial mortality increment) and the
+  nosocomial infection counts. At the calibrated patient channels (`d2p`=0.0001,
+  `p2p`=0.0003 -> ~2% in-hospital nosocomial incidence) patient cross-infection is a
+  minor mortality channel next to the H3 worker depletion. (Earlier numbers here were at
+  the old ~14x-hotter patient weights and the old mortality form; the ensemble regenerates them.)
 
 ## 7. Sensitivity and robustness (Section 4.7)
 
-The parameters that are NOT fixed by data are the treatment-quality floor `s_min`
+The parameters that are NOT fixed by data are the overload mortality ceiling `M_max`
 and the half-score load `L_1/2` (pinned by the M(2.5)~=2x target), and the HCW
 hazard-ratio target behind `xmit_hosp`. `med_workers_proportion` is data-anchored
 (its effect is H2).
 
-**S1 — treatment-quality map (`s_min`, `L_1/2`).** These enter only the closed-form
+**S1 — load-to-mortality map (`M_max`, `L_1/2`).** These enter only the closed-form
 mortality map, not the load trajectory, so re-score the saved H1/H3 runs without
 re-running:
 
 ```bash
 python3 scripts/rescore_sensitivity.py \
-    /path/.ensemble_bay_H1_capacity_<platform>             # s_min x L_1/2 grid
+    /path/.ensemble_bay_H1_capacity_<platform>             # M_max x L_1/2 grid
 python3 scripts/rescore_sensitivity.py \
-    /path/.ensemble_bay_H1_mitigated_<platform> --target   # s_min x M(2.5) target
+    /path/.ensemble_bay_H1_mitigated_<platform> --target   # M_max x M(2.5) target
 ```
 
-The re-scoring is validated at high uniform load (unmitigated -> 6.1x, the full-run
-value) but UNDERESTIMATES the spatially-concentrated mitigated case (~1.1x vs 3.2x,
-since the strain sits in the hardest-hit hospitals). So anchor the mitigated
+The re-scoring is validated at high uniform load but UNDERESTIMATES the
+spatially-concentrated mitigated case, since the strain sits in the hardest-hit
+hospitals. So anchor the mitigated
 operating point with full re-runs at the corners:
 
 ```bash
-for c in S1_smin05 S1_smin70 S1_lhalf20 S1_lhalf50; do
+for c in S1_mmax2 S1_mmax4 S1_lhalf10 S1_lhalf25; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 ```

@@ -407,7 +407,7 @@ ${HOSP_XMIT_OFF}
 ${MITIGATION}"
 
 # --- H3: in-hospital transmission -> workforce depletion feedback -------------
-#     same as H1 but the patient-coupled channels are on. Calibrate xmit_hosp_*
+#     same as H1 but the patient-receiving channels are on. Calibrate xmit_hosp_*
 #     here (HCW infection risk). Central workforce size (0.13).
 write_case "H3_hcw" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
@@ -478,13 +478,13 @@ hospital_model.write_pltfiles = true
 ${HOSP_XMIT_ON}"
 
 # --- in-hospital cross-disease transmission (Section 4.6) ----------------------
-#     Two co-circulating diseases let the patient-coupled channels act: a patient
+#     Two co-circulating diseases let the patient-receiving channels act: a patient
 #     admitted for one disease can acquire the OTHER in the hospital (nosocomial
 #     co-infection). Because hospitalized agents are cut off from all community,
 #     household, work and school contact, any new infection of a patient is
 #     necessarily hospital-acquired -- the new "hospital_acquired" diagnostic counts
 #     exactly these. w_noso turns on all four in-hospital channels; wo_noso keeps the
-#     worker channels (d2d, p2d) but turns the patient-coupled channels (d2p, p2p)
+#     worker channels (d2d, p2d) but turns the patient-receiving channels (d2p, p2p)
 #     off, so the w_noso/wo_noso difference isolates hospital-acquired co-infection.
 #     COVID-19 + influenza (covflu_*), both seeded at t=0, with the same data-anchored
 #     mitigation as H1-H3, real HHS bed data, and a 13% workforce. Co-circulation plus

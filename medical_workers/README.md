@@ -40,16 +40,16 @@ disease base + a medical-worker block.
 | `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
 | `covflu_w_noso` | **Nosocomial** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
 | `covflu_wo_noso` | COVID+flu, patient channels off | on | real, tract | worker only |
-| `S1_smin05`/`S1_smin70` | **S1** (sensitivity): score floor `s_min`=0.05 / 0.70 (worst-case mortality ceiling ~8.7× / ~3.2×; mitigated) | on | real, tract | off |
-| `S1_lhalf20`/`S1_lhalf50` | **S1**: half-score load `L_1/2`=2.0 / 5.0 (mitigated) | on | real, tract | off |
+| `S1_mmax2`/`S1_mmax4` | **S1** (sensitivity): overload mortality ceiling `M_max`=2 / 4 (mitigated) | on | real, tract | off |
+| `S1_lhalf10`/`S1_lhalf25` | **S1**: half-score load `L_1/2`=1.0 / 2.5 (mitigated) | on | real, tract | off |
 | `S2_hcw_lo`/`S2_hcw_hi` | **S2**: in-hospital xmit scaled ~0.67× / 1.6× (HCW-hazard sweep) | on | real, tract | on (scaled) |
 | `cost_off`/`cost_on`/`cost_on_full` | **Cost**: timing, model off / capacity-only / full (plotfiles off) | off/on | real, tract | off / off / on |
 | `ca_cost_off`/`ca_cost_on` | **Cost at scale**: California (33.9M agents); needs CA population staged | off/on | per-community | off |
 
-**Sensitivity and cost (paper Sections 4.7–4.8).** The treatment-quality map
-(`s_min`, `L_1/2`) sensitivity is mostly post-processing:
-`scripts/rescore_sensitivity.py` re-scores the saved H1/H3 load trajectories over a
-(`s_min`, `L_1/2`) grid (validated at high uniform load; underestimates the
+**Sensitivity and cost (paper Sections 4.7–4.8).** The load-to-mortality map
+(`M_max`, `L_1/2`) sensitivity is mostly post-processing:
+`scripts/rescore_sensitivity.py` re-scores the saved H1/H3 load trajectories over an
+(`M_max`, `L_1/2`) grid (validated at high uniform load; underestimates the
 spatially-concentrated mitigated case). The `S1_*` full runs anchor the mitigated
 operating point. `S2_hcw_{lo,hi}` bracket the calibrated HCW hazard ratio — tune the
 xmit scaling from `medical_workers.dat`. The `cost_*` runs time the per-step overhead
@@ -90,7 +90,7 @@ feature, so the mechanism is isolated:
   `med_workers_proportion` with the bed supply scaled to match (fallback option),
   in-hospital transmission off so the workforce acts only through capacity.
 - **Nosocomial co-infection:** `covflu_{w,wo}_noso` (COVID+flu). `w_noso` −
-  `wo_noso` isolates the patient-coupled in-hospital channels (`d2p`, `p2p`): the
+  `wo_noso` isolates the patient-receiving in-hospital channels (`d2p`, `p2p`): the
   second-disease infections acquired in the hospital (the `hospital_acquired`
   diagnostic) and their excess mortality. This is an artificial stress test (shared
   symptomatic withdrawal, no cross-immunity or vaccination, cosusceptibility pinned
