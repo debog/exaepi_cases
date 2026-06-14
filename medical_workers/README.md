@@ -106,7 +106,7 @@ in-hospital weights are set empirically with local 4-rank runs, documented in
 [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md)
 (current values: `shelter_compliance = 0.50` data-anchored, `xmit_hosp_d2d = p2d = 0.0002`, `d2p = 0.0001`, `p2p = 0.0003`):
 
-- `score_minimum = 0.1`, `halfscore_load = 1.5`, `mortality_multiplier_max = 3.0` — from **H1**: in-hospital
+- `halfscore_load = 1.5`, `mortality_multiplier_max = 3.0` (`score_minimum`=0, dropped) — from **H1**: in-hospital
   mortality ~2× the unstrained baseline at a 2.5× peak load (the score model's
   dose-response, independent of the mitigation).
 - `shelter_compliance = 0.50` and the symptomatic-withdrawal probabilities —

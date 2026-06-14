@@ -150,7 +150,7 @@ tuned.
 - The load-to-mortality map is data-anchored analytically: `mortality_multiplier_max`=3
   (the ~2–3× ceiling at overwhelmed systems) and `halfscore_load`=1.5 (so the multiplier
   is 2× at a 2.5× peak load). The multiplier is risk-independent, so no tuning run is
-  needed; `score_minimum`=0.1 only normalizes the score field.
+  needed; `score_minimum` is dropped (set to 0 -- vestigial under the multiplicative form).
 
 ## 3. H3 — in-hospital transmission → workforce depletion (calibrate xmit_hosp)
 
