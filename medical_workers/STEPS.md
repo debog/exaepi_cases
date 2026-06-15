@@ -185,13 +185,7 @@ done
   34,736 (13%) → 18,046 (20%) — capacity only, a ~72% drop across the sweep. With
   transmission on the same trend runs ~5-10% higher (68,298 / 38,677 / 20,131).
 
-## 5. Combined (all mechanisms, real placement + routing)
-
-```bash
-./scripts/run_exaepi.sh --case=bay_combined --mode=batch --ensemble --ensemble-size=25
-```
-
-## 6. Nosocomial (in-hospital cross-disease transmission)
+## 5. Nosocomial (in-hospital cross-disease transmission)
 
 Two co-circulating diseases are needed for the patient-receiving channels (`d2p`,
 `p2p`) to act: a patient admitted for one disease can acquire the other in the
@@ -233,7 +227,7 @@ channels.
   minor mortality channel next to the H3 worker depletion. (Earlier numbers here were at
   the old ~14x-hotter patient weights and the old mortality form; the ensemble regenerates them.)
 
-## 7. Sensitivity and robustness (Section 4.7)
+## 6. Sensitivity and robustness (Section 4.7)
 
 The parameters that are NOT fixed by data are the overload mortality ceiling `M_max`
 and the half-score load `L_1/2` (pinned by the M(2.5)~=2x target), and the HCW
@@ -278,7 +272,7 @@ Read the achieved HCW hazard ratio from `medical_workers.dat` (Section 3 formula
 tune the `xmit_hosp` scaling in `make_inputs.sh` to span ~2.5-5, and report the
 depletion mortality amplification against the hazard ratio.
 
-## 8. Computational cost (Section 4.8)
+## 7. Computational cost (Section 4.8)
 
 Per-step overhead of the model vs baseline, plotfiles off, on a single MI300A. Time
 off / capacity-only / full on the same Bay Area scenario:
@@ -344,7 +338,6 @@ done
 2. H1_capacity → check load > 1, calibrate score.
 3. H3_hcw → calibrate xmit_hosp from `medical_workers.dat`.
 4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
-5. combined → realistic showcase.
-6. covflu_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
-7. S1 (rescore_sensitivity.py + S1_* corners), S2_hcw_{lo,hi} → sensitivity.
-8. cost_{off,on,on_full} (+ ca_cost_*) → computational-cost timing.
+5. covflu_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
+6. S1 (rescore_sensitivity.py + S1_* corners), S2_hcw_{lo,hi} → sensitivity.
+7. cost_{off,on,on_full} (+ ca_cost_*) → computational-cost timing.

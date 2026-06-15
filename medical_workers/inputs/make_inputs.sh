@@ -5,8 +5,8 @@
 # Each deck is self-contained: a shared COVID-19 Bay Area base (census init,
 # disease parameters, hospitalization model) followed by an experiment-specific
 # medical-worker / hospital-capacity block. Re-run after editing the base or a
-# block. The decks map onto the paper's experiments (verification, H1, H2, H3,
-# combined); see ../README.md.
+# block. The decks map onto the paper's experiments (verification, H1, H2, H3);
+# see ../README.md.
 #
 # Disease/transmission parameters are copied from the multidisease Bay Area
 # COVID-19-S1 deck. xmit_work = 0.0575. In-hospital transmission, calibrated:
@@ -464,18 +464,6 @@ hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
-
-# --- combined: all mechanisms, tract-level real placement + patient routing ---
-write_case "combined" "agent.model_medical_workers = true
-agent.med_workers_proportion = 0.13
-hospital_model.use_HHS_data = true
-hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
-hospital_model.score_minimum = 0.0
-hospital_model.halfscore_load = 1.5
-hospital_model.treatment_score_type = minimum
-hospital_model.mortality_multiplier_max = 3.0
-hospital_model.write_pltfiles = true
-${HOSP_XMIT_ON}"
 
 # --- in-hospital cross-disease transmission (Section 4.6) ----------------------
 #     Two co-circulating diseases let the patient-receiving channels act: a patient

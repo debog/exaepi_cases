@@ -37,7 +37,6 @@ disease base + a medical-worker block.
 | `H2_mw08` | **H2**: small workforce (8%), bed supply scaled down | on | fallback, beds∝workforce | off |
 | `H2_mw13` | **H2**: reference workforce (13%) | on | fallback, beds∝workforce | off |
 | `H2_mw20` | **H2**: large workforce (20%), bed supply scaled up | on | fallback, beds∝workforce | off |
-| `combined` | All mechanisms, real hospital placement + routing | on | real, **tract** | on |
 | `covflu_w_noso` | **Nosocomial** (COVID+flu): all in-hospital channels | on | real, tract | on (all 4) |
 | `covflu_wo_noso` | COVID+flu, patient channels off | on | real, tract | worker only |
 | `S1_mmax2`/`S1_mmax4` | **S1** (sensitivity): overload mortality ceiling `M_max`=2 / 4 (mitigated) | on | real, tract | off |
@@ -139,12 +138,12 @@ From this directory:
 ./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --ensemble-size=25
 
 # all cases as ensembles
-for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 combined covflu_w_noso covflu_wo_noso; do
+for c in verify_off verify_ample H1_capacity H3_hcw H2_mw08 H2_mw13 H2_mw20 covflu_w_noso covflu_wo_noso; do
     ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25
 done
 
 # dry run to inspect commands without submitting
-./scripts/run_exaepi.sh --case=bay_combined --mode=batch --ensemble --dry-run
+./scripts/run_exaepi.sh --case=bay_H3_hcw --mode=batch --ensemble --dry-run
 ```
 
 Run directories: `.run_bay_<case>_<platform>/` (single) and
