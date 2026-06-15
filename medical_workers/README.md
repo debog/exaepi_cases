@@ -43,7 +43,6 @@ disease base + a medical-worker block.
 | `S1_lhalf10`/`S1_lhalf25` | **S1**: half-score load `L_1/2`=1.0 / 2.5 (mitigated) | on | real, tract | off |
 | `S2_hcw_lo`/`S2_hcw_hi` | **S2**: in-hospital xmit scaled ~0.67× / 1.6× (HCW-hazard sweep) | on | real, tract | on (scaled) |
 | `cost_off`/`cost_on`/`cost_on_full` | **Cost**: timing, model off / capacity-only / full (plotfiles off) | off/on | real, tract | off / off / on |
-| `ca_cost_off`/`ca_cost_on` | **Cost at scale**: California (33.9M agents); needs CA population staged | off/on | per-community | off |
 
 **Sensitivity and cost (paper Sections 4.7–4.8).** The load-to-mortality map
 (`M_max`, `L_1/2`) sensitivity is mostly post-processing:
@@ -52,8 +51,7 @@ disease base + a medical-worker block.
 spatially-concentrated mitigated case). The `S1_*` full runs anchor the mitigated
 operating point. `S2_hcw_{lo,hi}` bracket the calibrated HCW hazard ratio — tune the
 xmit scaling from `medical_workers.dat`. The `cost_*` runs time the per-step overhead
-(off vs on) on a single MI300A; `ca_cost_*` repeat at California scale (stage the CA
-synthetic population and adjust filenames/grid).
+(off vs on) across one to four accelerators.
 
 H2 uses the per-community (fallback) bed model so the staffed-bed supply scales
 with the medical-worker fraction (2.4 × frac/0.13 beds per 1000 residents),

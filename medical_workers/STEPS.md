@@ -296,16 +296,6 @@ done
 - Run on both architectures -- Tuolumne (AMD MI300A) and Matrix (NVIDIA H100) -- to report
   the overhead on AMD and NVIDIA GPUs; the same cost cases run on either (platform
   auto-detected, or set by `LCHOST`).
-- Repeat at California scale (33.9M agents) for size-independence; stage the CA
-  synthetic population (`California.dat` / `California-wf.bin`) and fix the
-  filenames/grid in the `ca_cost_*` decks first:
-
-```bash
-for c in cost_off cost_on; do
-    ./scripts/run_exaepi.sh --case=ca_$c --mode=batch
-done
-```
-
 ## Monitor and restart (any time)
 
 ```bash
@@ -340,4 +330,4 @@ done
 4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
 5. covflu_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
 6. S1 (rescore_sensitivity.py + S1_* corners), S2_hcw_{lo,hi} → sensitivity.
-7. cost_{off,on,on_full} (+ ca_cost_*) → computational-cost timing.
+7. cost_{off,on,on_full} → computational-cost timing.

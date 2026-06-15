@@ -649,34 +649,4 @@ agent.plot_int = -1
 ${HOSP_XMIT_ON}
 ${MITIGATION}"
 
-# --- Cost at scale: California (33.9M agents), to show the per-step overhead
-#     fraction is ~size-independent (added work is O(agents)+O(communities), the
-#     same class as the base step). REQUIRES the California synthetic population
-#     (California.dat / California-wf.bin) staged on the run system -- adjust the
-#     filenames/grid to match your CA data. Uses the per-community bed model so
-#     cost_on needs no CA hospital data file (bed-supply source is immaterial to the
-#     per-step cost); in-hospital transmission off for the clean capacity overhead.
-#     nsteps reduced to span the peak at bounded cost.
-BASE_CA="$(sed 's/BayArea/California/g' <<< "$BASE")"
-REGION=ca
-write_case "cost_off" "agent.model_medical_workers = false
-agent.nsteps = 120
-agent.plot_int = -1
-${MITIGATION}" "$BASE_CA"
-
-write_case "cost_on" "agent.model_medical_workers = true
-agent.med_workers_proportion = 0.13
-hospital_model.use_HHS_data = false
-hospital_model.staffed_beds_per_1000 = 2.4
-hospital_model.score_minimum = 0.0
-hospital_model.halfscore_load = 1.5
-hospital_model.treatment_score_type = minimum
-hospital_model.mortality_multiplier_max = 3.0
-hospital_model.write_pltfiles = false
-agent.nsteps = 120
-agent.plot_int = -1
-${HOSP_XMIT_OFF}
-${MITIGATION}" "$BASE_CA"
-REGION=bay
-
 echo "done."
