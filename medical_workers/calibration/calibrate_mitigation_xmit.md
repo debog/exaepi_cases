@@ -25,15 +25,15 @@ recalibration:
 
 - **Peak hospital load** = max over the run of (total hospitalized) / (staffed
   beds, 10\,876), from `output.dat` columns H/NI + H/I + ICU + V.
-- **HCW hazard ratio (aHR)** = ratio of cumulative infection hazards of medical
-  vs other workers, `ln(MW_S0/MW_Send) / ln(OW_S0/OW_Send)` from
-  `medical_workers.dat`, read over a **low-incidence window** (general-community
-  cumulative incidence ~2%, matching the early-pandemic phase Nguyen measured) --
-  NOT the full run. Over a full closed single wave both groups saturate (MW ~99%)
-  and the ratio collapses toward 1; the full-run aHR therefore *understates* the
-  early-window value, so reading the calibration at the full run overstates the
-  weight needed. Target ~3.4, the adjusted risk reported for front-line
-  health-care workers (Nguyen et al. 2020).
+- **HCW cumulative-hazard ratio (CHR)** = ratio of cumulative infection hazards of
+  medical vs other workers, `ln(MW_S0/MW_Send) / ln(OW_S0/OW_Send)` from
+  `medical_workers.dat`, read at the **end of the wave** (the paper's metric). Target
+  ~3.4, the adjusted risk reported for front-line health-care workers (Nguyen et al.
+  2020). The CHR does not collapse when both groups saturate; the attack-rate ratio
+  does. In the Matrix `H3_hcw` ensemble mean the running CHR is 3.8 at 2%
+  cumulative incidence in other workers (small counts), ~2.9 from 5% to 50%, and
+  3.07 at the end. An earlier version of this note said the full-run ratio
+  collapses toward 1 and must be read at a low-incidence window; that was wrong.
 
 ## Mitigation (data-anchored; superseded the load-target tuning)
 
@@ -42,9 +42,10 @@ The mitigation is now **data-anchored, not tuned to a load target.**
 the Bay Area after the March 2020 order (Google Community Mobility), and the
 symptomatic-withdrawal probabilities are anchored to COVID isolation surveys (~50%
 default / ~75-92% enhanced cumulative), replacing the inherited EpiCast/FluTE
-influenza values. The mitigated peak load is then an **output**: a single
-H1_mitigated realization gives aggregate ~2.2x (median hospital ~2.3x, busiest
-~17x), ~25k deaths, ~57k patient-transfers. The Bay Area did not in fact overload
+influenza values. The mitigated peak load is then an **output**: the Matrix
+H1_mitigated ensemble peaks at 1.6x aggregate (day 73) with 12,081 deaths; in
+`run_001` at day 75 the median hospital is at 1.6x and the busiest at 9.7x, with
+48,925 patient transfers over the wave. The Bay Area did not in fact overload
 (it avoided LA/NY-style collapse through high compliance), so the model's overload
 is a counterfactual the capacity response acts on.
 
@@ -60,9 +61,9 @@ the data anchoring above.
 
 ## In-hospital transmission (H3_hcw, channels on)
 
-> The sweep below was run at the old `0.32` shelter; `xmit_hosp = 0.0075` carries
-> over to the data-anchored mitigation (the aHR is robust to the shelter level), but
-> re-validate the aHR against `medical_workers.dat` at `0.50` before the ensembles.
+> Historical: the sweep below was run at the old `0.32` shelter, before the
+> shelter-flag fix and the bounded multiplier (`fe7ebfa`). The final value is
+> `0.0002` (end of this section).
 
 Worker-infecting weights set equal (`xmit_hosp_d2d = xmit_hosp_p2d`), both
 reduced from the workplace weight by infection-control precautions; the patient-
@@ -76,13 +77,13 @@ common value to hit aHR ~3.4:
 | 0.0075              | 3.50         | 99.4%       | 77.0%       | 3.81x        |
 | 0.008               | 3.54         | 99.5%       | 77.2%       | 3.92x        |
 
-**Superseded (2026-06-13).** The aHR column above was read over the full run, which
-saturates (the closed single wave drives MW to ~99%). Re-reading the hazard ratio over
-the **low-incidence window** instead (community ~2%) makes it far more sensitive to the
-weight, and `0.0075` overshoots ~3.4 badly. The recalibrated worker weight is
-**`xmit_hosp_d2d = xmit_hosp_p2d = 0.0002`** (~0.0035x p_work), which gives aHR ~3.4 at
-the window. The patient-infecting weights are no longer carried at the worker value --
-they are calibrated separately (next section).
+**Superseded (2026-06-13).** The worker weight was recalibrated to
+**`xmit_hosp_d2d = xmit_hosp_p2d = 0.0002`** (~0.0035x p_work), read at the time over
+a low-incidence window (community ~2%). With the final code (`fe7ebfa`) and the
+data-anchored mitigation, the Matrix `H3_hcw` ensemble at `0.0002` gives an
+end-of-wave CHR of 3.07 (the paper's 3.1), with MW 94% and OW 61% ever infected.
+The patient-infecting weights are no longer carried at the worker value -- they are
+calibrated separately (next section).
 
 ## Patient-channel (nosocomial) calibration (2026-06-13)
 
@@ -107,6 +108,16 @@ negligible, so `hospital_acquired` is effectively all channel-driven.
 | 0.0075 | 0.01725    | ~27% (old, ~14x too high) |
 
 **Chosen: `d2p = 0.0001`, `p2p = 0.0003`** (held 1:3; nosocomial incidence 2.4%).
+
+**Denominator caveat (found 2026-10-16).** The summed `NewH` over-counts admissions
+in a two-disease run. `NewH` for disease d also counts, on every day of the stay,
+each hospitalized agent never infected with d: its per-disease counters are all zero,
+so `isNewlyHospitalized` matches 0 == 0 + 0. The 2.4% above therefore understates the
+per-admission rate. In the Matrix `covflu_w_noso` `run_001`, the 13,026
+hospital-acquired infections over a summed `NewH` of 514,151 (361,332 of it flu)
+also give 2.5%. The true admission count cannot be recovered from the saved outputs
+(`NewH` is contaminated and the agent data was pruned), so the paper's ~11% and
+~2.5% per-admission figures could not be reproduced from the Matrix data.
 
 ## Apply
 

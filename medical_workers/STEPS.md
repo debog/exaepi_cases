@@ -2,8 +2,7 @@
 
 A concrete runbook. `README.md` explains the design; this lists the order of
 operations. Run from `medical_workers/` on an LC platform (examples assume
-Matrix). Ensemble size 10 is a starting point — raise it once a configuration
-is settled.
+Matrix). The paper ensembles have 25 members each.
 
 ## 0. One-time setup
 
@@ -13,9 +12,10 @@ export EXAEPI_DIR=/path/to/ExaEpi              # source; census + hospital data
 export LCHOST=matrix                           # or let it auto-detect on LC
 ```
 
-- Build ExaEpi on the platform from the latest `dg/medical_workers`. It must
-  include the `medical_workers.dat` diagnostic (the H3 calibration depends on
-  it).
+- Build ExaEpi on the platform. To reproduce the paper, build
+  `archive/2026_medworkers_paper` (`fe7ebfa`, the commit every paper ensemble
+  logs); new work uses `dg/medical_workers`. The build must include the
+  `medical_workers.dat` diagnostic (the H3 calibration depends on it).
 - Regenerate the decks if you edit the matrix: `./inputs/make_inputs.sh`.
 - Sanity check: `./scripts/run_exaepi.sh --list-cases`.
 
@@ -53,12 +53,13 @@ Area after the March 2020 order (Google Community Mobility); the symptomatic-
 withdrawal probabilities are the paper's Table 5, anchored to COVID isolation
 surveys (~50% default / ~75-92% enhanced cumulative over three days), replacing the
 inherited EpiCast/FluTE influenza values. The in-hospital weights remain calibrated
-for the current model: `xmit_hosp_d2d = p2d = 0.0002` (HCW cumulative-hazard ratio
-~3.4); method in
+for the current model: `xmit_hosp_d2d = p2d = 0.0002` (end-of-wave HCW
+cumulative-hazard ratio 3.07 in the Matrix ensemble; target 3.4); method in
 [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md).
-The peak load is then an **output**, not a target -- a single H1_mitigated
-realization gives aggregate ~2.2x, median hospital ~2.3x (busiest ~17x), ~25k
-deaths, ~57k patient-transfers. The Bay Area did not in fact overload (it avoided
+The peak load is then an **output**, not a target -- the Matrix H1_mitigated
+ensemble peaks at 1.6x aggregate (day 73) with 12,081 deaths; in `run_001` at day 75
+the median hospital is at 1.6x and the busiest at 9.7x, and 48,925 patients are
+transferred over the wave. The Bay Area did not in fact overload (it avoided
 LA/NY-style collapse through high compliance), so the model's overload is a
 counterfactual the capacity response acts on. The score and `xmit_hosp` steps below
 are kept for re-tuning after a model or region change; the mitigation is no longer
@@ -84,7 +85,7 @@ tuned.
    (`calibration/calibrate_treatment_score.py` is superseded).
 5. **Re-tune `xmit_hosp` for H3.** The workgroups change the d2d hazard, so retune
    `disease.xmit_hosp_{d2d,p2d,d2p,p2p}` against the target HCW hazard ratio
-   (`aHR ~ 3.4`) from `medical_workers.dat` -- see the H3 section below.
+   (CHR ~3.4) from `medical_workers.dat` -- see the H3 section below.
 6. **Decide the transfer comparison.** Run H1 with and without
    `hospital_model.patient_transfer` if the paper reports the transfer effect on
    the worst-hospital load; otherwise leave it on. Then run the full ensembles.
@@ -122,17 +123,18 @@ tuned.
 
 - **Viability:** confirm peak hospital load exceeds 1 (from the
   `hospital_data_*` plotfiles, component `hospital_load`). An *unmitigated*
-  Bay Area run overshoots badly — peak load ~25× the ~10.9k real beds, at which the
-  mortality multiplier saturates at the ceiling `M_max`=3×. Use `bay_H1_mitigated` for a realistic surge:
+  Bay Area run overshoots badly — peak load 6.8× the 10,876 real beds (ensemble
+  mean, day 64), where the mortality multiplier is at its ceiling `M_max`=3×. Use `bay_H1_mitigated` for a realistic surge:
 
   ```bash
   ./scripts/run_exaepi.sh --case=bay_H1_mitigated --mode=batch --ensemble --ensemble-size=25
   ```
 
   It adds the data-anchored shelter window (0.50) and enhanced symptomatic
-  withdrawal (Table 5). The resulting peak load (single realization: aggregate
-  ~2.2×, median hospital ~2.3×, busiest ~17×) is read off the `hospital_data_*`
-  plotfiles, not tuned to a target -- the mitigation is fixed by the data.
+  withdrawal (Table 5). The resulting peak load (Matrix ensemble: aggregate 1.6×;
+  `run_001` day 75: median hospital 1.6×, busiest 9.7×) is read off the
+  `hospital_data_*` plotfiles, not tuned to a target -- the mitigation is fixed by
+  the data.
 - Excess mortality = `H1_*` − the matching ample-bed baseline (same config and
   mitigation, real vs ample beds).
 - **Patient-transfer effect.** `bay_H1_mitigated` has transfer on (the default)
@@ -160,11 +162,14 @@ tuned.
 
 - From `medical_workers.dat`, per day: `MW_*` (medical workers) and `OW_*`
   (other workers), each with total / susceptible / newly-infected.
-- HCW hazard ratio over the wave:
-  `aHR ≈ mean( (MW_newinf/MW_susc) / (OW_newinf/OW_susc) )`; target ~3.4.
-- Tune `disease.xmit_hosp_{d2d,p2d,d2p,p2p}` to hit it (edit `make_inputs.sh`,
-  regenerate, rerun). Contrast against `H1_capacity` (channels off) to show the
-  depletion feedback.
+- HCW risk = end-of-wave cumulative-hazard ratio,
+  `CHR = ln(MW_susc[0]/MW_susc[end]) / ln(OW_susc[0]/OW_susc[end])`; target ~3.4
+  (Nguyen 2020). Unlike the attack-rate ratio it does not collapse when both groups
+  saturate: in the Matrix `H3_hcw` mean it is ~2.9 from 5% to 50% cumulative
+  incidence in other workers and 3.07 at the end of the wave.
+- Tune `disease.xmit_hosp_{d2d,p2d}` to hit it (edit `make_inputs.sh`, regenerate,
+  rerun). Contrast against `H1_mitigated` (no in-hospital transmission, CHR 1.10) to
+  show the depletion feedback.
 
 ## 4. H2 — workforce-size sweep
 
@@ -181,9 +186,10 @@ done
 
 - `H2_mw13` is the central point (proportion 0.13). Report load, overloaded
   communities, and deaths against workforce size.
-- Single-realization local check (seed 1, transmission off): deaths 65,137 (8%) →
-  34,736 (13%) → 18,046 (20%) — capacity only, a ~72% drop across the sweep. With
-  transmission on the same trend runs ~5-10% higher (68,298 / 38,677 / 20,131).
+- Matrix ensemble: deaths 15,571 (8%) → 11,358 (13%) → 9,013 (20%), a 42% drop;
+  peak aggregate load 1.65× → 0.98× → 0.60× (`run_001`, sum of patients over sum
+  of capacity). The earlier single-realization local check (65,137 / 34,736 /
+  18,046) predates the data-anchored mitigation.
 
 ## 5. Nosocomial (in-hospital cross-disease transmission)
 
@@ -200,15 +206,13 @@ done
 ```
 
 This is an artificial stress test, not a calibrated forecast -- read the
-disclaimers in the paper's Section 4.6. Both diseases circulate together at full
+disclaimers in the paper's Section 5.6. Both diseases circulate together at full
 strength with no cross-immunity and no vaccination; symptomatic withdrawal is one
 shared agent-level flag (a flu symptom withdraws the agent from COVID exposure
 too); the cosusceptibility coefficient is pinned at the formula floor `c_S = 1.0`
 (neutral) because the multidisease infection-probability formula cannot represent
 protective coupling `c_S < 1` (ExaEpi issue #153); and the co-circulating epidemic
-runs the hospitals at roughly double the single-COVID peak load, so wards saturate
-and a patient acquires the second disease almost regardless of the patient
-channels.
+peaks at 1.7× capacity (ensemble mean), against 1.6× for COVID alone.
 
 - `w_noso` turns on all four in-hospital channels; `wo_noso` keeps the worker
   channels (`p2d`, `d2d`) but turns the patient-receiving channels off. Influenza CHR
@@ -218,16 +222,19 @@ channels.
   nosocomial infections deposited at the hospital cell; needs the latest
   `dg/medical_workers` binary, which also carries the OOB and dual-hospitalization
   fixes the multi-disease hospital runs require). Net nosocomial = `w_noso` −
-  `wo_noso` (the small `wo_noso` residual is community infection on the admission
-  day); the mortality increment is the death difference `w_noso` − `wo_noso`.
-- Single-realization check (data-anchored mitigation, CDC flu CHR): report deaths
-  `w_noso` vs `wo_noso` (the difference is the nosocomial mortality increment) and the
-  nosocomial infection counts. At the calibrated patient channels (`d2p`=0.0001,
-  `p2p`=0.0003 -> ~2% in-hospital nosocomial incidence) patient cross-infection is a
-  minor mortality channel next to the H3 worker depletion. (Earlier numbers here were at
-  the old ~14x-hotter patient weights and the old mortality form; the ensemble regenerates them.)
+  `wo_noso` (the small `wo_noso` residual comes from household contact, which
+  hospitalized agents keep); the mortality increment is the death difference
+  `w_noso` − `wo_noso`.
+- Do not use the summed `NewH` of the two `output_*.dat` as the admissions
+  denominator. In a two-disease run, `NewH` for disease d also counts, on every day of
+  the stay, hospitalized agents never infected with d: their per-disease counters are
+  all zero, so `isNewlyHospitalized` matches 0 == 0 + 0. `run_001` sums to 514,151
+  "admissions" (361,332 of them flu).
+- Matrix results: `run_001` hospital-acquired 5,079 COVID + 7,947 flu with the patient
+  channels, 20 + 26 without; ensemble deaths 14,426 (σ 1,118) vs 14,254 (σ 1,166).
+  The 172-death difference is well inside the ensemble spread.
 
-## 6. Sensitivity and robustness (Section 4.7)
+## 6. Sensitivity and robustness (Section 6.1)
 
 The parameters that are NOT fixed by data are the overload mortality ceiling `M_max`
 and the half-score load `L_1/2` (pinned by the M(2.5)~=2x target), and the HCW
@@ -260,7 +267,7 @@ Report the H1 multiplier over the grid; state which qualitative conclusion holds
 (strain multiplies mortality) and that the magnitude is the calibration-sensitive part.
 
 **S2 — in-hospital transmissivity (HCW hazard).** Bracket the calibrated H3
-(`H3_hcw`, HR ~3.4-4) by scaling `xmit_hosp` down (`lo`) and up (`hi`):
+(`H3_hcw`, CHR 3.07) by scaling `xmit_hosp` down (`lo`) and up (`hi`):
 
 ```bash
 for c in S2_hcw_lo S2_hcw_hi; do
@@ -268,34 +275,41 @@ for c in S2_hcw_lo S2_hcw_hi; do
 done
 ```
 
-Read the achieved HCW hazard ratio from `medical_workers.dat` (Section 3 formula),
-tune the `xmit_hosp` scaling in `make_inputs.sh` to span ~2.5-5, and report the
-depletion mortality amplification against the hazard ratio.
+Read the achieved CHR from `medical_workers.dat` (H3 formula above) and report the
+depletion mortality amplification against it. The Matrix ensembles give CHR 2.55
+(`lo`) and 3.86 (`hi`).
 
-## 7. Computational cost (Section 4.8)
+## 7. Computational cost (Section 6.2)
 
-Per-step overhead of the model vs baseline, plotfiles off, on a single MI300A. Time
-off / capacity-only / full on the same Bay Area scenario:
+Per-step overhead of the model vs baseline, plotfiles off, 120 steps, on Matrix
+H100s. Time off / capacity-only / full on the same Bay Area scenario, as 25-member
+ensembles at 1-4 MPI tasks (one GPU each); the paper reports the single-GPU
+ensemble medians:
 
 ```bash
-for c in cost_off cost_on cost_on_full; do
-    ./scripts/run_exaepi.sh --case=bay_$c --mode=batch          # single run; time it
+for n in 1 2 3 4; do
+    for c in cost_off cost_on cost_on_full; do
+        ./scripts/run_exaepi.sh --case=bay_$c --mode=batch --ensemble --ensemble-size=25 --ntasks=$n
+    done
 done
 ```
+
+The run directories carry the task count (`.ensemble_bay_cost_on_matrix_n1`, ...).
 
 - `cost_on` − `cost_off`: the capacity-model overhead (identical dynamics).
 - `cost_on_full` − `cost_on`: the in-hospital-interaction cost.
 - Break the overhead down by routine from the AMReX TinyProfiler table. **This needs a
   TinyProfiler build**: the default hardcodes `set(AMReX_TINY_PROFILE OFF)` in ExaEpi's
   `CMakeLists.txt`, which shadows any `-DAMReX_TINY_PROFILE=ON`, so set that line `ON` for
-  the timing binary. The model routines are already `BL_PROFILE`-annotated
+  the timing binary (ExaEpi PR #158, merged after the paper's code freeze, lets
+  `-DAMReX_TINY_PROFILE=ON` work directly). The model routines are already `BL_PROFILE`-annotated
   (`AgentContainer::interactDay`, `...getMedicalWorkerCounts`, the `HospitalModel` /
   `HospitalData` regions), so the table names them directly; it prints to the run stdout
   (`exaepi_*.out`) at finalize. (Without it, the wall time from the run's
   `Job started`/`Job finished` lines gives only a coarse total that includes init and I/O.)
-- Run on both architectures -- Tuolumne (AMD MI300A) and Matrix (NVIDIA H100) -- to report
-  the overhead on AMD and NVIDIA GPUs; the same cost cases run on either (platform
-  auto-detected, or set by `LCHOST`).
+- The same cases also ran on Tuolumne (MI300A) and Dane (CPU); the paper reports only
+  Matrix.
+
 ## Monitor and restart (any time)
 
 ```bash
@@ -325,7 +339,7 @@ done
 ## Order summary
 
 1. verify_off, verify_ample → check baseline recovery.
-2. H1_capacity → check load > 1, calibrate score.
+2. H1_capacity, H1_mitigated → check load > 1 (the score map is closed-form).
 3. H3_hcw → calibrate xmit_hosp from `medical_workers.dat`.
 4. H2_mw08 / H2_mw13 / H2_mw20 → workforce-size sweep.
 5. covflu_{w,wo}_noso → in-hospital cross-disease (nosocomial) transmission.
