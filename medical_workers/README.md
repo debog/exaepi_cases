@@ -27,6 +27,19 @@ order). This README covers the design and the experiment matrix.
   discharge fix changes the epidemic only in the two-disease `covflu_*` decks,
   since in single-disease runs a discharged agent is immune. Build with AMReX
   pinned to `9ed35ab0e584`.
+- Reproduction check (Matrix job 441327, 2026-10-16): `ba03243` re-ran `run_001`
+  (`agent.seed=1`) of three decks, in `.run_bay_revcheck_matrix`.
+  - `H1_capacity` (no shelter): `output.dat` and `medical_workers.dat` are
+    bit-identical to the paper's `run_001`.
+  - `H1_mitigated` and `covflu_w_noso` match up to day 41 and diverge from day 42,
+    the first discharges after the day-40 shelter order: the discharge kernel now
+    draws a random number, which shifts the RNG stream. For `H1_mitigated` this is
+    the only effect (immunity is permanent, `immune_length_loc` = 10000 d).
+  - Deaths: `H1_mitigated` 12,243 (paper `run_001` 12,146; ensemble 12,082 ± 502);
+    `covflu_w_noso` 13,443 (13,977; 14,426 ± 1,118). Peak load 1.66x vs 1.61x and
+    1.73x vs 1.74x.
+  - The paper's shelter-on ensembles therefore cannot be reproduced bitwise from
+    `ba03243`; `fe7ebfa` still reproduces them.
 - Runs: the Matrix ensembles `.ensemble_bay_<case>_matrix` (25 members, one H100
   each), in `/p/vast1/ghosh5/exaepi/medical_workers` and the workstation mirror.
   The committed decks are byte-identical to the decks those ensembles ran. The

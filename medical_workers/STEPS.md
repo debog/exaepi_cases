@@ -17,7 +17,9 @@ export LCHOST=matrix                           # or let it auto-detect on LC
   `fe7ebfa` + the `development` merge + the issue #159 discharge fix). Pin AMReX to
   `9ed35ab0e584`, the version every paper ensemble logs: `-DAMReX_GIT_BRANCH=9ed35ab0e584`
   for a fresh build dir, or `-DFETCHCONTENT_UPDATES_DISCONNECTED_AMREX=ON` in an
-  existing one already at that commit (the LC builds, 2026-10-16). The build must
+  existing one already at that commit (the LC builds, 2026-10-16). `ba03243`
+  reproduces the shelter-free paper runs bitwise; shelter-on runs diverge from
+  day 42 (RNG stream shift; README, reproduction check). The build must
   include the `medical_workers.dat` diagnostic (the H3 calibration depends on it).
 - Regenerate the decks if you edit the matrix: `./inputs/make_inputs.sh`.
 - Sanity check: `./scripts/run_exaepi.sh --list-cases`.
