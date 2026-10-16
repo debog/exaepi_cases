@@ -115,9 +115,26 @@ each hospitalized agent never infected with d: its per-disease counters are all 
 so `isNewlyHospitalized` matches 0 == 0 + 0. The 2.4% above therefore understates the
 per-admission rate. In the Matrix `covflu_w_noso` `run_001`, the 13,026
 hospital-acquired infections over a summed `NewH` of 514,151 (361,332 of it flu)
-also give 2.5%. The true admission count cannot be recovered from the saved outputs
-(`NewH` is contaminated and the agent data was pruned), so the paper's ~11% and
-~2.5% per-admission figures could not be reproduced from the Matrix data.
+also give 2.5%.
+
+**Correct denominator.** Expected admissions per disease = Σ over age groups of
+(new symptomatic agents, the `Symp*` columns of `output_<disease>.dat`) ×
+P(hosp | symptomatic) of that age group, from the deck's `CHR`. The `NewS` predicate
+checks the infection status, so these columns are clean. In four single-disease
+Matrix runs (where `NewH` is correct) this estimate matches the summed `NewH` to
+within 2%. For the Matrix `covflu_w_noso` `run_001` it gives ~99,500 COVID and
+~22,100 flu admissions, so:
+
+| Route | Hospital-acquired | Admissions | Rate |
+|---|---|---|---|
+| any admission, second disease | 13,026 | ~121,600 | ~10.7% |
+| flu admission acquires COVID | 5,079 | ~22,100 | ~23% |
+| COVID admission acquires flu | 7,947 | ~99,500 | ~8% |
+
+The paper's "~11%" and "~2.5%" were computed as 15,844/146,837 and 3,700/146,837:
+the Tuolumne `run_001` hospital-acquired counts over the Tuolumne ensemble-mean
+summed `NewH` of the COVID file alone. The 11% is close to the correct value; the
+flu→COVID rate is ~23%, not 2.5%.
 
 ## Apply
 

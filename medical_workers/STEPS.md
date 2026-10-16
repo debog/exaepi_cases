@@ -12,10 +12,13 @@ export EXAEPI_DIR=/path/to/ExaEpi              # source; census + hospital data
 export LCHOST=matrix                           # or let it auto-detect on LC
 ```
 
-- Build ExaEpi on the platform. To reproduce the paper, build
-  `archive/2026_medworkers_paper` (`fe7ebfa`, the commit every paper ensemble
-  logs); new work uses `dg/medical_workers`. The build must include the
-  `medical_workers.dat` diagnostic (the H3 calibration depends on it).
+- Build ExaEpi on the platform. The submitted paper used `fe7ebfa` (every paper
+  ensemble logs it); the revision uses `archive/2026_medworkers_paper` (`ba03243`:
+  `fe7ebfa` + the `development` merge + the issue #159 discharge fix). Pin AMReX to
+  `9ed35ab0e584`, the version every paper ensemble logs: `-DAMReX_GIT_BRANCH=9ed35ab0e584`
+  for a fresh build dir, or `-DFETCHCONTENT_UPDATES_DISCONNECTED_AMREX=ON` in an
+  existing one already at that commit (the LC builds, 2026-10-16). The build must
+  include the `medical_workers.dat` diagnostic (the H3 calibration depends on it).
 - Regenerate the decks if you edit the matrix: `./inputs/make_inputs.sh`.
 - Sanity check: `./scripts/run_exaepi.sh --list-cases`.
 
@@ -229,7 +232,11 @@ peaks at 1.7× capacity (ensemble mean), against 1.6× for COVID alone.
   denominator. In a two-disease run, `NewH` for disease d also counts, on every day of
   the stay, hospitalized agents never infected with d: their per-disease counters are
   all zero, so `isNewlyHospitalized` matches 0 == 0 + 0. `run_001` sums to 514,151
-  "admissions" (361,332 of them flu).
+  "admissions" (361,332 of them flu). Estimate admissions instead as
+  Σ_age(new symptomatic `Symp*` × `CHR`) per disease (matches `NewH` within 2% in
+  single-disease runs); see `calibration/calibrate_mitigation_xmit.md`.
+- Per-route rates, Matrix `run_001`: ~10.7% of all admissions acquire the second
+  disease; ~23% of flu admissions acquire COVID; ~8% of COVID admissions acquire flu.
 - Matrix results: `run_001` hospital-acquired 5,079 COVID + 7,947 flu with the patient
   channels, 20 + 26 without; ensemble deaths 14,426 (σ 1,118) vs 14,254 (σ 1,166).
   The 172-death difference is well inside the ensemble spread.

@@ -19,9 +19,14 @@ order). This README covers the design and the experiment matrix.
 
 ## Paper results (IDM submission, IDM-S-26-00436)
 
-- Code: ExaEpi branch `archive/2026_medworkers_paper` (= `fe7ebfa` + formatting).
-  Every ensemble logs `ExaEpi version 25.04-110-gfe7ebfa`. Do not reproduce the
-  paper from `dg/medical_workers`; it keeps moving.
+- Code: every submitted-paper ensemble logs `ExaEpi version 25.04-110-gfe7ebfa`
+  and AMReX `26.06-11-g9ed35ab0e584`. The branch `archive/2026_medworkers_paper`
+  now holds the revision code, `ba03243` (`fe7ebfa` + the `development` merge with
+  PRs #158 and #161-#163 + the issue #159 discharge fix). The merge only touches
+  UrbanPop, weather, travel, and the build, none of which these decks use. The
+  discharge fix changes the epidemic only in the two-disease `covflu_*` decks,
+  since in single-disease runs a discharged agent is immune. Build with AMReX
+  pinned to `9ed35ab0e584`.
 - Runs: the Matrix ensembles `.ensemble_bay_<case>_matrix` (25 members, one H100
   each), in `/p/vast1/ghosh5/exaepi/medical_workers` and the workstation mirror.
   The committed decks are byte-identical to the decks those ensembles ran. The
