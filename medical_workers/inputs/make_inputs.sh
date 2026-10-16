@@ -10,10 +10,10 @@
 #
 # Disease/transmission parameters are copied from the multidisease Bay Area
 # COVID-19-S1 deck. xmit_work = 0.0575. In-hospital transmission, calibrated:
-# worker-receiving channels d2d/p2d = 0.0002 (~0.0035x xmit_work), so the HCW
-# hazard ratio matches ~3.4 at a low-incidence window; patient-receiving channels
-# d2p = 0.0001, p2p = 0.0003 (held 1:3), so the in-hospital nosocomial incidence
-# among admitted patients is ~2% (see calibration/calibrate_mitigation_xmit.md).
+# worker-receiving channels d2d/p2d = 0.0002 (~0.0035x xmit_work), giving an
+# end-of-wave HCW cumulative-hazard ratio of 3.1 (target 3.4); patient-receiving
+# channels d2p = 0.0001, p2p = 0.0003 (held 1:3), set in the covflu runs
+# (see calibration/calibrate_mitigation_xmit.md).
 #
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -465,7 +465,7 @@ hospital_model.write_pltfiles = true
 ${HOSP_XMIT_OFF}
 ${MITIGATION}"
 
-# --- in-hospital cross-disease transmission (Section 4.6) ----------------------
+# --- in-hospital cross-disease transmission (Section 5.6) ----------------------
 #     Two co-circulating diseases let the patient-receiving channels act: a patient
 #     admitted for one disease can acquire the OTHER in the hospital (nosocomial
 #     co-infection). Because hospitalized agents are cut off from all community,
@@ -517,7 +517,7 @@ disease_FluS1.xmit_hosp_p2p = 0.0
 ${MITIGATION}" "$BASE2D"
 
 # ==============================================================================
-# Sensitivity and robustness (Section 4.7) and computational cost (Section 4.8)
+# Sensitivity and robustness (Section 6.1) and computational cost (Section 6.2)
 # ==============================================================================
 #
 # The free parameters of the load->mortality map are the overload mortality ceiling
@@ -611,42 +611,47 @@ disease.xmit_hosp_d2p = 0.00016
 disease.xmit_hosp_p2p = 0.00048
 ${MITIGATION}"
 
-# --- Computational cost (Section 4.8): per-step overhead of the model vs baseline -
-#     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute; time
-#     the per-day wall time and report overhead = (on - off)/off on a single MI300A.
+# --- Computational cost (Section 6.2): per-step overhead of the model vs baseline -
+#     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute, capped
+#     at 120 steps so every member times the same days; overhead = (on - off)/off,
+#     ensemble median per step on Matrix H100s (the paper reports one GPU).
 #       cost_off      : model off (baseline ExaEpi)
 #       cost_on       : capacity model on, in-hospital transmission OFF -- the core
 #                       per-step overhead, with ~identical dynamics to cost_off
 #       cost_on_full  : full model (+ all four in-hospital channels) -- adds the
 #                       hospital-interaction cost, an upper bound on the overhead
+#     score_minimum = 0.1 is what the cost runs used; it has no effect on the
+#     dynamics or the timing (vestigial, see the S1 note above).
+COST_BASE="${BASE/agent.nsteps = 365/agent.nsteps = 120}"
+
 write_case "cost_off" "agent.model_medical_workers = false
 agent.plot_int = -1
-${MITIGATION}"
+${MITIGATION}" "${COST_BASE}"
 
 write_case "cost_on" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
-hospital_model.score_minimum = 0.0
+hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
 hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = false
 agent.plot_int = -1
 ${HOSP_XMIT_OFF}
-${MITIGATION}"
+${MITIGATION}" "${COST_BASE}"
 
 write_case "cost_on_full" "agent.model_medical_workers = true
 agent.med_workers_proportion = 0.13
 hospital_model.use_HHS_data = true
 hospital_model.hospital_data_file = \"BayArea_hospitals_tract_2020.dat\"
-hospital_model.score_minimum = 0.0
+hospital_model.score_minimum = 0.1
 hospital_model.halfscore_load = 1.5
 hospital_model.treatment_score_type = minimum
 hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = false
 agent.plot_int = -1
 ${HOSP_XMIT_ON}
-${MITIGATION}"
+${MITIGATION}" "${COST_BASE}"
 
 echo "done."
