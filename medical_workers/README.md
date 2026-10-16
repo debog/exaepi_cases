@@ -20,15 +20,20 @@ order). This README covers the design and the experiment matrix.
 ## Paper results (IDM submission, IDM-S-26-00436)
 
 - Code: every submitted-paper ensemble logs `ExaEpi version 25.04-110-gfe7ebfa`
-  and AMReX `26.06-11-g9ed35ab0e584`. The branch `archive/2026_medworkers_paper`
-  now holds the revision code, `ba03243` (`fe7ebfa` + the `development` merge with
-  PRs #158 and #161-#163 + the issue #159 discharge fix). The merge only touches
-  UrbanPop, weather, travel, and the build, none of which these decks use. The
+  and AMReX `26.06-11-g9ed35ab0e584`; that code is preserved on the branch
+  `archive/2026_medworkers_idm_submission` (no tag: `git describe --tags` would
+  rename later version strings). The branch `archive/2026_medworkers_paper` now
+  holds the revision code, `350b31b` (`fe7ebfa` + the `development` merges with
+  PRs #158 and #161-#164 + the issue #159 discharge fix `ba03243`). The merges only
+  touch UrbanPop, weather, travel, and the build, none of which these decks use
+  (all decks are `ic_type = census`). The
   discharge fix changes the epidemic only in the two-disease `covflu_*` decks,
   since in single-disease runs a discharged agent is immune. Build with AMReX
   pinned to `9ed35ab0e584`.
 - Reproduction check (Matrix job 441327, 2026-10-16): `ba03243` re-ran `run_001`
-  (`agent.seed=1`) of three decks, in `.run_bay_revcheck_matrix`.
+  with `agent.seed=1` for three decks, in `.run_bay_revcheck_matrix`. `350b31b`
+  adds only #164 (UrbanPop init, never executed in census runs); job 441518
+  confirmed `H1_capacity` is still bit-identical with it.
   - `H1_capacity` (no shelter): `output.dat` and `medical_workers.dat` are
     bit-identical to the paper's `run_001`.
   - `H1_mitigated` and `covflu_w_noso` match up to day 41 and diverge from day 42,

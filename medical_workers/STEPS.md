@@ -13,12 +13,13 @@ export LCHOST=matrix                           # or let it auto-detect on LC
 ```
 
 - Build ExaEpi on the platform. The submitted paper used `fe7ebfa` (every paper
-  ensemble logs it); the revision uses `archive/2026_medworkers_paper` (`ba03243`:
-  `fe7ebfa` + the `development` merge + the issue #159 discharge fix). Pin AMReX to
+  ensemble logs it); the revision uses `archive/2026_medworkers_paper` (`350b31b`:
+  `fe7ebfa` + the `development` merges through #164 + the issue #159 discharge fix
+  `ba03243`). `fe7ebfa` stays on `archive/2026_medworkers_idm_submission`. Pin AMReX to
   `9ed35ab0e584`, the version every paper ensemble logs: `-DAMReX_GIT_BRANCH=9ed35ab0e584`
   for a fresh build dir, or `-DFETCHCONTENT_UPDATES_DISCONNECTED_AMREX=ON` in an
-  existing one already at that commit (the LC builds, 2026-10-16). `ba03243`
-  reproduces the shelter-free paper runs bitwise; shelter-on runs diverge from
+  existing one already at that commit (the LC builds, 2026-10-16). `ba03243`/`350b31b`
+  reproduce the shelter-free paper runs bitwise; shelter-on runs diverge from
   day 42 (RNG stream shift; README, reproduction check). The build must
   include the `medical_workers.dat` diagnostic (the H3 calibration depends on it).
 - Regenerate the decks if you edit the matrix: `./inputs/make_inputs.sh`.
