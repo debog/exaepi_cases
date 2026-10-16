@@ -158,7 +158,10 @@ total HA / summed `NewH` (both files), the contaminated metric. At the chosen
 `d2p = 0.0001`, `p2p = 0.0003` the per-admission incidence is ~11-13%, about five
 times the intended ~2%. The submitted paper reports the 11% and calls it "in the
 reported range", so it is consistent with the chosen values, but the
-`calibrate_mitigation_xmit` record of a ~2% target is not.
+`calibrate_mitigation_xmit` record of a ~2% target is not. The 2.4% is not a share
+of all infections either: admissions are ~1.65% of all infections (121.6k of 7.4M in
+Matrix `run_001`), so no per-infection rate can reach 2.4%; at the chosen values the
+hospital-acquired share of all infections is 0.18% (paper: 0.12% COVID, 0.25% flu).
 
 ## Apply
 
