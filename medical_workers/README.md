@@ -39,7 +39,8 @@ order). This README covers the design and the experiment matrix.
     `covflu_w_noso` 13,443 (13,977; 14,426 ± 1,118). Peak load 1.66x vs 1.61x and
     1.73x vs 1.74x.
   - The paper's shelter-on ensembles therefore cannot be reproduced bitwise from
-    `ba03243`; `fe7ebfa` still reproduces them.
+    `ba03243`. Runs are deterministic per seed (`H1_capacity`), so `fe7ebfa`
+    remains the code that reproduces them.
 - Runs: the Matrix ensembles `.ensemble_bay_<case>_matrix` (25 members, one H100
   each), in `/p/vast1/ghosh5/exaepi/medical_workers` and the workstation mirror.
   The committed decks are byte-identical to the decks those ensembles ran. The
