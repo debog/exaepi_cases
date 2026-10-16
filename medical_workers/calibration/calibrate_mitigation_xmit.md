@@ -119,22 +119,46 @@ also give 2.5%.
 
 **Correct denominator.** Expected admissions per disease = Σ over age groups of
 (new symptomatic agents, the `Symp*` columns of `output_<disease>.dat`) ×
-P(hosp | symptomatic) of that age group, from the deck's `CHR`. The `NewS` predicate
-checks the infection status, so these columns are clean. In four single-disease
-Matrix runs (where `NewH` is correct) this estimate matches the summed `NewH` to
-within 2%. For the Matrix `covflu_w_noso` `run_001` it gives ~99,500 COVID and
-~22,100 flu admissions, so:
+P(hosp | symptomatic) of that age group, from the deck's `CHR`. This mirrors the
+admission rule (`DiseaseStatus.H`: a symptomatic agent not already in hospital is
+admitted with probability `CHR[age]` on day incubation + delay). The `NewS` predicate
+checks the infection status, so these columns are clean. In three single-disease
+Matrix `run_001`s (`H1_capacity`, `H1_mitigated`, `H3_hcw`), where `NewH` is correct,
+`NewH` is 0.98 of this estimate (cause not checked), so the rates below may be
+~2% (relative) low.
 
-| Route | Hospital-acquired | Admissions | Rate |
-|---|---|---|---|
-| any admission, second disease | 13,026 | ~121,600 | ~10.7% |
-| flu admission acquires COVID | 5,079 | ~22,100 | ~23% |
-| COVID admission acquires flu | 7,947 | ~99,500 | ~8% |
+Hospital-acquired counts are kept only for `run_001` (the `plt` files of the other
+members were pruned). Both available realizations (`calibration/nosocomial_rates.py`,
+reads the workstation mirror):
+
+| | Tuolumne `run_001` | Matrix `run_001` |
+|---|---|---|
+| COVID acquired in hospital (by flu admissions) | 3,700 | 5,079 |
+| Flu acquired in hospital (by COVID admissions) | 12,144 | 7,947 |
+| `NewH` sum, COVID file / flu file | 141,397 / 407,707 | 152,819 / 361,332 |
+| Estimated admissions, COVID / flu | 100,551 / 20,785 | 99,475 / 22,107 |
+| `NewH` excess (non-admission days), COVID / flu | 40,846 / 386,922 | 53,344 / 339,225 |
+| Any admission acquires the second disease | 13.1% | 10.7% |
+| Flu admission acquires COVID | 17.8% | 23.0% |
+| COVID admission acquires flu | 12.1% | 8.0% |
+| (calibration metric: total HA / summed `NewH`) | 2.9% | 2.5% |
+
+The ensemble-mean admissions are nearly the same on both platforms (~100k COVID,
+~21k flu), so the spread in the rates comes from the hospital-acquired counts, i.e.
+from realization noise in two single runs.
 
 The paper's "~11%" and "~2.5%" were computed as 15,844/146,837 and 3,700/146,837:
 the Tuolumne `run_001` hospital-acquired counts over the Tuolumne ensemble-mean
-summed `NewH` of the COVID file alone. The 11% is close to the correct value; the
-flu→COVID rate is ~23%, not 2.5%.
+summed `NewH` of the COVID file alone (146,837). With the correct denominators the
+same Tuolumne counts give 13.1% and 17.8%. The "~11%" is in the right range
+(10.7-13.1%); the flu→COVID rate is ~18-23%, not 2.5%.
+
+**Consequence for the calibration above.** The 2.4% target value was measured as
+total HA / summed `NewH` (both files), the contaminated metric. At the chosen
+`d2p = 0.0001`, `p2p = 0.0003` the per-admission incidence is ~11-13%, about five
+times the intended ~2%. The submitted paper reports the 11% and calls it "in the
+reported range", so it is consistent with the chosen values, but the
+`calibrate_mitigation_xmit` record of a ~2% target is not.
 
 ## Apply
 
