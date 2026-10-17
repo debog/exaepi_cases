@@ -50,6 +50,24 @@ order). This README covers the design and the experiment matrix.
   `NewH` fix, ExaEpi PR #165) into `revision/.ensemble_bay_<case>_matrix[_nK]`
   (`--ensemble-parent-dir=revision`; the paper ensembles are untouched). Every member
   now keeps its last plotfile, so hospital-acquired counts exist for all members.
+  Summaries recomputed with TotalHospitalized = H/NI + H/I.
+- Revision vs paper (`scripts/compare_ensembles.py`, Matrix job 441746; report in
+  `.run_bay_revcheck_matrix/compare_report.txt` on LC):
+  - No shelter (`H1_capacity`, `verify_off/ample/match`): 25/25 members bit-identical.
+  - Shelter, single disease (all other non-cost decks): every member diverges on day
+    41-42 (RNG shift only); all ensemble metrics within |z| < 1.6 of the paper.
+  - `covflu_*`: discharge fix plus `NewH` fix. Deaths, peaks, infections within noise
+    (w_noso 14,420 vs 14,430; wo_noso 14,140 vs 14,250). `NewH` now 0.96-0.98 of
+    Σ Symp × CHR (single-disease ratio 0.98); paper's was 1.5 (COVID), 16-18 (flu).
+  - Paired deaths (revision): H3 − H1_mitigated 2,672 [2,476, 2,869] (+22.1%);
+    covflu w − wo 278 [201, 356] (+2.0%; paper 172 [92, 252], +1.2%); notransfer
+    1,160 (+9.6%).
+  - Hospital-acquired, `covflu_w_noso` 25 members: flu admissions acquiring COVID
+    19.6% (sd 3.1%), COVID admissions acquiring flu 11.2% (3.0%), all admissions
+    12.7% (2.2%), 0.20% of all infections.
+  - Cost, n1 medians (ms/step, REG::Evolution / 120): off 103.1, on 109.8, full 112.7
+    (paper 100.5, 110.2, 110.0). The overhead breakdown (`plot_cost.py` COMP) has no
+    recorded recipe.
 - Runs: the Matrix ensembles `.ensemble_bay_<case>_matrix` (25 members, one H100
   each), in `/p/vast1/ghosh5/exaepi/medical_workers` and the workstation mirror.
   The committed decks are byte-identical to the decks those ensembles ran. The
