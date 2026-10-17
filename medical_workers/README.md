@@ -46,6 +46,10 @@ order). This README covers the design and the experiment matrix.
   - The paper's shelter-on ensembles therefore cannot be reproduced bitwise from
     `ba03243`. Runs are deterministic per seed (`H1_capacity`), so `fe7ebfa`
     remains the code that reproduces them.
+- Revision runs (2026-10-16): all 31 ensembles re-run with `9cd209e` (`350b31b` + the
+  `NewH` fix, ExaEpi PR #165) into `revision/.ensemble_bay_<case>_matrix[_nK]`
+  (`--ensemble-parent-dir=revision`; the paper ensembles are untouched). Every member
+  now keeps its last plotfile, so hospital-acquired counts exist for all members.
 - Runs: the Matrix ensembles `.ensemble_bay_<case>_matrix` (25 members, one H100
   each), in `/p/vast1/ghosh5/exaepi/medical_workers` and the workstation mirror.
   The committed decks are byte-identical to the decks those ensembles ran. The
