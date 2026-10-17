@@ -24,7 +24,12 @@ recalibration:
 ## Metrics
 
 - **Peak hospital load** = max over the run of (total hospitalized) / (staffed
-  beds, 10\,876), from `output.dat` columns H/NI + H/I + ICU + V.
+  beds, 10\,876), from `output.dat` columns H/NI + H/I + ICU + V. **This
+  over-counts (found 2026-10-16):** `H/NI + H/I` is already the whole hospital
+  census (ICU and ventilator patients included); `ICU` and `V` are subsets. The
+  sum is ~1.41x the census at the peak (H1_mitigated ensemble mean 1.56x -> 1.11x
+  with `H/NI + H/I` only). The model itself uses agent counts per hospital and is
+  not affected.
 - **HCW cumulative-hazard ratio (CHR)** = ratio of cumulative infection hazards of
   medical vs other workers, `ln(MW_S0/MW_Send) / ln(OW_S0/OW_Send)` from
   `medical_workers.dat`, read at the **end of the wave** (the paper's metric). Target
