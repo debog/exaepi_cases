@@ -1439,10 +1439,11 @@ EOF
     # Remove cases* to save space. Keep the first member's plt* -- the
     # per-tract maps (hospital load, excess mortality, infections) need one
     # representative realization, and run_001 is fetched for that. The other
-    # members' plotfiles are still removed.
+    # members keep only their last plotfile (cumulative counters, e.g.
+    # hospital-acquired infections).
     rm -rf "${RUN_DIR}"/cases*
     if [ "$i" -ne 1 ]; then
-        rm -rf "${RUN_DIR}"/plt?????
+        ls -d "${RUN_DIR}"/plt????? 2>/dev/null | sort | head -n -1 | xargs -r rm -rf
     fi
 
     cd "${ENSEMBLE_DIR}"
