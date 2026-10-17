@@ -63,7 +63,7 @@ for the current model: `xmit_hosp_d2d = p2d = 0.0002` (end-of-wave HCW
 cumulative-hazard ratio 3.07 in the Matrix ensemble; target 3.4); method in
 [calibration/calibrate_mitigation_xmit.md](calibration/calibrate_mitigation_xmit.md).
 The peak load is then an **output**, not a target -- the Matrix H1_mitigated
-ensemble peaks at 1.6x aggregate (day 73) with 12,081 deaths; in `run_001` at day 75
+ensemble peaks at 1.6x aggregate (day 73; 1.1x without the ICU/V double count, see README) with 12,081 deaths; in `run_001` at day 75
 the median hospital is at 1.6x and the busiest at 9.7x, and 48,925 patients are
 transferred over the wave. The Bay Area did not in fact overload (it avoided
 LA/NY-style collapse through high compliance), so the model's overload is a

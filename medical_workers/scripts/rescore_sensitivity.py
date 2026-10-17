@@ -44,7 +44,7 @@ VENTCVF = np.array([0.0071, 0.0071, 0.0284, 0.0563, 0.1226, 0.4490])
 STAY = np.array([3, 3, 3, 3, 8, 7])                       # hospitalization_days
 P_BASE = (1 - CIC) * HOSPCVF + CIC * (1 - CVE) * ICUCVF + CIC * CVE * VENTCVF
 AGE_COLS = ['HospU5', 'Hosp5to17', 'Hosp18to29', 'Hosp30to49', 'Hosp50to64', 'HospO64']
-HOSP_COMPARTMENTS = ['H/NI', 'H/I', 'ICU', 'V']          # in-hospital census = sum
+HOSP_COMPARTMENTS = ['H/NI', 'H/I']                      # in-hospital census (ICU, V are subsets)
 
 # --- grids ----------------------------------------------------------------------
 MMAX_GRID = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0]   # overload mortality ceiling; baseline 3.0

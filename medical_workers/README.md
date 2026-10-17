@@ -57,6 +57,12 @@ order). This README covers the design and the experiment matrix.
   the paper.
 - Headline values (ensemble means; per-hospital values from `run_001`):
 
+  The aggregate peak loads below are (H/NI + H/I + ICU + V) / 10,876 and over-count
+  by ~1.41x (ICU and V are subsets of H/NI + H/I; found 2026-10-16). Census-only
+  values: `H1_capacity` 4.8x, `H1_mitigated` 1.1x, `H3_hcw` 1.3x, `covflu_w_noso`
+  1.2x. Per-hospital values (median, busiest) come from the plotfiles and are correct.
+  `scripts/run_exaepi.sh` and `scripts/rescore_sensitivity.py` now use H/NI + H/I.
+
 | Case | Deaths (σ) | Peak load (aggregate) | Other |
 |---|---|---|---|
 | `verify_off` / `verify_ample` | 22,743 (163) / 22,433 (112) | — (ample beds) | peak infected 3.5M / 3.2M |

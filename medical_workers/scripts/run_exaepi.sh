@@ -1535,14 +1535,14 @@ for output_name in output_files:
     #   TotalInfected = PS/PI + S/PI/NH + S/PI/H + PS/I + S/I/NH + S/I/H
     #                   + A/PI + A/I + H/NI + H/I
     #                   (matches totalInfected() in AgentDefinitions.H)
-    #   TotalHospitalized = H/NI + H/I + ICU + V (ventilator)
+    #   TotalHospitalized = H/NI + H/I (every agent in hospital; ICU and V are subsets of it)
     #   Deaths = D
     # Column layout: Day(0) Su(1) PS/PI(2) S/PI/NH(3) S/PI/H(4) PS/I(5)
     #   S/I/NH(6) S/I/H(7) A/PI(8) A/I(9) H/NI(10) H/I(11) ICU(12)
     #   V(13) R(14) D(15) ...
     headers = header_line.split()
     infected_cols = ['PS/PI', 'S/PI/NH', 'S/PI/H', 'PS/I', 'S/I/NH', 'S/I/H', 'A/PI', 'A/I', 'H/NI', 'H/I']
-    hosp_cols = ['H/NI', 'H/I', 'ICU', 'V']
+    hosp_cols = ['H/NI', 'H/I']  # all agents in hospital; ICU and V are subsets
 
     infected_idx = [headers.index(c) for c in infected_cols if c in headers]
     hosp_idx     = [headers.index(c) for c in hosp_cols     if c in headers]
@@ -1702,7 +1702,7 @@ for output_name in output_files:
     # Compute per-timestep aggregated quantities
     headers = header_line.split()
     infected_cols = ['PS/PI', 'S/PI/NH', 'S/PI/H', 'PS/I', 'S/I/NH', 'S/I/H', 'A/PI', 'A/I', 'H/NI', 'H/I']
-    hosp_cols = ['H/NI', 'H/I', 'ICU', 'V']
+    hosp_cols = ['H/NI', 'H/I']  # all agents in hospital; ICU and V are subsets
 
     infected_idx = [headers.index(c) for c in infected_cols if c in headers]
     hosp_idx     = [headers.index(c) for c in hosp_cols     if c in headers]
