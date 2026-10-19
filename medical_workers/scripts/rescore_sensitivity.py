@@ -24,7 +24,8 @@ reported is total deaths / baseline deaths (M_max = 1).
 
 Validity (a screen, not a substitute for full runs):
   - Uses the region-aggregate load and a constant nominal capacity, so it sees the
-    TEMPORAL strain but not the per-hospital heterogeneity.
+    TEMPORAL strain but not the per-hospital heterogeneity. The patient count is the
+    one the model scores: the census of day t-1 plus the admissions of day t.
   - Trust it at high uniform load; anchor the mitigated operating point with the S1_*
     full-run corners (inputs/make_inputs.sh).
 
@@ -75,9 +76,10 @@ def read_run(path):
         hdr = f.readline().split()
     idx = {n: i for i, n in enumerate(hdr)}
     d = np.loadtxt(path, skiprows=1)
-    census = sum(d[:, idx[c]] for c in HOSP_COMPARTMENTS)  # in-hospital patients/day
+    census = sum(d[:, idx[c]] for c in HOSP_COMPARTMENTS)  # end-of-day in-hospital census
+    npat = np.r_[census[0], census[:-1]] + d[:, idx['NewH']]  # patients scored on day t
     adm = np.stack([d[:, idx[c]] for c in AGE_COLS], axis=1)  # (days, 6) admissions
-    return census, adm
+    return npat, adm
 
 
 def rescore(census, adm, capacity, m_max, L_half):
