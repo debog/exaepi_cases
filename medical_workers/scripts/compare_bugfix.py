@@ -3,8 +3,9 @@
 in-hospital transmission: old binary (5b7576a, "nofix") against the fixed one (c463918, "fix").
 
 Layouts under <root> (a mirror of medical_workers):
-  matrix:   bugcheck/{nofix,fix}/.ensemble_bay_<case>_matrix/run_001 (seed 1); the old-binary run must be
-            bit-identical to revision run_001
+  matrix:   bugcheck/nofix/.ensemble_bay_<case>_matrix/run_001 (seed 1, old binary; must be bit-identical to
+            revision run_001) and bugcheck/ens_fix/.ensemble_bay_<case>_matrix/run_001..025; the revision
+            ensembles are the old-binary arm
   tuolumne: bugcheck/tuo/single_{nofix,fix}/.ensemble_bay_<case>_tuolumne/run_001 (seed 1) and
             bugcheck/tuo/ens_{nofix,fix}/.ensemble_bay_<case>_tuolumne/run_001..025
 Changes in deaths relative to the unaffected partner decks use the Matrix revision ensemble means of
@@ -25,13 +26,13 @@ PARTNER = {'H3_hcw': 'H1_mitigated', 'S2_hcw_lo': 'H1_mitigated', 'S2_hcw_hi': '
 CAP = 10876
 AGES = ['U5', '5to17', '18to29', '30to49', '50to64', 'O64']
 DIS = ['Cov19S1', 'FluS1']
+REV = f'{ROOT}/revision'
 if PLAT == 'matrix':
-    SINGLE = {v: f'{ROOT}/bugcheck/{v}' for v in ('nofix', 'fix')}
-    ENS = {}
+    SINGLE = {'nofix': f'{ROOT}/bugcheck/nofix', 'fix': f'{ROOT}/bugcheck/ens_fix'}
+    ENS = {'nofix': REV, 'fix': f'{ROOT}/bugcheck/ens_fix'}
 else:
     SINGLE = {v: f'{ROOT}/bugcheck/tuo/single_{v}' for v in ('nofix', 'fix')}
     ENS = {v: f'{ROOT}/bugcheck/tuo/ens_{v}' for v in ('nofix', 'fix')}
-REV = f'{ROOT}/revision'
 
 
 def ens_dir(tree, case, plat=PLAT):
@@ -116,6 +117,20 @@ def metrics(r, case):
     return x
 
 
+def complete(r):
+    """The member's run ended normally (AMReX finalized), from run.log or the ensemble log."""
+    if os.path.exists(f'{r}/run.log'):
+        return 'finalized' in open(f'{r}/run.log').read()
+    i = int(r[-3:])
+    for o in glob.glob(f'{os.path.dirname(r)}/ensemble_*.out'):
+        t = open(o).read()
+        a = t.rfind(f'--- Run {i}/', 0, max(t.rfind(f'(seed={i}) started'), 0) + 1)
+        b = t.find(f'--- Run {i}/', a + 1) if a >= 0 else -1
+        if a >= 0 and b > a and 'finalized' in t[a:b]:
+            return True
+    return False
+
+
 def first_divergence(a, b):
     first = None
     for f in sorted(os.path.basename(p) for p in glob.glob(f'{a}/*.dat')):
@@ -148,6 +163,9 @@ for c in CASES:
         files = sorted(os.path.basename(p) for p in glob.glob(f'{ref}/*.dat'))
         same = all(filecmp.cmp(f'{ref}/{f}', f'{a}/{f}', shallow=False) for f in files)
         note = f'without fix vs revision run_001 {"bit-identical" if same else "DIFFERENT"}; '
+    if not (complete(a) and complete(b)):
+        print(f'\n== {c}: seed-1 pair incomplete (without fix {complete(a)}, with fix {complete(b)}), skipped')
+        continue
     x0, x1 = metrics(a, c), metrics(b, c)
     print(f'\n== {c}: {note}runs diverge from day {first_divergence(a, b)}')
     print(f'  {"metric":26s} {"without fix":>13s} {"with fix":>13s} {"change":>9s}')
@@ -160,11 +178,14 @@ if not ENS:
 
 N = 25
 T = 2.011  # t_{0.975, 48}
-E = {c: {v: [metrics(f'{ens_dir(ENS[v], c)}/run_{i:03d}', c) for i in range(1, N + 1)] for v in ENS} for c in CASES}
+DONE = [c for c in CASES if all(complete(f'{ens_dir(ENS[v], c)}/run_{i:03d}') for v in ENS for i in range(1, N + 1))]
+print('\nensembles complete in both arms: ' + ', '.join(DONE))
+print('incomplete (skipped): ' + ', '.join(c for c in CASES if c not in DONE))
+E = {c: {v: [metrics(f'{ens_dir(ENS[v], c)}/run_{i:03d}', c) for i in range(1, N + 1)] for v in ENS} for c in DONE}
 print('\n' + '=' * 96)
 print(f'Ensembles ({N} seeds each), {PLAT}: mean (sd); change = fix - nofix with 95% CI (Welch)')
 print('=' * 96)
-for c in CASES:
+for c in DONE:
     print(f'\n== {c}')
     for k in E[c]['nofix'][0]:
         a = np.array([x[k] for x in E[c]['nofix']])
@@ -185,10 +206,12 @@ print('Paper quantities by arm: deaths relative to the unaffected partner deck (
 print('and the two-disease difference with vs without in-hospital infection (paired seeds, same arm)')
 print('=' * 96)
 for c, p in PARTNER.items():
+    if c not in DONE:
+        continue
     base = rev_mean_deaths(p)
     s = '  '.join(f'{v} {100 * (np.mean([x["deaths"] for x in E[c][v]]) - base) / base:+6.2f}%' for v in ENS)
     print(f'  {c:16s} vs {p:16s} (base {base:8.1f})  {s}')
-for v in ENS:
+for v in ENS if {'covflu_w_noso', 'covflu_wo_noso'} <= set(DONE) else []:
     w = np.array([x['deaths'] for x in E['covflu_w_noso'][v]])
     wo = np.array([x['deaths'] for x in E['covflu_wo_noso'][v]])
     d = w - wo
