@@ -611,6 +611,26 @@ disease.xmit_hosp_d2p = 0.00016
 disease.xmit_hosp_p2p = 0.00048
 ${MITIGATION}"
 
+# --- S3: workforce->capacity scaling exponent (reviewer comment R1.1) -----------
+#     capacity = bed_supply x (available/baseline)^gamma; gamma = 1 is H1_mitigated/H3_hcw.
+#     gamma = 0.5 (absences partly absorbed) and 2 (capacity falls faster than staff), each
+#     without (mit) and with (hcw) in-hospital transmission.
+for G in 0.5 2; do
+GT=${G/./}
+write_case "S3_gamma${GT}_mit" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+hospital_model.capacity_exponent = ${G}
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S3_gamma${GT}_hcw" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+hospital_model.capacity_exponent = ${G}
+${HOSP_XMIT_ON}
+${MITIGATION}"
+done
+
 # --- Computational cost (Section 6.2): per-step overhead of the model vs baseline -
 #     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute, capped
 #     at 120 steps so every member times the same days; overhead = (on - off)/off,
