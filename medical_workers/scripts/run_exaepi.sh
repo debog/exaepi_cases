@@ -645,9 +645,9 @@ build_run_command() {
             ;;
         tuolumne)
             if [[ -n "$queue" ]]; then
-                run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 -q=${queue} ${agent_exe} ${input_file}"
+                run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 --output=out.tuolumne.log -q=${queue} ${agent_exe} ${input_file}"
             else
-                run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 ${agent_exe} ${input_file}"
+                run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 --output=out.tuolumne.log ${agent_exe} ${input_file}"
             fi
             ;;
         linux|linux-gpu|desktop)
@@ -1195,7 +1195,7 @@ create_ensemble_job_script() {
             run_cmd="srun --exclusive -n ${ntasks} -G ${ntasks} -N ${nnodes} ${agent_exe}"
             ;;
         tuolumne)
-            run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 ${agent_exe}"
+            run_cmd="flux run --exclusive --nodes=${nnodes} --ntasks ${ntasks} --gpus-per-task 1 --output=run.log ${agent_exe}"
             ;;
         linux|linux-gpu|desktop)
             if command -v mpirun &> /dev/null; then
