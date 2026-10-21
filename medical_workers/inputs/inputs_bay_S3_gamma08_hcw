@@ -91,11 +91,11 @@ hospital_model.mortality_multiplier_max = 3.0
 hospital_model.write_pltfiles = true
 hospital_model.score_minimum = 0.0
 hospital_model.halfscore_load = 1.5
-hospital_model.capacity_exponent = 2
-disease.xmit_hosp_d2d = 0.0
-disease.xmit_hosp_p2d = 0.0
-disease.xmit_hosp_d2p = 0.0
-disease.xmit_hosp_p2p = 0.0
+hospital_model.capacity_exponent = 0.8
+disease.xmit_hosp_d2d = 0.0002
+disease.xmit_hosp_p2d = 0.0002
+disease.xmit_hosp_d2p = 0.0001
+disease.xmit_hosp_p2p = 0.0003
 ## --- Mitigation: sustained moderate distancing + age-tiered symptomatic withdrawal ---
 agent.shelter_start = 40
 agent.shelter_length = 280

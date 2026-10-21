@@ -613,9 +613,9 @@ ${MITIGATION}"
 
 # --- S3: workforce->capacity scaling exponent (reviewer comment R1.1) -----------
 #     capacity = bed_supply x (available/baseline)^gamma; gamma = 1 is H1_mitigated/H3_hcw.
-#     gamma = 0.5 (absences partly absorbed) and 2 (capacity falls faster than staff), each
+#     gamma = 0.5 and 0.8 (absences partly absorbed by the hospitals), each
 #     without (mit) and with (hcw) in-hospital transmission.
-for G in 0.5 2; do
+for G in 0.5 0.8; do
 GT=${G/./}
 write_case "S3_gamma${GT}_mit" "${S1_BASE}
 hospital_model.score_minimum = 0.0
