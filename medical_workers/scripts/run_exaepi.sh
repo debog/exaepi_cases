@@ -1352,6 +1352,7 @@ EOF
 
     cat >> "$job_script" << EOF
 NUM_RUNS=${num_runs}
+INPUT_FILE=${input_file}
 EXPECTED_NSTEPS=\$(grep -E "^agent\.nsteps\s*=" ${input_file} | sed -E 's/.*=\s*([0-9]+).*/\1/')
 if [ -z "\$EXPECTED_NSTEPS" ]; then
     EXPECTED_NSTEPS=0
@@ -1366,6 +1367,7 @@ else
     echo "WARNING: Agent executable not found: $AGENT_EXE"
     AGENT_MTIME=0
 fi
+DECK_SUM=$(md5sum < "${ENSEMBLE_DIR}/${INPUT_FILE}" | cut -d' ' -f1)
 
 for i in $(seq 1 $NUM_RUNS); do
     RUN_DIR="${ENSEMBLE_DIR}/run_$(printf '%03d' $i)"
@@ -1375,17 +1377,23 @@ for i in $(seq 1 $NUM_RUNS); do
         continue
     fi
 
-    # A member that finished normally leaves .completed (runs may stop before nsteps)
-    if [ -f "${RUN_DIR}/.completed" ] && \
+    # A member that finished normally leaves .completed with the deck's checksum (runs may stop
+    # before nsteps); skip it only for the same deck and a binary older than the marker
+    if [ -f "${RUN_DIR}/.completed" ] && [ "$(cat "${RUN_DIR}/.completed")" = "$DECK_SUM" ] && \
        [ $(stat -c %Y "${RUN_DIR}/.completed" 2>/dev/null || stat -f %m "${RUN_DIR}/.completed") -gt $AGENT_MTIME ]; then
         echo "--- Run $i/$NUM_RUNS: Already completed (skipping) ---"
         SKIPPED=$((SKIPPED + 1))
         continue
     fi
+    FORCE_RUN=false
+    if [ -f "${RUN_DIR}/.completed" ]; then
+        echo "--- Run $i/$NUM_RUNS: deck or binary changed since it completed (re-running) ---"
+        FORCE_RUN=true
+    fi
 
-    # Check if run is already completed and up-to-date
+    # Check if run is already completed and up-to-date (member directories made before .completed existed)
     SKIP_RUN=false
-    if [ -d "${RUN_DIR}" ]; then
+    if [ "$FORCE_RUN" = false ] && [ -d "${RUN_DIR}" ]; then
         for output_file in "${RUN_DIR}"/output*.dat; do
             if [ -f "$output_file" ]; then
                 # Check if output file has data (more than just header)
@@ -1454,7 +1462,7 @@ EOF
         FAILED=$((FAILED + 1))
     else
         COMPLETED=$((COMPLETED + 1))
-        touch "${RUN_DIR}/.completed"
+        echo "$DECK_SUM" > "${RUN_DIR}/.completed"
     fi
 
     # Remove cases* to save space. Keep the first member's plt* -- the
