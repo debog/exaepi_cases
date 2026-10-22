@@ -1335,7 +1335,19 @@ fi
 
 for i in $(seq 1 $NUM_RUNS); do
     RUN_DIR="${ENSEMBLE_DIR}/run_$(printf '%03d' $i)"
-    mkdir -p "${RUN_DIR}"
+    if ! mkdir -p "${RUN_DIR}"; then
+        echo "ERROR: cannot create ${RUN_DIR}; run $i not started"
+        FAILED=$((FAILED + 1))
+        continue
+    fi
+
+    # A member that finished normally leaves .completed (runs may stop before nsteps)
+    if [ -f "${RUN_DIR}/.completed" ] && \
+       [ $(stat -c %Y "${RUN_DIR}/.completed" 2>/dev/null || stat -f %m "${RUN_DIR}/.completed") -gt $AGENT_MTIME ]; then
+        echo "--- Run $i/$NUM_RUNS: Already completed (skipping) ---"
+        SKIPPED=$((SKIPPED + 1))
+        continue
+    fi
 
     # Check if run is already completed and up-to-date
     SKIP_RUN=false
@@ -1376,10 +1388,18 @@ for i in $(seq 1 $NUM_RUNS); do
 
     echo "--- Run $i/$NUM_RUNS (seed=$i) started at $(date) ---"
 
-    cd "${RUN_DIR}"
+    if ! cd "${RUN_DIR}"; then
+        echo "ERROR: cannot enter ${RUN_DIR}; run $i not started"
+        FAILED=$((FAILED + 1))
+        continue
+    fi
+    rm -f "${RUN_DIR}/.completed"
 
-    # Copy input file and data files into run directory
+    # Link the input file and data files into the run directory; never outputs, and never over a real file
     for f in "${ENSEMBLE_DIR}"/inputs_* "${ENSEMBLE_DIR}"/*.dat "${ENSEMBLE_DIR}"/*.bin "${ENSEMBLE_DIR}"/*.cases; do
+        b=$(basename "$f")
+        case "$b" in output*|medical_workers*|transfers*) continue ;; esac
+        [ -e "${RUN_DIR}/$b" ] && [ ! -L "${RUN_DIR}/$b" ] && continue
         if [ -f "$f" ]; then
             ln -sf "$f" "${RUN_DIR}/" 2>/dev/null || cp "$f" "${RUN_DIR}/"
         fi
@@ -1400,6 +1420,7 @@ EOF
         FAILED=$((FAILED + 1))
     else
         COMPLETED=$((COMPLETED + 1))
+        touch "${RUN_DIR}/.completed"
     fi
 
     # Remove plt* and cases* directories to save space
