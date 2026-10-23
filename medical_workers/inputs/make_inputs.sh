@@ -631,6 +631,31 @@ ${HOSP_XMIT_ON}
 ${MITIGATION}"
 done
 
+# --- S4: death split ward:ICU:vent (reviewer comment R2.1) ----------------------
+#     H1_capacity (unmit) and H1_mitigated (mit) with the same overall P(death|hosp)
+#     by age as 1:2:3, split 1:1:1 (the cap at 1 never binds) or 1:3:6.
+SPLIT_111="disease.hospCVF = 0.0030 0.0030 0.0121 0.0271 0.0589 0.2136
+disease.icuCVF = 0.0030 0.0030 0.0121 0.0271 0.0589 0.2136
+disease.ventCVF = 0.0030 0.0030 0.0121 0.0271 0.0589 0.2136"
+SPLIT_136="disease.hospCVF = 0.0019 0.0019 0.0077 0.0138 0.0301 0.1106
+disease.icuCVF = 0.0058 0.0058 0.0231 0.0415 0.0902 0.3319
+disease.ventCVF = 0.0117 0.0117 0.0462 0.0829 0.1804 0.6638"
+for S in 111 136; do
+SPLIT_VAR=SPLIT_${S}
+write_case "S4_split${S}_unmit" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+${HOSP_XMIT_OFF}
+${!SPLIT_VAR}"
+write_case "S4_split${S}_mit" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+hospital_model.transfer_output_file = \"transfers.dat\"
+${HOSP_XMIT_OFF}
+${MITIGATION}
+${!SPLIT_VAR}"
+done
+
 # --- Computational cost (Section 6.2): per-step overhead of the model vs baseline -
 #     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute, capped
 #     at 120 steps so every member times the same days; overhead = (on - off)/off,
