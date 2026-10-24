@@ -50,8 +50,9 @@ def main():
             continue
         for i, lab in ((0, 'mit'), (1, 'hcw')):
             diff, hw, n = paired(D[REF][i], D[s][i])
+            ref = np.mean(list(D[REF][i].values()))
             print(f'  {s:>14} {lab}: {diff:+.0f} [{diff - hw:+.0f}, {diff + hw:+.0f}] '
-                  f'({100 * diff / np.mean(list(D[REF][i].values())):+.1f}%)')
+                  f'({100 * diff / ref:+.1f}% [{100 * (diff - hw) / ref:+.1f}, {100 * (diff + hw) / ref:+.1f}])')
 
 
 if __name__ == '__main__':
