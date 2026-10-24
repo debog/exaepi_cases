@@ -60,6 +60,7 @@ RUN_ALL=false
 ENSEMBLE=false
 ENSEMBLE_SIZE=100
 ENSEMBLE_PARENT_DIR=""
+REFERENCE_DIR=""
 
 # Platform-specific defaults (from machines.yaml)
 declare -A PLATFORM_DEFAULTS_TASKS
@@ -187,6 +188,8 @@ Options:
                          (requires batch mode). Computes statistics across runs.
   --ensemble-size=N     Number of ensemble runs (default: ${ENSEMBLE_SIZE})
   --ensemble-parent-dir=DIR  Parent directory for ensemble subdirectories (default: project root)
+  --reference-dir=DIR   Ensemble directory whose run_NNN outputs each member must reproduce
+                         bit for bit (regression check); the job fails on any difference
   -n, --ntasks=N        Override number of MPI tasks
   -N, --nnodes=N        Override number of nodes
   -q, --queue=NAME      Override queue/partition name
@@ -1148,6 +1151,10 @@ parse_args() {
                 ENSEMBLE_SIZE="${1#*=}"
                 shift
                 ;;
+            --reference-dir=*)
+                REFERENCE_DIR="${1#*=}"
+                shift
+                ;;
             --ensemble-parent-dir=*)
                 ENSEMBLE_PARENT_DIR="${1#*=}"
                 shift
@@ -1353,6 +1360,7 @@ EOF
     cat >> "$job_script" << EOF
 NUM_RUNS=${num_runs}
 INPUT_FILE=${input_file}
+REFERENCE_DIR="${REFERENCE_DIR}"
 EXPECTED_NSTEPS=\$(grep -E "^agent\.nsteps\s*=" ${input_file} | sed -E 's/.*=\s*([0-9]+).*/\1/')
 if [ -z "\$EXPECTED_NSTEPS" ]; then
     EXPECTED_NSTEPS=0
@@ -1637,8 +1645,35 @@ for output_name in output_files:
 
 PYEOF
 
+# Regression check: every member must reproduce the reference member's outputs exactly
+MISMATCH=0
+if [ -n "$REFERENCE_DIR" ]; then
+    for i in $(seq 1 $NUM_RUNS); do
+        r=$(printf 'run_%03d' $i)
+        refs=$(ls "${REFERENCE_DIR}/$r"/output*.dat "${REFERENCE_DIR}/$r"/medical_workers*.dat 2>/dev/null)
+        if [ -z "$refs" ]; then
+            echo "Reference check $r: no reference outputs in ${REFERENCE_DIR}/$r"
+            MISMATCH=$((MISMATCH + 1))
+            continue
+        fi
+        for ref in $refs; do
+            if cmp -s "${ENSEMBLE_DIR}/$r/$(basename "$ref")" "$ref"; then
+                echo "Reference check $r/$(basename "$ref"): bit-identical"
+            else
+                echo "Reference check $r/$(basename "$ref"): DIFFERS from $ref"
+                MISMATCH=$((MISMATCH + 1))
+            fi
+        done
+    done
+    echo "Reference mismatches: $MISMATCH"
+fi
+
 echo ""
-echo "Ensemble job finished at: \$(date)"
+echo "Ensemble job finished at: $(date)"
+# A nonzero exit marks the job FAILED, so jobs gated on it with afterok do not start
+if [ $FAILED -gt 0 ] || [ $MISMATCH -gt 0 ]; then
+    exit 1
+fi
 EOF
 
     chmod +x "$job_script"

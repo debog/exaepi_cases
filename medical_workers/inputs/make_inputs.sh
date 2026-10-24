@@ -656,6 +656,30 @@ ${MITIGATION}
 ${!SPLIT_VAR}"
 done
 
+# --- S5: shape of the score degradation (reviewer comment R1.2) ------------------
+#     linear, saturating, and logistic with steepness 3, all with the half score at
+#     x = 1.5 (M(2.5) = 2) and M_max = 3; mit pairs with H1_mitigated, hcw with H3_hcw.
+for SH in linear saturating logistic3; do
+case ${SH} in
+  logistic3) SHAPE="hospital_model.score_shape = logistic
+hospital_model.score_steepness = 3.0" ;;
+  *) SHAPE="hospital_model.score_shape = ${SH}" ;;
+esac
+write_case "S5_${SH}_mit" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+${SHAPE}
+hospital_model.transfer_output_file = \"transfers.dat\"
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S5_${SH}_hcw" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+${SHAPE}
+${HOSP_XMIT_ON}
+${MITIGATION}"
+done
+
 # --- Computational cost (Section 6.2): per-step overhead of the model vs baseline -
 #     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute, capped
 #     at 120 steps so every member times the same days; overhead = (on - off)/off,
