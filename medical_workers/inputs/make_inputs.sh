@@ -680,6 +680,23 @@ ${HOSP_XMIT_ON}
 ${MITIGATION}"
 done
 
+# --- S6: capacity fixed at the bed supply (reviewer comment R2.3) ----------------
+#     gamma = 0: absent workers do not lower capacity, which separates the effect of the
+#     larger wave from that of the capacity lost to absence; mit/hcw as in S3.
+write_case "S6_gamma0_mit" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+hospital_model.capacity_exponent = 0
+hospital_model.transfer_output_file = \"transfers.dat\"
+${HOSP_XMIT_OFF}
+${MITIGATION}"
+write_case "S6_gamma0_hcw" "${S1_BASE}
+hospital_model.score_minimum = 0.0
+hospital_model.halfscore_load = 1.5
+hospital_model.capacity_exponent = 0
+${HOSP_XMIT_ON}
+${MITIGATION}"
+
 # --- Computational cost (Section 6.2): per-step overhead of the model vs baseline -
 #     Identical Bay Area mitigated scenario, plotfiles OFF to isolate compute, capped
 #     at 120 steps so every member times the same days; overhead = (on - off)/off,
