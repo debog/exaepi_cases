@@ -7,6 +7,7 @@ of the mean toll of A (or of a stated reference), and the number of realizations
 Ratios (multipliers) use 1 + difference / mean(A).
 Usage: paired_differences.py [mirror_dir]
 """
+import glob
 import os
 import sys
 
@@ -26,8 +27,19 @@ def deaths(case):
     return D[case]
 
 
-def row(label, a, b, ref=None, ratio=False):
-    A, B = deaths(a), deaths(b)
+def final_value(case, col, fname):
+    out = {}
+    for d in sorted(glob.glob(f'{ces.MIR}/.ensemble_bay_{case}_matrix/run_*')):
+        f = os.path.join(d, fname)
+        if os.path.exists(f):
+            with open(f) as fh:
+                hdr = fh.readline().split()
+            out[int(d[-3:])] = np.loadtxt(f, skiprows=1, ndmin=2)[-1, hdr.index(col)]
+    return out
+
+
+def row(label, a, b, ref=None, ratio=False, col=None, fname=None):
+    A, B = (deaths(a), deaths(b)) if col is None else (final_value(a, col, fname), final_value(b, col, fname))
     s = sorted(set(A) & set(B))
     d = np.array([B[k] - A[k] for k in s])
     m, hw = d.mean(), T95.get(len(d) - 1, 1.96) * d.std(ddof=1) / np.sqrt(len(d))
@@ -54,6 +66,7 @@ def main():
     row('H2: 20% vs 8% medical workers', 'H2_mw08', 'H2_mw20')
     print('--- Sec 5.5 in-hospital transmission')
     row('H3: with vs without in-hospital transmission', 'H1_mitigated', 'H3_hcw')
+    row('H3: medical-worker deaths', 'H1_mitigated', 'H3_hcw', col='MW_dead', fname='medical_workers.dat')
     print('--- Sec 6.1 S1: multiplier at each M_max, L_1/2 (vs ample mitigated); change vs calibrated')
     for c in ('S1_mmax2', 'S1_mmax4', 'S1_lhalf10', 'S1_lhalf25'):
         row(f'{c}: multiplier', 'verify_ample_mit', c, ratio=True)
