@@ -15,5 +15,4 @@
 
 Used by `2026_MedicalWorkers/draft/figures/plot_h1_maps.py`.
 
-- `bayarea_cell_fips.csv`: grid cell (i, j) to community and 2000 census tract (geoid) for the Bay Area domain; used by the figure scripts of the IDM paper.
 - `cb_2020_us_county_5m/`: U.S. Census Bureau 2020 cartographic-boundary county outlines (1:5,000,000), used to draw county and coastline boundaries on the maps.
